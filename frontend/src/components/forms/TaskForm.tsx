@@ -918,7 +918,10 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
               Remover
             </Button>
           )}
-          {/* Botão de submit removido, agora é controlado pelos botões externos */}
+          {/* Botão de submit oculto para ser acionado pelos botões externos */}
+          <Button type="submit" className="hidden" id="task-form-submit">
+            Submit
+          </Button>
         </div>
       </form>
     </Form>

@@ -1684,10 +1684,12 @@ export const KanbanBoard = React.forwardRef<{ fetchTasks: () => Promise<void> },
             <Button
               type="button"
               onClick={() => {
-                // Encontrar o botão de submit do formulário e clicar nele
-                const submitButton = document.querySelector('form button[type="submit"]');
+                // Encontrar o botão de submit do formulário pelo ID e clicar nele
+                const submitButton = document.getElementById('task-form-submit');
                 if (submitButton) {
                   (submitButton as HTMLButtonElement).click();
+                } else {
+                  console.error('Botão de submit não encontrado');
                 }
               }}
             >
