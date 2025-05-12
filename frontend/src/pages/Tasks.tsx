@@ -12,6 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { TasksList } from '@/components/dashboard/TasksList';
 import { TaskForm } from '@/components/forms/TaskForm';
@@ -317,17 +319,54 @@ const Tasks = () => {
             </Button>
           )}
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+                    <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            if (!open) {
+              // Se estiver fechando o diálogo, apenas atualize o estado
+              setIsDialogOpen(false);
+            } else {
+              setIsDialogOpen(true);
+            }
+          }}>
+            <DialogContent
+              className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto"
+            >
               <DialogHeader>
                 <DialogTitle>Criar Nova Tarefa</DialogTitle>
                 <DialogDescription>
                   Preencha os detalhes da tarefa. Clique em salvar quando terminar.
                 </DialogDescription>
               </DialogHeader>
+
+              {/* Formulário em um componente separado */}
               <div className="py-4">
-                <TaskForm onSuccess={handleTaskFormSuccess} defaultProjectId={projectId} />
+                <TaskForm
+                  onSuccess={handleTaskFormSuccess}
+                  defaultProjectId={projectId}
+                />
               </div>
+
+              {/* Botões de ação fora do formulário */}
+              <DialogFooter className="flex justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    // Encontrar o botão de submit do formulário e clicar nele
+                    const submitButton = document.querySelector('form button[type="submit"]');
+                    if (submitButton) {
+                      (submitButton as HTMLButtonElement).click();
+                    }
+                  }}
+                >
+                  Salvar
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>

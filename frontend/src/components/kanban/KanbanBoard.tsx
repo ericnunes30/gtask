@@ -26,6 +26,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1670,6 +1671,29 @@ export const KanbanBoard = React.forwardRef<{ fetchTasks: () => Promise<void> },
               projectTeams={propTeams || []}
             />
           </div>
+
+          {/* Botões de ação fora do formulário */}
+          <DialogFooter className="flex justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                // Encontrar o botão de submit do formulário e clicar nele
+                const submitButton = document.querySelector('form button[type="submit"]');
+                if (submitButton) {
+                  (submitButton as HTMLButtonElement).click();
+                }
+              }}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

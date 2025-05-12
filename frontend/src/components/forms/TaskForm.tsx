@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -38,9 +37,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Task, TaskPriority, TaskStatus, projectService, userService, teamService } from '@/lib/api';
+import { Task, TaskStatus, projectService, userService, teamService } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/contexts/AuthContext';
 
 // Schema de validação para o formulário
 const taskFormSchema = z.object({
@@ -67,7 +65,6 @@ type TaskFormValues = z.infer<typeof taskFormSchema>;
 export interface TaskFormProps {
   initialData?: Task;
   onSuccess: (data: Partial<Task>) => void;
-  submitButtonText?: string;
   defaultProjectId?: number;
   defaultStatus?: TaskStatus;
   projectUsers?: any[];
@@ -75,16 +72,13 @@ export interface TaskFormProps {
   isEditMode?: boolean; // Indica se o formulário está em modo de edição
 }
 
-export function TaskForm({ initialData, onSuccess, submitButtonText = "Salvar", defaultProjectId, defaultStatus, projectUsers, projectTeams, isEditMode = false }: TaskFormProps) {
-  // Log para verificar os dados recebidos
-  const navigate = useNavigate();
+export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStatus, projectUsers, projectTeams, isEditMode = false }: TaskFormProps) {
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
   const permissions = usePermissions();
 
   // Inicializa o formulário com zod resolver
@@ -471,6 +465,10 @@ export function TaskForm({ initialData, onSuccess, submitButtonText = "Salvar", 
   };
 
   const onSubmit = async (values: TaskFormValues) => {
+    if (!form.formState.isDirty && isEditMode) {
+      toast.info("Nenhuma alteração foi feita");
+      return;
+    }
     setLoading(true);
     try {
       // Converter datas para string no formato ISO
@@ -730,7 +728,7 @@ export function TaskForm({ initialData, onSuccess, submitButtonText = "Salvar", 
                 <Select
                   onValueChange={(value) => field.onChange(value && value !== "0" ? parseInt(value) : undefined)}
                   value={field.value?.toString()}
-                  disabled={isEditMode || defaultProjectId || loading || permissions.isMember} // Desabilitar o campo quando estiver em modo de edição, quando tiver um projeto padrão, quando for membro ou carregando
+                  disabled={!!isEditMode || !!defaultProjectId || loading || permissions.isMember} // Desabilitar o campo quando estiver em modo de edição, quando tiver um projeto padrão, quando for membro ou carregando
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -920,19 +918,7 @@ export function TaskForm({ initialData, onSuccess, submitButtonText = "Salvar", 
               Remover
             </Button>
           )}
-          <div className="flex gap-2 ml-auto">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onSuccess({})}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Salvando..." : submitButtonText}
-            </Button>
-          </div>
+          {/* Botão de submit removido, agora é controlado pelos botões externos */}
         </div>
       </form>
     </Form>

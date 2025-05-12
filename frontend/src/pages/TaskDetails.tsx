@@ -279,6 +279,29 @@ const TaskDetails = () => {
                           isEditMode={true}
                         />
                       </div>
+
+                      {/* Botões de ação fora do formulário */}
+                      <SheetFooter className="flex justify-between">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsEditSheetOpen(false)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            // Encontrar o botão de submit do formulário e clicar nele
+                            const submitButton = document.querySelector('form button[type="submit"]');
+                            if (submitButton) {
+                              (submitButton as HTMLButtonElement).click();
+                            }
+                          }}
+                        >
+                          Salvar Alterações
+                        </Button>
+                      </SheetFooter>
                     </SheetContent>
                   </Sheet>
 
@@ -301,7 +324,7 @@ const TaskDetails = () => {
                         <AlertTriangle className="h-5 w-5 text-destructive mr-2" />
                         <p className="text-sm">Todos os dados relacionados a esta tarefa serão perdidos.</p>
                       </div>
-                      <DialogFooter>
+                      <DialogFooter className="flex justify-between">
                         <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                           Cancelar
                         </Button>

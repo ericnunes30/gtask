@@ -1,63 +1,64 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import User from '#models/user'
 import Project from '#models/project'
-import logger from '@adonisjs/core/services/logger'
 
 export default class ProjectsUsersSeeder extends BaseSeeder {
   async run() {
-    logger.info('ProjectsUsersSeeder: Iniciando associação de usuários a projetos.')
     try {
       // Buscar usuários
-      const userEric = await User.findBy('email', 'equipesurreal@surrealgroup.com.br')
-      const userManager = await User.findBy('email', 'gerente@example.com')
-      const userDeveloper = await User.findBy('email', 'dev@example.com')
-      const userDesigner = await User.findBy('email', 'designer@example.com')
+      const admin = await User.findBy('email', 'admin@example.com')
+      const manager = await User.findBy('email', 'gerente@example.com')
+      const developer = await User.findBy('email', 'dev@example.com')
+      const designer = await User.findBy('email', 'designer@example.com')
+
+      if (!admin || !manager || !developer || !designer) {
+        console.error('Usuários não encontrados')
+        return
+      }
 
       // Buscar projetos pelos títulos
-      const projectTaskManagement = await Project.findBy('title', 'Sistema de Gerenciamento de Tarefas')
-      const projectWebsiteRedesign = await Project.findBy('title', 'Redesign do Site Institucional')
-      const projectMobileApp = await Project.findBy('title', 'Aplicativo Mobile')
+      const projects = await Project.all()
 
-      // Função auxiliar para associar usuário a projeto se não existir
-      const associateUserToProject = async (project: Project | null, user: User | null, projectName: string, userEmail: string) => {
-        if (project && user) {
-          const existingRelation = await project.related('users').query().where('user_id', user.id).first()
-          if (!existingRelation) {
-            await project.related('users').attach([user.id])
-            logger.info(`ProjectsUsersSeeder: Usuário "${userEmail}" associado ao projeto "${projectName}".`)
-          } else {
-            logger.info(`ProjectsUsersSeeder: Usuário "${userEmail}" já está associado ao projeto "${projectName}".`)
-          }
-        } else {
-          if (!project) logger.warn(`ProjectsUsersSeeder: Projeto "${projectName}" não encontrado para associação.`)
-          if (!user) logger.warn(`ProjectsUsersSeeder: Usuário "${userEmail}" não encontrado para associação.`)
-        }
+      if (projects.length === 0) {
+        console.error('Nenhum projeto encontrado')
+        return
       }
 
-      // Associar usuários ao projeto Sistema de Gerenciamento de Tarefas
-      if (projectTaskManagement) {
-        await associateUserToProject(projectTaskManagement, userEric, projectTaskManagement.title, 'equipesurreal@surrealgroup.com.br')
-        await associateUserToProject(projectTaskManagement, userManager, projectTaskManagement.title, 'gerente@example.com')
-        await associateUserToProject(projectTaskManagement, userDeveloper, projectTaskManagement.title, 'dev@example.com')
+      // Encontrar os projetos pelos títulos
+      const taskManagement = projects.find(p => p.title === 'Sistema de Gerenciamento de Tarefas')
+      const websiteRedesign = projects.find(p => p.title === 'Redesign do Site Institucional')
+      const mobileApp = projects.find(p => p.title === 'Aplicativo Mobile')
+
+      if (!taskManagement || !websiteRedesign || !mobileApp) {
+        console.error('Projetos específicos não encontrados')
+        return
       }
 
-      // Associar usuários ao projeto Redesign do Site Institucional
-      if (projectWebsiteRedesign) {
-        await associateUserToProject(projectWebsiteRedesign, userManager, projectWebsiteRedesign.title, 'gerente@example.com')
-        await associateUserToProject(projectWebsiteRedesign, userDesigner, projectWebsiteRedesign.title, 'designer@example.com')
-      }
+      // Associar usuários a projetos
+      console.log('Associando usuários ao projeto Sistema de Gerenciamento de Tarefas (ID:', taskManagement.id, ')')
+      await taskManagement.related('users').attach([
+        admin.id,
+        manager.id,
+        developer.id
+      ])
 
-      // Associar usuários ao projeto Aplicativo Mobile
-      if (projectMobileApp) {
-        await associateUserToProject(projectMobileApp, userEric, projectMobileApp.title, 'equipesurreal@surrealgroup.com.br')
-        await associateUserToProject(projectMobileApp, userManager, projectMobileApp.title, 'gerente@example.com')
-        await associateUserToProject(projectMobileApp, userDeveloper, projectMobileApp.title, 'dev@example.com')
-        await associateUserToProject(projectMobileApp, userDesigner, projectMobileApp.title, 'designer@example.com')
-      }
+      console.log('Associando usuários ao projeto Redesign do Site Institucional (ID:', websiteRedesign.id, ')')
+      await websiteRedesign.related('users').attach([
+        manager.id,
+        designer.id
+      ])
 
-      logger.info('ProjectsUsersSeeder: Associações de usuários a projetos verificadas/criadas.')
+      console.log('Associando usuários ao projeto Aplicativo Mobile (ID:', mobileApp.id, ')')
+      await mobileApp.related('users').attach([
+        admin.id,
+        manager.id,
+        developer.id,
+        designer.id
+      ])
+
+      console.log('Associações entre projetos e usuários criadas com sucesso')
     } catch (error) {
-      logger.error({ err: error }, 'ProjectsUsersSeeder: Erro ao associar usuários a projetos.')
+      console.error('Erro ao associar projetos a usuários:', error)
     }
   }
 }

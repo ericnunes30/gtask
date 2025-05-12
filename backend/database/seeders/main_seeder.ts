@@ -1,14 +1,20 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
-import { Kernel } from '@adonisjs/core/ace'
 
 export default class MainSeeder extends BaseSeeder {
   async run() {
     try {
-      // A seção de TRUNCATE foi removida para tornar o seeder mais seguro
-      // e permitir que seja executado m��ltiplas vezes sem apagar dados.
-      // Os seeders individuais agora devem ser responsáveis por verificar
-      // se os dados já existem antes de tentar criá-los (idempotência).
-      console.log('MainSeeder: Iniciando execução (sem TRUNCATE).');
+      // Limpar todas as tabelas
+      await this.client.rawQuery('TRUNCATE TABLE roles CASCADE')
+      await this.client.rawQuery('TRUNCATE TABLE occupations CASCADE')
+      await this.client.rawQuery('TRUNCATE TABLE projects CASCADE')
+      await this.client.rawQuery('TRUNCATE TABLE users CASCADE')
+      await this.client.rawQuery('TRUNCATE TABLE tasks CASCADE')
+      await this.client.rawQuery('TRUNCATE TABLE comments CASCADE')
+      await this.client.rawQuery('TRUNCATE TABLE users_roles CASCADE')
+      await this.client.rawQuery('TRUNCATE TABLE projects_users CASCADE')
+      await this.client.rawQuery('TRUNCATE TABLE occupations_projects CASCADE')
+      await this.client.rawQuery('TRUNCATE TABLE task_user CASCADE')
+      await this.client.rawQuery('TRUNCATE TABLE occupations_tasks CASCADE')
 
       // 1. Importa e executa o RoleSeeder
       const { default: RoleSeeder } = await import('#database/seeders/role_seeder')

@@ -76,6 +76,9 @@ export default class TasksController {
             await task.related('occupations').attach(occupations)
         }
 
+        // Refresh the task instance to ensure date fields are DateTime objects
+        await task.refresh()
+
         // Logging task creation and initial assignee setup
         const actingUserId = auth.user!.id
         const createdTaskId = task.id
@@ -118,6 +121,7 @@ export default class TasksController {
 
     async show({ params, response }: HttpContext) {
         try {
+            console.log(`TasksController.show - Attempting to find task with params.id: ${params.id} (Type: ${typeof params.id})`)
             const task = await Task.findByOrFail('id', params.id)
             await task.load('project')
             await task.load('users')
@@ -136,7 +140,7 @@ export default class TasksController {
                     // Não precisamos de .withCount('replies') para as respostas, pois é apenas 1 nível de aninhamento
                     .orderBy('created_at', 'asc'); // Ordena as respostas
                 })
-                .withCount('replies', (queryBuilder) => queryBuilder.as('repliesCount')) // Conta as respostas diretas do comentário principal
+                // .withCount('replies', (queryBuilder) => queryBuilder.as('repliesCount')) // Conta as respostas diretas do comentário principal
                 .orderBy('created_at', 'desc'); // Ordena os comentários principais
             })
 
@@ -147,6 +151,7 @@ export default class TasksController {
 
             return taskData
         } catch (error) {
+            console.error(`TasksController.show - Error finding task with params.id: ${params.id}:`, error)
             return response.status(400).json({error: "Task not found!"})
         }
     }
