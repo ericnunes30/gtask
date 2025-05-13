@@ -50,11 +50,20 @@ export default class UsersController {
 
   async update({ params, request, response }: HttpContext) {
     try {
-      const user = await User.findByOrFail('id', params.id)
-      const { name, password, occupation_id, occupations, roles } = await request.validateUsing(updateUserValidator)
+      console.log('Método de requisição:', request.method())
+      console.log('Dados recebidos para atualização:', request.body())
 
-      user.merge({ name, password, occupationId: occupation_id })
+      const user = await User.findByOrFail('id', params.id)
+      console.log('Usuário antes da atualização:', user.toJSON())
+
+      const { name, email, password, occupation_id, occupations, roles } = await request.validateUsing(updateUserValidator)
+      console.log('Dados validados:', { name, email, password: password ? '[REDACTED]' : undefined, occupation_id, occupations, roles })
+
+      // Incluir email na operação merge
+      user.merge({ name, email, password, occupationId: occupation_id })
       await user.save()
+
+      console.log('Usuário após atualização:', user.toJSON())
 
       if (roles && roles.length > 0) {
         await user.related('roles').sync(roles)

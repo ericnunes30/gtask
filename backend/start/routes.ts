@@ -12,7 +12,13 @@ import SessionController from '#controllers/session_controller'
 
 router.post('session', [SessionController, 'store'])
 
-router.resource('user', UsersController).apiOnly()
+// Definir rotas de usuário manualmente para suportar PATCH
+router.get('user', [UsersController, 'index'])
+router.post('user', [UsersController, 'store'])
+router.get('user/:id', [UsersController, 'show'])
+router.put('user/:id', [UsersController, 'update']) // Manter PUT para compatibilidade
+router.patch('user/:id', [UsersController, 'update']) // Adicionar PATCH
+router.delete('user/:id', [UsersController, 'destroy'])
 
 // Linha removida, a rota será definida dentro do grupo abaixo
 router.group(() => {

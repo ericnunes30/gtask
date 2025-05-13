@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, MoreHorizontal, Search, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, Filter, MoreHorizontal, Search, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -68,13 +68,16 @@ const getBadgeColorClass = (teamId: number) => {
 const Users = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [occupations, setOccupations] = useState<Occupation[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); // Estado para controlar a atualização
   const [error, setError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   // Formulário de novo usuário
   const [newUser, setNewUser] = useState<{
@@ -93,67 +96,83 @@ const Users = () => {
     roles: [],
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
+  // Função para atualizar manualmente a lista de usuários
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchData(false);
+    setRefreshing(false);
+  };
+
+  // Função para carregar dados (extraída para ser reutilizável)
+  const fetchData = async (showLoadingIndicator = true) => {
+    if (showLoadingIndicator) {
       setLoading(true);
-      setError(null);
+    }
+    setError(null);
 
-      try {
-        // Carregar ocupações (equipes) usando o serviço de equipes
-        const occupationsData = await teamService.getTeams();
-        console.log('%c Equipes carregadas:', 'background: #3498db; color: white; padding: 2px 5px; border-radius: 3px;', occupationsData);
-        console.log('Total de equipes:', occupationsData.length);
+    try {
+      // Carregar ocupações (equipes) usando o serviço de equipes
+      const occupationsData = await teamService.getTeams();
+      console.log('%c Equipes carregadas:', 'background: #3498db; color: white; padding: 2px 5px; border-radius: 3px;', occupationsData);
+      console.log('Total de equipes:', occupationsData.length);
 
-        // Mostrar detalhes de cada equipe para depuração
-        occupationsData.forEach((team, index) => {
-          console.log(`Equipe ${index + 1}:`, {
-            id: team.id,
-            name: team.name,
-            description: team.description
-          });
+      // Mostrar detalhes de cada equipe para depuração
+      occupationsData.forEach((team, index) => {
+        console.log(`Equipe ${index + 1}:`, {
+          id: team.id,
+          name: team.name,
+          description: team.description
         });
+      });
 
-        setOccupations(occupationsData);
+      setOccupations(occupationsData);
 
-        // Carregar roles (funções/permissões)
-        const rolesData = await roleService.getRoles();
-        console.log('%c Roles carregadas:', 'background: #9b59b6; color: white; padding: 2px 5px; border-radius: 3px;', rolesData);
-        setRoles(rolesData);
+      // Carregar roles (funções/permissões)
+      const rolesData = await roleService.getRoles();
+      console.log('%c Roles carregadas:', 'background: #9b59b6; color: white; padding: 2px 5px; border-radius: 3px;', rolesData);
+      setRoles(rolesData);
 
-        // Carregar usuários
-        const usersData = await userService.getUsers();
-        console.log('%c Usuários carregados da API:', 'background: #e74c3c; color: white; padding: 2px 5px; border-radius: 3px;', usersData);
+      // Carregar usuários
+      const usersData = await userService.getUsers();
+      console.log('%c Usuários carregados da API:', 'background: #e74c3c; color: white; padding: 2px 5px; border-radius: 3px;', usersData);
 
-        // Processar os dados dos usuários para garantir compatibilidade
-        const processedUsers = usersData.map(user => {
-          // Garantir que temos occupation_id mesmo se vier como occupationId
-          if (user.occupationId && !user.occupation_id) {
-            user.occupation_id = user.occupationId;
-          }
+      // Processar os dados dos usuários para garantir compatibilidade
+      const processedUsers = usersData.map(user => {
+        // Garantir que temos occupation_id mesmo se vier como occupationId
+        if (user.occupationId && !user.occupation_id) {
+          user.occupation_id = user.occupationId;
+        }
 
-          // Garantir que temos created_at mesmo se vier como createdAt
-          if (user.createdAt && !user.created_at) {
-            user.created_at = user.createdAt;
-          }
+        // Garantir que temos created_at mesmo se vier como createdAt
+        if (user.createdAt && !user.created_at) {
+          user.created_at = user.createdAt;
+        }
 
-          // Garantir que temos updated_at mesmo se vier como updatedAt
-          if (user.updatedAt && !user.updated_at) {
-            user.updated_at = user.updatedAt;
-          }
+        // Garantir que temos updated_at mesmo se vier como updatedAt
+        if (user.updatedAt && !user.updated_at) {
+          user.updated_at = user.updatedAt;
+        }
 
-          return user;
-        });
+        return user;
+      });
 
-        console.log('Usuários processados:', processedUsers);
-        setUsers(processedUsers);
-      } catch (err) {
-        console.error('Erro ao carregar dados:', err);
-        setError('Não foi possível carregar os dados. Tente novamente mais tarde.');
-      } finally {
+      console.log('Usuários processados:', processedUsers);
+      setUsers(processedUsers);
+
+      return { users: processedUsers, occupations: occupationsData, roles: rolesData };
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err);
+      setError('Não foi possível carregar os dados. Tente novamente mais tarde.');
+      return null;
+    } finally {
+      if (showLoadingIndicator) {
         setLoading(false);
       }
-    };
+    }
+  };
 
+  // Carregar dados iniciais
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -220,9 +239,6 @@ const Users = () => {
       const createdUser = await userService.createUser(userData);
       console.log('Usuário criado:', createdUser);
 
-      // Adicionar novo usuário à lista local
-      setUsers(prevUsers => [...prevUsers, createdUser]);
-
       // Resetar o formulário
       setNewUser({
         name: '',
@@ -239,6 +255,10 @@ const Users = () => {
         title: "Usuário adicionado",
         description: `${createdUser.name} foi adicionado com sucesso.`,
       });
+
+      // Recarregar a lista de usuários para garantir dados atualizados
+      // Usamos false para não mostrar o indicador de carregamento completo
+      await fetchData(false);
     } catch (err) {
       console.error('Erro ao criar usuário:', err);
       toast({
@@ -358,28 +378,7 @@ const Users = () => {
       // Enviar para a API
       const updatedUser = await userService.updateUser(editingUser.id, userData);
       console.log('Usuário atualizado:', updatedUser);
-
-      // Atualizar o usuário na lista local com a resposta completa da API
       console.log('Resposta completa da API:', updatedUser);
-
-      setUsers(prevUsers =>
-        prevUsers.map(user =>
-          user.id === editingUser.id ? {
-            ...user,
-            name: updatedUser.name,
-            email: updatedUser.email,
-            occupation_id: updatedUser.occupationId || updatedUser.occupation_id, // Suporta ambos os formatos
-            created_at: updatedUser.created_at || updatedUser.createdAt,
-            updated_at: updatedUser.updated_at || updatedUser.updatedAt
-          } : user
-        )
-      );
-
-      // Log para depuração após a atualização
-      setTimeout(() => {
-        const updatedUserInState = users.find(u => u.id === editingUser.id);
-        console.log('Usuário atualizado no estado:', updatedUserInState);
-      }, 100);
 
       // Resetar o formulário
       setNewUser({
@@ -397,6 +396,10 @@ const Users = () => {
         title: "Usuário atualizado",
         description: `${updatedUser.name} foi atualizado com sucesso.`,
       });
+
+      // Recarregar a lista de usuários para garantir dados atualizados
+      // Usamos false para não mostrar o indicador de carregamento completo
+      await fetchData(false);
     } catch (err) {
       console.error('Erro ao atualizar usuário:', err);
       toast({
@@ -425,6 +428,45 @@ const Users = () => {
   const getRoleName = (roleId: number) => {
     const role = roles.find(r => r.id === roleId);
     return role ? role.name : `Função ${roleId}`;
+  };
+
+  // Função para iniciar o processo de exclusão de um usuário
+  const handleDeleteUser = (user: User) => {
+    setUserToDelete(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Função para confirmar e executar a exclusão de um usuário
+  const handleDeleteUserConfirm = async () => {
+    if (!userToDelete) return;
+
+    try {
+      // Chamar a API para excluir o usuário
+      await userService.deleteUser(userToDelete.id);
+
+      // Guardar o nome do usuário antes de limpar o estado
+      const deletedUserName = userToDelete.name;
+
+      // Fechar o diálogo e limpar o usuário selecionado
+      setIsDeleteDialogOpen(false);
+      setUserToDelete(null);
+
+      toast({
+        title: "Usuário removido",
+        description: `${deletedUserName} foi removido com sucesso.`,
+      });
+
+      // Recarregar a lista de usuários para garantir dados atualizados
+      // Usamos false para não mostrar o indicador de carregamento completo
+      await fetchData(false);
+    } catch (err) {
+      console.error('Erro ao excluir usuário:', err);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível excluir o usuário. Tente novamente.",
+      });
+    }
   };
 
   // Filtragem dos usuários
@@ -813,6 +855,27 @@ const Users = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Diálogo para confirmar exclusão de usuário */}
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Remover Usuário</DialogTitle>
+                <DialogDescription>
+                  Tem certeza que deseja remover o usuário {userToDelete?.name}?
+                  Esta ação não pode ser desfeita.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center bg-destructive/10 p-3 rounded-md mt-2">
+                <AlertCircle className="h-5 w-5 text-destructive mr-2" />
+                <p className="text-sm">Todos os dados relacionados a este usuário serão perdidos.</p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="mr-2">Cancelar</Button>
+                <Button variant="destructive" onClick={handleDeleteUserConfirm}>Remover</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {error && (
@@ -834,6 +897,16 @@ const Users = () => {
           </div>
           <Button variant="outline" size="icon" title="Filtrar">
             <Filter className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            title="Atualizar lista"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className={refreshing ? "animate-spin" : ""}
+          >
+            <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
 
@@ -920,6 +993,15 @@ const Users = () => {
                           title="Editar usuário"
                         >
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteUser(user)}
+                          title="Remover usuário"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>

@@ -60,7 +60,10 @@ const userService = {
 
   // Atualizar um usuário existente
   updateUser: async (id: number, userData: UpdateUserRequest) => {
-    const response = await api.put<User>(`/user/${id}`, userData);
+    // Usar PATCH em vez de PUT para enviar apenas os campos alterados
+    console.log('Enviando atualização de usuário via PATCH:', userData);
+    const response = await api.patch<User>(`/user/${id}`, userData);
+    console.log('Resposta da atualização:', response.data);
     return response.data;
   },
 

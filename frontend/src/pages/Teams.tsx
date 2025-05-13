@@ -42,6 +42,7 @@ const Teams = () => {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [teams, setTeams] = useState<Team[]>([]);
   const [occupations, setOccupations] = useState<Occupation[]>([]);
@@ -54,6 +55,7 @@ const Teams = () => {
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
 
   // Carregar equipes e ocupações
   useEffect(() => {
@@ -456,6 +458,34 @@ const Teams = () => {
     setIsEditDialogOpen(true);
   };
 
+  // Função para iniciar o processo de exclusão de uma equipe
+  const handleDeleteTeam = (team: Team) => {
+    setTeamToDelete(team);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Função para confirmar e executar a exclusão de uma equipe
+  const handleDeleteTeamConfirm = async () => {
+    if (!teamToDelete) return;
+
+    try {
+      // Chamar a API para excluir a equipe
+      await teamService.deleteTeam(teamToDelete.id);
+
+      // Remover a equipe da lista local
+      setTeams(prevTeams => prevTeams.filter(team => team.id !== teamToDelete.id));
+
+      // Fechar o diálogo e limpar a equipe selecionada
+      setIsDeleteDialogOpen(false);
+      setTeamToDelete(null);
+
+      toast.success(`Equipe ${teamToDelete.name} removida com sucesso!`);
+    } catch (err) {
+      console.error('Erro ao excluir equipe:', err);
+      toast.error('Não foi possível excluir a equipe. Tente novamente.');
+    }
+  };
+
   // Função para salvar a edição de uma equipe
   const handleEditTeamSave = async () => {
     if (!editingTeam || !teamName.trim()) {
@@ -623,6 +653,27 @@ const Teams = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Diálogo para confirmar exclusão de equipe */}
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Remover Equipe</DialogTitle>
+                <DialogDescription>
+                  Tem certeza que deseja remover a equipe {teamToDelete?.name}?
+                  Esta ação não pode ser desfeita.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center bg-destructive/10 p-3 rounded-md mt-2">
+                <AlertCircle className="h-5 w-5 text-destructive mr-2" />
+                <p className="text-sm">Todos os dados relacionados a esta equipe serão perdidos.</p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="mr-2">Cancelar</Button>
+                <Button variant="destructive" onClick={handleDeleteTeamConfirm}>Remover</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {error && (
@@ -719,6 +770,15 @@ const Teams = () => {
                             title="Editar equipe"
                           >
                             <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
+                            onClick={() => handleDeleteTeam(team)}
+                            title="Remover equipe"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>

@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Search, Menu, ChevronDown, LogOut } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Menu, ChevronDown, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,14 +46,6 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
           <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden">
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="relative max-w-md hidden md:flex">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Buscar..."
-              className="pl-8 w-[200px] lg:w-[300px] bg-background"
-            />
-          </div>
         </div>
 
         <div className="flex items-center gap-3">
