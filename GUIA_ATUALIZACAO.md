@@ -23,9 +23,19 @@ Após a configuração inicial, siga estes passos para atualizar o projeto:
 
 1. **Atualize o código**:
    ```bash
-   git pull origin main
+   # Para evitar que o editor nano seja aberto para mensagens de merge
+   git pull --no-edit origin main
    ```
    O Git não vai sobrescrever o arquivo axios.ts, mantendo sua configuração personalizada.
+
+   **Dica**: Para configurar o Git permanentemente para não abrir o editor:
+   ```bash
+   # Configurar um editor que não faz nada
+   git config --global core.editor true
+
+   # Configurar a estratégia de merge para não usar rebase
+   git config --global pull.rebase false
+   ```
 
 2. **Atualize o Frontend**:
    ```bash
@@ -66,7 +76,7 @@ git checkout main
 git add .
 
 # Faça o commit das alterações
-git commit -m "Correção de caminho do teams e users"
+git commit -m "Correção de erro de compilação do TS no backend"
 
 # Faça o push forçado (use com cuidado!)
 git push --force-with-lease origin main
@@ -110,6 +120,52 @@ pm2 status
 pm2 logs backend
 pm2 logs frontend
 ```
+
+### Problema com Variáveis de Ambiente no PM2
+
+Se você encontrar erros relacionados a variáveis de ambiente ausentes quando executar o backend com PM2, como:
+```
+Missing environment variable "DB_DATABASE"
+```
+
+Isso ocorre porque o arquivo `env.js` compilado não está encontrando o arquivo `.env` corretamente. Para resolver:
+
+1. **Corrija o arquivo `env.js` após a build**:
+   ```bash
+   # Substitua o arquivo env.js por uma versão corrigida
+   cat > backend/build/start/env.js << EOL
+   import { Env } from '@adonisjs/core/env';
+   import { createRequire } from 'node:module';
+
+   const require = createRequire(import.meta.url);
+   const baseUrl = new URL('../../', import.meta.url);
+
+   export default await Env.create(baseUrl, {
+       NODE_ENV: Env.schema.enum(['development', 'production', 'test']),
+       PORT: Env.schema.number(),
+       APP_KEY: Env.schema.string(),
+       HOST: Env.schema.string({ format: 'host' }),
+       LOG_LEVEL: Env.schema.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']),
+       DB_HOST: Env.schema.string({ format: 'host' }),
+       DB_PORT: Env.schema.number(),
+       DB_USER: Env.schema.string(),
+       DB_PASSWORD: Env.schema.string.optional(),
+       DB_DATABASE: Env.schema.string()
+   });
+   EOL
+   ```
+
+2. **Copie o arquivo `.env` para o diretório build**:
+   ```bash
+   cp backend/.env backend/build/.env
+   ```
+
+3. **Reinicie o PM2**:
+   ```bash
+   pm2 restart all
+   ```
+
+> **Nota**: O script `update_project.sh` já inclui essas correções automaticamente.
 
 ### Erros de MIME Type no Servidor Web
 
@@ -196,3 +252,4 @@ Para Apache:
 ### Boas Práticas de UI
 - Remova completamente elementos desnecessários (não apenas esconda com CSS)
 - Posicione o botão Cancelar à esquerda do botão Salvar, no mesmo nível
+
