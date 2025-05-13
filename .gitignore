@@ -1,6 +1,8 @@
 .roo/
 models.md 
 .roomodes
-GUIA_ATUALIZACAO.md
 backend/database/seeders_old/
 ~/
+GUIA_ATUALIZACAO.md
+SOLUCAO_ERRO_MIME_TYPE.md
+SOLUCAO_MIME_TYPE.md

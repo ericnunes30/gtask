@@ -1,109 +1,143 @@
 # Guia de Atualização do Manager Group
 
-Este guia contém instruções para atualizar o projeto e resolver problemas comuns durante o desenvolvimento.
+## Atualização na VPS (Preservando a Configuração da API)
 
-## Atualização do Código
+### Configuração Inicial (Apenas Uma Vez)
 
-### Método Padrão
-Para atualizar seu código local com as últimas alterações do repositório remoto:
+Para preservar permanentemente a configuração da rota da API no arquivo axios:
 
-```bash
-git pull origin main
-```
-
-### Push sem Fazer Merge
-
-Se você precisa enviar suas alterações para o repositório remoto sem fazer merge com as alterações existentes, siga estas etapas:
-
-1. Primeiro, salve suas alterações locais:
+1. **Marque o arquivo de configuração do axios para ser ignorado nas atualizações**:
    ```bash
-   git add .
-   git commit -m "Sua mensagem de commit"
+   git update-index --skip-worktree frontend/src/lib/api/axios.ts
    ```
 
-2. Para fazer push sem precisar fazer merge, use a opção `--force-with-lease`:
+2. **Verifique se o arquivo foi marcado corretamente**:
    ```bash
-   git push --force-with-lease origin main
+   git ls-files -v | grep ^S
    ```
+   Você deve ver o arquivo axios.ts na lista com um "S" na frente.
 
-   > **ATENÇÃO**: Use `--force-with-lease` em vez de `--force` para evitar sobrescrever acidentalmente alterações que você não conhece.
+### Processo de Atualização (Cada Vez)
 
-3. Alternativamente, se você está trabalhando em uma branch separada:
+Após a configuração inicial, siga estes passos para atualizar o projeto:
+
+1. **Atualize o código**:
    ```bash
-   git checkout -b minha-branch
-   git add .
-   git commit -m "Sua mensagem de commit"
-   git push origin minha-branch
+   git pull origin main
    ```
+   O Git não vai sobrescrever o arquivo axios.ts, mantendo sua configuração personalizada.
 
-## Resolução de Problemas Comuns
-
-### Conflitos de Merge
-Se você encontrar conflitos de merge durante um pull:
-
-1. Resolva os conflitos manualmente editando os arquivos afetados
-2. Adicione os arquivos resolvidos:
-   ```bash
-   git add .
-   ```
-3. Complete o merge:
-   ```bash
-   git commit
-   ```
-
-### Reverter para um Estado Anterior
-Se precisar voltar para um estado anterior do código:
-
-```bash
-git log  # Para encontrar o ID do commit
-git reset --hard <commit-id>
-```
-
-### Atualização do Frontend
-
-Após atualizar o código, certifique-se de:
-
-1. Instalar novas dependências:
+2. **Atualize o Frontend**:
    ```bash
    cd frontend
    npm install
-   ```
-
-2. Reconstruir o projeto:
-   ```bash
    npm run build
+   cd ..
    ```
 
-3. Iniciar o servidor de desenvolvimento:
-   ```bash
-   npm run dev
-   ```
-
-### Atualização do Backend
-
-1. Instalar novas dependências:
+3. **Atualize o Backend**:
    ```bash
    cd backend
    npm install
-   ```
-
-2. Executar migrações do banco de dados (se houver):
-   ```bash
    node ace migration:run
+   cd ..
    ```
 
-3. Iniciar o servidor:
+4. **Reinicie os serviços**:
    ```bash
-   npm run dev
+   pm2 restart all
    ```
 
-## Problemas Conhecidos e Soluções
+> **Importante**: Faça backup do banco de dados antes de executar migrações.
 
-### Botão Salvar no Popup de Adicionar Tarefa
-Se o botão Salvar no popup de adicionar tarefa não estiver funcionando:
-- Verifique se o ID `task-form-submit` está presente no botão de submit oculto no formulário
-- Certifique-se de que o botão Salvar externo está usando o ID correto para encontrar o botão de submit
+> **Nota**: Não é necessário remover a versão antiga antes de executar uma nova build.
 
-### Problemas de UI
-- Sempre remova completamente elementos de UI desnecessários em vez de apenas escondê-los com CSS
-- Posicione o botão Cancelar à esquerda e no mesmo nível horizontal e vertical que o botão Salvar
+## Envio de Alterações para o GitHub
+
+### Push sem Merge (Evitando Conflitos)
+
+Para enviar suas alterações locais para o GitHub sem precisar fazer merge:
+
+```bash
+# Certifique-se de estar na branch correta
+git checkout main
+
+# Adicione suas alterações
+git add .
+
+# Faça o commit das alterações
+git commit -m "Correção de caminho do teams e users"
+
+# Faça o push forçado (use com cuidado!)
+git push --force-with-lease origin main
+```
+
+> **Atenção**: O comando `--force-with-lease` é mais seguro que `--force` pois verifica se não houve alterações remotas que você não tenha baixado. Use com cuidado para não sobrescrever o trabalho de outras pessoas.
+
+Alternativamente, se preferir uma abordagem mais segura:
+
+```bash
+# Puxe as alterações remotas primeiro
+git pull --rebase origin main
+
+# Resolva conflitos se necessário
+
+# Faça o push normalmente
+git push origin main
+```
+
+## Solução de Problemas
+
+### Se o Git Pull Falhar
+```bash
+git stash save "Alterações locais"
+git pull origin main
+git stash apply
+```
+
+### Se o Serviço Não Reiniciar
+```bash
+pm2 stop [serviço]
+pm2 start [serviço]
+```
+
+### Verificação Rápida
+```bash
+# Status dos serviços
+pm2 status
+
+# Logs
+pm2 logs backend
+pm2 logs frontend
+```
+
+### Erro de MIME Type em Módulos JavaScript
+
+Se encontrar o erro:
+```
+Failed to load module script: Expected a JavaScript module script but the server responded with a MIME type of "text/html".
+```
+
+Siga estes passos:
+
+1. Edite o arquivo `frontend/index.html` para remover o script do GPT Engineer:
+   ```bash
+   # Remova ou comente a linha
+   <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+   ```
+
+2. Reconstrua o frontend:
+   ```bash
+   cd frontend
+   npm run build
+   cd ..
+   ```
+
+3. Reinicie os serviços:
+   ```bash
+   pm2 restart all
+   ```
+
+### Boas Práticas de UI
+- Remova completamente elementos desnecessários (não apenas esconda com CSS)
+- Posicione o botão Cancelar à esquerda do botão Salvar, no mesmo nível
