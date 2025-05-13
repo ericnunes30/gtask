@@ -111,14 +111,21 @@ pm2 logs backend
 pm2 logs frontend
 ```
 
-### Erro de MIME Type em Módulos JavaScript
+### Erros de MIME Type no Servidor Web
 
-Se encontrar o erro:
+Se encontrar erros como:
 ```
 Failed to load module script: Expected a JavaScript module script but the server responded with a MIME type of "text/html".
 ```
 
-Siga estes passos:
+Ou:
+```
+Refused to apply style from '...' because its MIME type ('text/html') is not a supported stylesheet MIME type.
+```
+
+Estes erros indicam que o servidor web não está configurado corretamente para servir arquivos CSS e JavaScript com os tipos MIME corretos.
+
+#### Solução Rápida (Temporária)
 
 1. Edite o arquivo `frontend/index.html` para remover o script do GPT Engineer:
    ```bash
@@ -136,6 +143,54 @@ Siga estes passos:
 3. Reinicie os serviços:
    ```bash
    pm2 restart all
+   ```
+
+#### Solução Permanente (Configuração do Servidor Web)
+
+Para Nginx:
+
+1. Edite o arquivo de configuração do Nginx:
+   ```bash
+   sudo nano /etc/nginx/sites-available/seu-site.conf
+   ```
+
+2. Adicione ou verifique os tipos MIME:
+   ```nginx
+   http {
+       include /etc/nginx/mime.types;
+       # ... outras configurações ...
+   }
+
+   server {
+       # ... outras configurações ...
+
+       location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+           expires max;
+           try_files $uri =404;
+       }
+   }
+   ```
+
+3. Reinicie o Nginx:
+   ```bash
+   sudo nginx -t
+   sudo systemctl restart nginx
+   ```
+
+Para Apache:
+
+1. Crie ou edite o arquivo `.htaccess` na raiz do diretório do frontend:
+   ```
+   <IfModule mod_mime.c>
+       AddType text/css .css
+       AddType application/javascript .js
+       AddType application/javascript .mjs
+   </IfModule>
+   ```
+
+2. Reinicie o Apache:
+   ```bash
+   sudo systemctl restart apache2
    ```
 
 ### Boas Práticas de UI

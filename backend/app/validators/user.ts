@@ -12,7 +12,6 @@ export const createUserValidator = vine.compile(
             return !match
         }),
         password: vine.string().minLength(6),
-        occupation_id: vine.number().optional(),
         occupations: vine.array(vine.number()).optional(),
         roles: vine.array(vine.number()).optional()
     })
@@ -23,7 +22,6 @@ export const updateUserValidator = vine.compile(
         name: vine.string().trim().optional(),
         email: vine.string().email().normalizeEmail().optional(),
         password: vine.string().minLength(6).optional(),
-        occupation_id: vine.number().optional(),
         occupations: vine.array(vine.number()).optional(),
         roles: vine.array(vine.number()).optional()
     })

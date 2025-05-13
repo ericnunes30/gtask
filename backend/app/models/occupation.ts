@@ -14,13 +14,10 @@ export default class Occupation extends BaseModel {
   @column()
   declare name: string
 
-  @hasMany(() => User)
-  declare users: HasMany<typeof User>
-
   @manyToMany(() => User, {
     pivotTable: 'users_occupations'
   })
-  declare usersMany: ManyToMany<typeof User>
+  declare users: ManyToMany<typeof User>
 
   @manyToMany(() => Project, {
     pivotTable: 'occupations_projects'

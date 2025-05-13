@@ -7,7 +7,6 @@ export default class UsersController {
   async index() {
     const users = await User.query()
       .preload('roles')
-      .preload('occupation')
       .preload('occupations')
       .preload('projects')
       .preload('tasks')
@@ -16,8 +15,8 @@ export default class UsersController {
   }
 
   async store({ request }: HttpContext) {
-    const { name, email, password, occupation_id, occupations, roles } = await request.validateUsing(createUserValidator)
-    const user = await User.create({ name, email, password, occupationId: occupation_id })
+    const { name, email, password, occupations, roles } = await request.validateUsing(createUserValidator)
+    const user = await User.create({ name, email, password })
 
     if (roles && roles.length > 0) {
       await user.related('roles').attach(roles)
@@ -25,9 +24,6 @@ export default class UsersController {
 
     if (occupations && occupations.length > 0) {
       await user.related('occupations').attach(occupations)
-    } else if (occupation_id) {
-      // Se não tiver occupations mas tiver occupation_id, adiciona como uma ocupação
-      await user.related('occupations').attach([occupation_id])
     }
 
     return user
@@ -37,7 +33,6 @@ export default class UsersController {
     try {
       const user = await User.findByOrFail('id', params.id)
       await user.load('roles')
-      await user.load('occupation')
       await user.load('occupations')
       await user.load('projects')
       await user.load('tasks')
@@ -56,11 +51,11 @@ export default class UsersController {
       const user = await User.findByOrFail('id', params.id)
       console.log('Usuário antes da atualização:', user.toJSON())
 
-      const { name, email, password, occupation_id, occupations, roles } = await request.validateUsing(updateUserValidator)
-      console.log('Dados validados:', { name, email, password: password ? '[REDACTED]' : undefined, occupation_id, occupations, roles })
+      const { name, email, password, occupations, roles } = await request.validateUsing(updateUserValidator)
+      console.log('Dados validados:', { name, email, password: password ? '[REDACTED]' : undefined, occupations, roles })
 
       // Incluir email na operação merge
-      user.merge({ name, email, password, occupationId: occupation_id })
+      user.merge({ name, email, password })
       await user.save()
 
       console.log('Usuário após atualização:', user.toJSON())
@@ -71,9 +66,6 @@ export default class UsersController {
 
       if (occupations && occupations.length > 0) {
         await user.related('occupations').sync(occupations)
-      } else if (occupation_id) {
-        // Se não tiver occupations mas tiver occupation_id, sincroniza como uma ocupação
-        await user.related('occupations').sync([occupation_id])
       }
 
       return user
