@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -40,6 +40,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Task, TaskStatus, projectService, userService, teamService } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 
+import { debounce } from 'lodash'; // Importar a função debounce
+
 // Schema de validação para o formulário
 const taskFormSchema = z.object({
   title: z.string().min(3, {
@@ -73,6 +75,18 @@ export interface TaskFormProps {
 }
 
 export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStatus, projectUsers, projectTeams, isEditMode = false }: TaskFormProps) {
+    // Log para depuração de status inicial
+    useEffect(() => {
+      console.log('[TaskForm] initialData e defaultStatus:', initialData, defaultStatus);
+    }, [initialData, defaultStatus]);
+  const statusLabels: Record<TaskStatus, string> = {
+    pendente: "Pendente",
+    a_fazer: "A Fazer",
+    em_andamento: "Em Andamento",
+    em_revisao: "Em Revisão",
+    concluido: "Concluído",
+  };
+
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
@@ -97,6 +111,76 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
       order: initialData?.order, // Preservar a ordem da tarefa se existir
     },
   });
+
+  // Função para salvar automaticamente a tarefa
+  const handleAutoSave = useCallback(async (values: TaskFormValues) => {
+    // Prepara os dados de forma similar ao onSubmit, mas sem lógica de validação de dirty/isEditMode inicial
+    const formattedValues = {
+      ...values,
+      start_date: values.start_date ? values.start_date.toISOString() : undefined,
+      due_date: values.due_date ? values.due_date.toISOString() : undefined,
+      users: values.user_ids,
+      occupations: values.occupation_ids
+    };
+
+    let apiValues;
+
+    // Lógica para determinar quais campos salvar com base nas permissões e modo de edição
+    if (permissions.isMember && isEditMode) {
+        apiValues = {
+          status: formattedValues.status,
+          description: formattedValues.description
+        };
+      } else {
+        // Salvar todos os campos permitidos via auto-save
+        apiValues = {
+          title: formattedValues.title,
+          description: formattedValues.description,
+          status: formattedValues.status,
+          priority: formattedValues.priority,
+          start_date: formattedValues.start_date,
+          due_date: formattedValues.due_date,
+          project_id: formattedValues.project_id,
+          users: formattedValues.users,
+          occupations: formattedValues.occupations,
+          // Não salvamos order aqui, pois só muda no kanban drag/drop
+        };
+      }
+
+    console.log('Salvamento automático debounceado acionado:', apiValues); // Log para debug
+    // Chamamos a função de sucesso com os dados a serem salvos
+    // É importante que onSuccess no componente pai saiba lidar com chamadas parciais (apenas status/description para membros)
+    // O componente pai é responsável por lidar com a chamada API real e o feedback de loading/erro para o auto-save.
+    onSuccess(apiValues);
+
+  }, [onSuccess, permissions, isEditMode]); // Dependências do useCallback para handleAutoSave
+
+  // Função debounceada para salvar automaticamente
+  const debouncedAutoSave = useCallback(
+    debounce((values: TaskFormValues) => {
+      // Verificar se a tarefa já tem um ID antes de tentar salvar (evita salvar tarefas novas antes de serem criadas)
+      if (initialData?.id) { // Só salva se a tarefa existir (modo de edição)
+         handleAutoSave(values);
+      }
+    }, 1000), // 1000ms = 1 segundo de debounce
+    [handleAutoSave, initialData] // Dependências do useCallback para debouncedAutoSave
+  );
+
+  // Efeito para observar mudanças no formulário e acionar o debounce
+  useEffect(() => {
+    // Assinar as mudanças no formulário
+    const subscription = form.watch((values, { name, type }) => {
+       // Acionar o auto-save debounceado em qualquer mudança no formulário
+       // Passamos os valores atuais do formulário para a função debounceada
+       debouncedAutoSave(values as TaskFormValues);
+    });
+
+    // Função de cleanup
+    return () => {
+      subscription.unsubscribe(); // Cancelar a observação ao desmontar
+      debouncedAutoSave.cancel(); // Cancelar qualquer debounce pendente
+    };
+  }, [form, debouncedAutoSave]); // Dependências do useEffect
 
   // Efeito para limpar os estados quando o projeto muda
   useEffect(() => {
@@ -190,6 +274,11 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
 
   // Carregar dados necessários para o formulário
   useEffect(() => {
+    console.log('[useEffect fetchData] Dependências:', {
+      defaultProjectId,
+      defaultStatus,
+      initialDataId: initialData?.id,
+    });
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -389,7 +478,7 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
     };
 
     fetchData();
-  }, [projectUsers, projectTeams, defaultProjectId, defaultStatus, form, isEditMode, initialData?.project_id]);
+  }, [defaultProjectId, defaultStatus, initialData?.id]);
 
   // Efeito para filtrar usuários quando as equipes selecionadas mudarem
   useEffect(() => {
@@ -417,7 +506,7 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
         }
       }
     }
-  }, [form.watch('occupation_ids'), teams, allUsers]);
+  }, [form.watch('occupation_ids'), teams, allUsers, filteredUsers, form, filterUsersByTeams]);
 
   // Função para obter as equipes de um usuário
   const getUserTeams = (user: any) => {
@@ -506,7 +595,7 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
         };
       }
 
-      onSuccess(apiValues);
+      // onSuccess(apiValues); // REMOVIDO: Salvamento agora é feito pelo debounce
     } catch (error) {
       console.error("Erro ao processar formulário:", error);
       toast.error("Erro ao processar formulário. Tente novamente.");
@@ -575,15 +664,19 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
                 <FormLabel>Status</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                   disabled={loading}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o status" />
+                      {/* Exibe o rótulo formatado ou o placeholder */}
+                      <SelectValue placeholder="Selecione o status">
+                        {field.value ? statusLabels[field.value as TaskStatus] : "Selecione o status"}
+                      </SelectValue>
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
+                    <SelectItem value="pendente">Pendente</SelectItem> {/* Adicionada opção Pendente */}
                     <SelectItem value="a_fazer">A Fazer</SelectItem>
                     <SelectItem value="em_andamento">Em Andamento</SelectItem>
                     <SelectItem value="em_revisao">Em Revisão</SelectItem>
@@ -774,9 +867,9 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
                         Adicionar Equipes à Tarefa
                       </div>
                     </CardTitle>
-                    <CardDescription>
+                    <div className="text-sm text-muted-foreground">
                       Selecione as equipes que participarão desta tarefa.
-                    </CardDescription>
+                    </div>
                   </CardHeader>
                   <CardContent className="grid gap-2 max-h-[200px] overflow-y-auto">
                     {teams.length > 0 ? (
@@ -832,17 +925,17 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
                         Adicionar Responsáveis à Tarefa
                       </div>
                     </CardTitle>
-                    <CardDescription>
+                    <div className="text-sm text-muted-foreground">
                       Selecione os usuários que serão responsáveis por esta tarefa.
                       {form.watch('occupation_ids')?.length === 0 && (
-                        <p className="mt-2 text-xs text-amber-500">
+                        <div className="mt-2 text-xs text-amber-500"> {/* Substituído <p> por <div> */}
                           <AlertTriangle className="h-3 w-3 inline mr-1" />
                           {defaultProjectId
                             ? "Selecione equipes do projeto para ver os usuários disponíveis."
                             : "Selecione equipes primeiro para ver os usuários disponíveis."}
-                        </p>
+                        </div>
                       )}
-                    </CardDescription>
+                    </div> {/* Substituído CardDescription por <div> */}
                   </CardHeader>
                   <CardContent className="grid gap-2 max-h-[200px] overflow-y-auto">
                     {filteredUsers.length > 0 ? (

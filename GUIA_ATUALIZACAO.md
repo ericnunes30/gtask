@@ -76,7 +76,7 @@ git checkout main
 git add .
 
 # Faça o commit das alterações
-git commit -m "Correção de no Task Modal Details na pagina de Task- Tela ficava piscando e travava ao fechar a visualização de uma tarefa"
+git commit -m "[CORREÇÃO DE BUGS] Corrigido campo de seleção de data no forms de ADD Projeto"
 
 # Faça o push forçado (use com cuidado!)
 git push --force-with-lease origin main

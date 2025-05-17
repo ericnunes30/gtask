@@ -517,6 +517,10 @@ export const KanbanBoard = React.forwardRef<{ fetchTasks: () => Promise<void> },
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
 
+// Log do estado do modal de adicionar tarefa e coluna selecionada
+useEffect(() => {
+  console.log('[KanbanBoard] Estado modal adicionar tarefa:', { isDialogOpen, selectedColumnId });
+}, [isDialogOpen, selectedColumnId]);
 
 
   // Configurar sensores para o drag and drop
@@ -537,6 +541,7 @@ export const KanbanBoard = React.forwardRef<{ fetchTasks: () => Promise<void> },
 
   // Função para carregar tarefas da API
   const fetchTasks = useCallback(async () => {
+    console.log('[KanbanBoard][fetchTasks] Iniciando fetch de tarefas');
     setLoading(true);
     setError(null);
 
@@ -1432,20 +1437,29 @@ export const KanbanBoard = React.forwardRef<{ fetchTasks: () => Promise<void> },
   };
 
   const handleTaskFormSuccess = async (taskData: any) => {
+    console.log('[KanbanBoard][handleTaskFormSuccess] Dados recebidos:', taskData);
     try {
-      // Criar a tarefa na API
-      await taskService.createTask(taskData);
+      // Criar a tarefa na API e obter a resposta
+      const newTask = await taskService.createTask(taskData);
+      console.log('[KanbanBoard][handleTaskFormSuccess] Nova tarefa criada:', newTask);
 
       setIsDialogOpen(false);
       toast.success('Tarefa criada com sucesso!');
 
-      // Notificar o componente pai sobre a atualização das tarefas
+      // Atualizar estado local: adicionar nova tarefa sem recarregar tudo
+      setTasks(prev => ({ ...prev, [newTask.id]: newTask }));
+      setColumns(prev => ({
+        ...prev,
+        [newTask.status]: {
+          ...prev[newTask.status],
+          taskIds: [...prev[newTask.status].taskIds, String(newTask.id)]
+        }
+      }));
+
+      // Notificar o componente pai
       if (onTasksUpdated) {
         await onTasksUpdated();
       }
-
-      // Recarregar as tarefas
-      fetchTasks();
     } catch (error) {
       toast.error('Erro ao criar tarefa. Verifique os dados e tente novamente.');
     }
