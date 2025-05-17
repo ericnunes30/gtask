@@ -76,7 +76,7 @@ git checkout main
 git add .
 
 # Faça o commit das alterações
-git commit -m "Correção de erro de compilação do TS no backend"
+git commit -m "Correção do update project"
 
 # Faça o push forçado (use com cuidado!)
 git push --force-with-lease origin main

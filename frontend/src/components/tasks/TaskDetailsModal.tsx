@@ -145,45 +145,12 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   useEffect(() => {
     // Este efeito só monitora a mudança de isOpen de true para false
     if (!isOpen && task && onTaskUpdated) {
-
-      // Sincronizar o valor atual do timer antes de fechar o modal
-      const taskIdStr = String(task.id);
-
-      // Sempre sincronizar o valor do timer ao fechar o modal, independentemente de estar em execução ou não
-      if (typeof setCurrentTimerValues === 'function' && currentTimerValues) {
-        // Usar o valor mais recente do timer (do estado local do modal)
-        // Isso é crucial para garantir que o valor exibido no KanbanBoard seja o mesmo que estava no modal
-        const currentTimerValue = task.timer || 0;
-
-
-        // Atualizar o valor do timer no estado global do KanbanBoard
-        setCurrentTimerValues({
-          ...currentTimerValues,
-          [taskIdStr]: currentTimerValue
-        });
-
-        // Atualizar o timer no backend para persistir o valor
-        const updateData = { timer: currentTimerValue };
-        taskService.updateTask(task.id, updateData)
-          .then(response => {
-          })
-          .catch(err => {
-          });
+      // Verificar se houve uma mudança real antes de chamar onTaskUpdated
+      if (task.updatedAt) { // Verificando se houve uma atualização real
+        onTaskUpdated(); // Notificar imediatamente após fechar
       }
-
-      // Pequeno timeout para garantir que a notificação ocorra após o fechamento completo do modal
-      // e que o KanbanBoard tenha tempo de processar a atualização
-      setTimeout(() => {
-        onTaskUpdated();
-
-        // Chamar novamente após um intervalo maior para garantir que o card seja movido
-        // para a coluna correta mesmo se a primeira chamada não funcionar
-        setTimeout(() => {
-          onTaskUpdated();
-        }, 500);
-      }, 100);
     }
-  }, [isOpen, task, onTaskUpdated, timerRunningTaskId, currentTimerValues, setCurrentTimerValues]);
+  }, [isOpen, task, onTaskUpdated]);
 
   // Efeito separado para atualizar o timer quando o modal é aberto
   useEffect(() => {
