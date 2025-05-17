@@ -36,13 +36,15 @@ import { toast as uiToast } from "@/components/ui/use-toast";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UsersIcon, AlertCircle, Calendar, AlertTriangle, CalendarIcon } from "lucide-react";
+import { UsersIcon, AlertCircle, AlertTriangle, CalendarIcon } from "lucide-react";
+import { Calendar as ShadcnCalendar } from "@/components/ui/calendar"; // Importar o componente Calendar correto
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { projectService, Project, ProjectPriority, CreateProjectRequest, UpdateProjectRequest } from '@/lib/api';
+import { projectService, Project, ProjectPriority } from '@/lib/api';
+import { CreateProjectRequest, UpdateProjectRequest } from '@/lib/api/projects';
 
 // Schema de validação para o formulário
 const projectFormSchema = z.object({
@@ -318,12 +320,18 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
 
       // Preparar os dados do projeto com os usuários selecionados
       // Garantir que as datas estejam no formato correto (YYYY-MM-DD)
+      // Preparar os dados do projeto com os usuários selecionados
+      // Garantir que as datas estejam no formato correto (YYYY-MM-DD)
+      // Explicitamente define the type to match the API request types
       const projectData = {
-        ...values,
+        title: values.title,
+        description: values.description,
+        priority: values.priority,
+        status: values.status,
+        start_date: values.start_date,
+        end_date: values.end_date,
         users: selectedUsers,
-        // Garantir que as datas estejam no formato correto
-        start_date: values.start_date ? new Date(values.start_date).toISOString().split('T')[0] : undefined,
-        end_date: values.end_date ? new Date(values.end_date).toISOString().split('T')[0] : undefined
+        occupations: values.occupations || [],
       };
 
       // Verificar o formato das datas
@@ -452,7 +460,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
             control={form.control}
             name="start_date"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
+              <FormItem className="flex flex-col relative">
                 <FormLabel>Data de Início</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -474,13 +482,14 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                  <PopoverContent className="w-auto p-0 block z-50" align="start">
+                    <ShadcnCalendar
                       mode="single"
                       selected={field.value ? new Date(field.value) : undefined}
                       onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
                       initialFocus
                       disabled={loading}
+                      className="min-w-[300px] min-h-[300px]" // Adicionado para forçar tamanho mínimo
                     />
                   </PopoverContent>
                 </Popover>
@@ -493,7 +502,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
             control={form.control}
             name="end_date"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
+              <FormItem className="flex flex-col relative">
                 <FormLabel>Data de Término</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -515,13 +524,14 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                  <PopoverContent className="w-auto p-0 block z-50" align="start">
+                    <ShadcnCalendar
                       mode="single"
                       selected={field.value ? new Date(field.value) : undefined}
                       onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
                       initialFocus
                       disabled={loading}
+                      className="min-w-[300px] min-h-[300px]" // Adicionado para forçar tamanho mínimo
                     />
                   </PopoverContent>
                 </Popover>
