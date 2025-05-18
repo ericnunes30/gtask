@@ -23,6 +23,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { projectService, Project, taskService, Task } from '@/lib/api';
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// Remover a linha duplicada
+import { Switch } from "@/components/ui/switch"; // Importando o Switch
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -37,6 +39,10 @@ const Tasks = () => {
   const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<string | null>(null);
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'status' | 'date'>('status');
+  const [showCompleted, setShowCompleted] = useState(() => {
+    const saved = localStorage.getItem('showCompleted');
+    return saved ? saved === 'true' : false;
+  });
   const kanbanBoardRef = useRef<any>(null);
   const tasksListRef = useRef<any>(null);
   const location = useLocation();
@@ -59,7 +65,7 @@ const Tasks = () => {
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [user?.id, permissions.isMember, location.pathname, location.search]);
+  }, [user?.id, permissions.isMember, location.pathname, location.search, showCompleted]); // Adicionado showCompleted
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -112,7 +118,7 @@ const Tasks = () => {
       }
     };
     fetchProjects();
-  }, [projectId, user, permissions.isMember]); // Adicionado user e permissions.isMember
+  }, [projectId, user, permissions.isMember, showCompleted]); // Adicionado user, permissions.isMember e showCompleted
 
   const handleTaskFormSuccess = async (taskData: any) => {
     try {
@@ -374,6 +380,16 @@ const Tasks = () => {
                   <SelectItem value="date">Por Data</SelectItem>
                 </SelectContent>
               </Select>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Mostrar concluídas</span>
+                <Switch
+                  checked={showCompleted}
+                  onCheckedChange={(checked) => {
+                    setShowCompleted(checked);
+                    localStorage.setItem('showCompleted', String(checked));
+                  }}
+                />
+              </div>
             </div>
           </div>
           <TabsContent value="kanban" className="mt-6">
@@ -385,6 +401,7 @@ const Tasks = () => {
                 viewMode={viewMode}
                 selectedUserId={permissions.isMember && user ? user.id : undefined}
                 forceUserFilter={permissions.isMember}
+                showCompleted={showCompleted}
                 onTasksFiltered={handleTasksFiltered}
               />
             </div>
@@ -398,6 +415,7 @@ const Tasks = () => {
                 viewMode={viewMode}
                 selectedUserId={permissions.isMember && user ? user.id : undefined}
                 forceUserFilter={permissions.isMember}
+                showCompleted={showCompleted} // Passando a prop showCompleted
               />
             </div>
           </TabsContent>

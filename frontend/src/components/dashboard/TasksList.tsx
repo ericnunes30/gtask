@@ -109,6 +109,7 @@ interface TasksListProps {
   priorityFilter?: string | null; // Filtro por prioridade
   onTasksUpdated?: () => Promise<void>; // Callback para notificar o componente pai sobre atualizações
   forceUserFilter?: boolean; // Força a filtragem pelo ID do usuário logado, mesmo que não seja membro
+  showCompleted?: boolean; // Adicionado para controlar a exibição de tarefas concluídas
 }
 
 // --- Definição do Componente ---
@@ -226,8 +227,15 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
         filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
         console.log('Tarefas após filtro de prioridade:', filteredTasks.length);
       }
-
-      // Ordena tarefas com base no modo de visualização
+ 
+      // Aplicar filtro de tarefas concluídas
+      if (!props.showCompleted) {
+        console.log('TasksList: Aplicando filtro para ocultar tarefas concluídas.');
+        filteredTasks = filteredTasks.filter(task => task.status !== 'concluido');
+        console.log('TasksList: Tarefas após filtro de concluídas:', filteredTasks.length);
+      }
+ 
+       // Ordena tarefas com base no modo de visualização
       if (viewMode === 'date') {
         // Ordena por data de vencimento (nulls/undefineds por último)
         filteredTasks.sort((a, b) => {
@@ -289,7 +297,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
               // Exemplo: Buscando um por um (MELHORAR: buscar em lote se a API permitir)
               for (const userId of userIdsToFetch) {
                    if (!userMap[userId]) { // Verifica novamente caso tenha sido preenchido por outra tarefa
-                       const userDetails = await userService.getUserById(userId); // Supondo que exista essa função
+                       const userDetails = await userService.getUser(userId); // Usando getUser
                        userMap[userId] = userDetails?.name ?? `Usuário ${userId}`;
                    }
               }
@@ -323,12 +331,17 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   // Expõe fetchTasks para o componente pai via ref
   useImperativeHandle(ref, () => ({
     fetchTasks: () => {
-      // Adicionar um pequeno delay antes de carregar as tarefas
-      // para garantir que todos os dados necessários estejam disponíveis
-      console.log('TasksList: Adicionando delay antes de carregar tarefas');
-      setTimeout(() => {
-        fetchTasks();
-      }, 300); // 300ms de delay
+      console.log('TasksList: Adicionando delay antes de carregar tarefas via ref');
+      return new Promise<void>((resolve, reject) => {
+        setTimeout(async () => { // Make the callback async
+          try {
+            await fetchTasks(); // Await the actual fetchTasks
+            resolve(); // Resolve the promise after fetch completes
+          } catch (error) {
+            reject(error); // Reject the promise if fetch fails
+          }
+        }, 300); // 300ms de delay
+      });
     }
   }));
 

@@ -104,7 +104,8 @@ interface KanbanBoardProps {
   priorityFilter?: string | null;
   onTasksUpdated?: () => Promise<void>;
   forceUserFilter?: boolean;
-  onTasksFiltered?: (tasks: Task[]) => void; // Nova prop para callback
+  onTasksFiltered?: (tasks: Task[]) => void;
+  showCompleted?: boolean;
 }
 
 // Componente para renderizar uma tarefa
@@ -476,7 +477,8 @@ export const KanbanBoard = React.forwardRef<{ fetchTasks: () => Promise<void> },
   priorityFilter,
   onTasksUpdated,
   forceUserFilter,
-  onTasksFiltered // Adiciona a nova prop aqui
+  onTasksFiltered, // Adiciona a nova prop aqui
+  showCompleted
 }, ref) => {
   // Hooks de autenticação e permissões
   const { user } = useAuth();
@@ -641,6 +643,13 @@ useEffect(() => {
       if (priorityFilter) {
 
         filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
+      }
+ 
+      // Aplicar filtro de tarefas concluídas
+      if (!showCompleted) {
+        console.log('KanbanBoard: Aplicando filtro para ocultar tarefas concluídas.');
+        filteredTasks = filteredTasks.filter(task => task.status !== 'concluido');
+        console.log('KanbanBoard: Tarefas após filtro de concluídas:', filteredTasks.length);
       }
 
       // Chamar o callback com as tarefas filtradas ANTES de processá-las
@@ -814,7 +823,7 @@ useEffect(() => {
     } finally {
       setLoading(false);
     }
-  }, [projectId, propSelectedTeamId, propSelectedUserId, viewMode, priorityFilter, forceUserFilter, user?.id, permissions.isMember]);
+  }, [projectId, propSelectedTeamId, propSelectedUserId, viewMode, priorityFilter, forceUserFilter, user?.id, permissions.isMember, showCompleted]); // Adicionado showCompleted
 
   // Efeito para forçar a atualização das tarefas quando a página é carregada
   useEffect(() => {
