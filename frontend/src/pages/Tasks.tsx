@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
+import { KanbanTask } from '@/components/kanban/kanbanTypes'; // TaskStatus de kanbanTypes é o mesmo de @/lib/api
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { projectService, Project, taskService, Task } from '@/lib/api';
+import { projectService, Project, taskService, Task, TaskStatus } from '@/lib/api';
+import { UpdateTaskRequest } from '@/lib/api/tasks';
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // Remover a linha duplicada
@@ -62,34 +64,36 @@ const Tasks = () => {
   const projectIdParam = searchParams.get('projectId');
   const projectId = projectIdParam ? parseInt(projectIdParam) : undefined;
 
-  // useEffect para buscar todas as tarefas (rawTasks)
-  useEffect(() => {
-    const fetchAllTasks = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        let allTasks = await taskService.getTasks();
-        // Aplicar filtro de membro aqui se necessário, antes de passar para o KanbanBoard
-        if (permissions.isMember && user) {
-          allTasks = allTasks.filter(task => {
-            if (!task.users || !Array.isArray(task.users) || task.users.length === 0) return false;
-            return task.users.some(taskUser =>
-              (typeof taskUser === 'number' && taskUser === user.id) ||
-              (typeof taskUser === 'object' && taskUser !== null && taskUser.id === user.id)
-            );
-          });
-        }
-        setRawTasks(allTasks);
-      } catch (err) {
-        console.error('Erro ao carregar todas as tarefas:', err);
-        setError('Não foi possível carregar as tarefas. Tente novamente mais tarde.');
-        setRawTasks([]);
-      } finally {
-        setLoading(false);
+  const fetchAllTasks = useCallback(async (showFeedback = false) => {
+    if (showFeedback) toast.info("Recarregando tarefas...");
+    setLoading(true);
+    setError(null);
+    try {
+      let allTasks = await taskService.getTasks();
+      if (permissions.isMember && user) {
+        allTasks = allTasks.filter(task => {
+          if (!task.users || !Array.isArray(task.users) || task.users.length === 0) return false;
+          return task.users.some(taskUser =>
+            (typeof taskUser === 'number' && taskUser === user.id) ||
+            (typeof taskUser === 'object' && taskUser !== null && taskUser.id === user.id)
+          );
+        });
       }
-    };
-    fetchAllTasks();
-  }, [user?.id, permissions.isMember]); // Dependências para buscar rawTasks
+      setRawTasks(allTasks);
+      if (showFeedback) toast.success("Tarefas recarregadas!");
+    } catch (err) {
+      console.error('Erro ao carregar todas as tarefas:', err);
+      setError('Não foi possível carregar as tarefas. Tente novamente mais tarde.');
+      setRawTasks([]);
+      if (showFeedback) toast.error("Falha ao recarregar tarefas.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user, permissions.isMember]); // Dependências do useCallback
+
+  useEffect(() => {
+    fetchAllTasks(false); // Chamar sem feedback na carga inicial
+  }, [fetchAllTasks]); // Depender da função memoizada
 
   // useEffect para buscar projetos e atualizar a lista de projetos com tarefas
   useEffect(() => {
@@ -146,6 +150,32 @@ const Tasks = () => {
     };
     fetchProjectsAndRelatedData();
   }, [projectId, rawTasks, error]); // Depender de rawTasks para atualizar projectsWithTasks
+
+  const handleKanbanTaskStatusChange = async (
+    task: KanbanTask,
+    newStatus: TaskStatus, // TaskStatus de @/lib/api
+    newOrder?: number
+  ) => {
+    try {
+      const updateData: UpdateTaskRequest = { status: newStatus };
+      if (newOrder !== undefined) {
+        updateData.order = newOrder;
+      }
+
+      await taskService.updateTask(Number(task.id), updateData);
+      // O KanbanBoard já pode mostrar um toast "movida". Se precisar de outro, adicione aqui.
+      // toast.success(`Tarefa "${task.title}" atualizada.`); 
+      await fetchAllTasks(false); // Recarregar silenciosamente para garantir consistência
+    } catch (error) {
+      console.error('Erro ao atualizar tarefa via Kanban:', error);
+      toast.error(`Falha ao atualizar tarefa "${task.title}".`);
+      await fetchAllTasks(true); // Recarregar com feedback em caso de erro
+    }
+  };
+
+  const handleKanbanGenericTaskUpdate = async () => {
+    await fetchAllTasks(true); // Recarregar com feedback visual
+  };
 
   const handleTaskFormSuccess = useCallback(async (taskData: any) => {
     const callbackId = successCallbackInstanceCounter.current;
@@ -468,22 +498,8 @@ const Tasks = () => {
                     showCompleted: showCompleted,
                     // Adicionar outros filtros conforme necessário, ex: searchTerm, tags, etc.
                   }}
-                  onTasksUpdated={async () => { // Função para recarregar rawTasks
-                    setLoading(true);
-                    try {
-                      let allTasks = await taskService.getTasks();
-                      if (permissions.isMember && user) {
-                        allTasks = allTasks.filter(task => 
-                          task.users?.some(taskUser => (typeof taskUser === 'number' ? taskUser : taskUser.id) === user.id)
-                        );
-                      }
-                      setRawTasks(allTasks);
-                    } catch (err) {
-                      setError('Erro ao recarregar tarefas.');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
+                  onTaskStatusChange={handleKanbanTaskStatusChange}
+                  onGenericTaskUpdate={handleKanbanGenericTaskUpdate}
                 />
               )}
             </div>
