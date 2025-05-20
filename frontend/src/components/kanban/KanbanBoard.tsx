@@ -639,8 +639,11 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
+    console.log('[KanbanBoard.tsx] handleDragEnd START', { activeId: active.id, overId: over?.id });
+
     if (!over) {
       setActiveId(null);
+      console.log('[KanbanBoard.tsx] handleDragEnd: No "over" target. Exiting.');
       return;
     }
 
@@ -657,12 +660,15 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       // Se for uma coluna, a lógica abaixo de encontrar destinationColumnId tratará.
       // Se não for uma coluna e for a mesma tarefa, não há mudança de coluna ou ordem real.
        setActiveId(null);
+       console.log('[KanbanBoard.tsx] handleDragEnd: Dropped on self (not a column). Exiting.');
       return;
     }
 
     const sourceColumnId = findColumnOfTask(activeIdStr);
+    console.log('[KanbanBoard.tsx] handleDragEnd: Source Column ID:', sourceColumnId);
     if (!sourceColumnId) {
       setActiveId(null);
+      console.log('[KanbanBoard.tsx] handleDragEnd: Source column not found. Exiting.');
       return;
     }
 
@@ -671,22 +677,26 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     // então precisamos encontrar a coluna dessa tarefa.
     if (!(overIdStr in processedColumns)) {
       const columnContainingOverTask = findColumnOfTask(overIdStr);
+      console.log('[KanbanBoard.tsx] handleDragEnd: "over" is a task. Column of "over" task:', columnContainingOverTask);
       if (columnContainingOverTask) {
         destinationColumnId = columnContainingOverTask;
       } else {
         // Se não encontrar a coluna da tarefa 'over', não faz nada ou reverte para a coluna original
         setActiveId(null);
+        console.log('[KanbanBoard.tsx] handleDragEnd: Destination column for "over" task not found. Exiting.');
         return;
       }
     }
+    console.log('[KanbanBoard.tsx] handleDragEnd: Destination Column ID:', destinationColumnId);
     
     const taskToMove = processedTasksMap[activeIdStr];
     if (!taskToMove) {
       toast.error('Tarefa não encontrada para mover.');
       setActiveId(null);
+      console.log('[KanbanBoard.tsx] handleDragEnd: Task to move not found in processedTasksMap. Exiting.');
       return;
     }
-    console.log('[KanbanBoard.tsx] handleDragEnd - taskToMove:', JSON.parse(JSON.stringify(taskToMove)));
+    console.log('[KanbanBoard.tsx] handleDragEnd - Task to move (ID, Status, Order):', { id: taskToMove.id, status: taskToMove.status, order: taskToMove.order });
 
     // Lógica de atualização da API FOI MOVIDA PARA ProjectView
     try {
@@ -700,6 +710,7 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       if (sourceColumnId !== destinationColumnId) { // Movendo para outra coluna
         if (viewMode === 'status') {
           const potentialNewStatus = columnToStatusMap[destinationColumnId];
+          console.log('[KanbanBoard.tsx] handleDragEnd: Moving to different column. Potential new status:', potentialNewStatus, 'Current status:', taskToMove.status);
           if (potentialNewStatus && potentialNewStatus !== taskToMove.status) {
             newApiStatus = potentialNewStatus; // Este é o novo status para a API
             statusForPropCallback = newApiStatus; // Atualiza o status para o callback
@@ -724,12 +735,14 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
         .filter(Boolean) as KanbanTask[];
       
       tasksInDestColumnFiltered.sort((a, b) => (a.order || 0) - (b.order || 0));
+      console.log('[KanbanBoard.tsx] handleDragEnd: Tasks in destination column (for order calc):', tasksInDestColumnFiltered.map(t => ({id: t.id, order: t.order})));
 
       let insertAtIndex = tasksInDestColumnFiltered.length;
 
       // Se 'over' é uma tarefa (não uma coluna) e não é a tarefa ativa, calcula o índice de inserção
       if (processedTasksMap[overIdStr] && overIdStr !== activeIdStr) {
         const overTaskActualIndex = tasksInDestColumnFiltered.findIndex(t => String(t.id) === overIdStr);
+        console.log('[KanbanBoard.tsx] handleDragEnd: "over" is a task. Index of "over" task in dest column:', overTaskActualIndex);
         if (overTaskActualIndex !== -1) {
           // Se a tarefa ativa está sendo arrastada para baixo sobre outra tarefa,
           // o índice de inserção deve ser após a tarefa 'over'.
@@ -740,70 +753,95 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
           insertAtIndex = overTaskActualIndex;
         }
       } else if (processedColumns[overIdStr]) { // Se 'over' é uma coluna, insere no final
+        console.log('[KanbanBoard.tsx] handleDragEnd: "over" is a column. Inserting at end.');
         insertAtIndex = tasksInDestColumnFiltered.length;
       }
+      console.log('[KanbanBoard.tsx] handleDragEnd: Calculated insertAtIndex:', insertAtIndex);
       
       if (insertAtIndex === 0) {
         if (tasksInDestColumnFiltered.length > 0) {
           newOrderCalculated = (tasksInDestColumnFiltered[0].order || 1) / 2;
+          console.log('[KanbanBoard.tsx] handleDragEnd: New order (insert at 0):', newOrderCalculated, 'based on first task order:', tasksInDestColumnFiltered[0].order);
         } else {
           newOrderCalculated = 10;
+          console.log('[KanbanBoard.tsx] handleDragEnd: New order (insert at 0, empty column):', newOrderCalculated);
         }
       } else if (insertAtIndex >= tasksInDestColumnFiltered.length) {
         if (tasksInDestColumnFiltered.length > 0) {
           newOrderCalculated = (tasksInDestColumnFiltered[tasksInDestColumnFiltered.length - 1].order || 0) + 10;
+          console.log('[KanbanBoard.tsx] handleDragEnd: New order (insert at end):', newOrderCalculated, 'based on last task order:', tasksInDestColumnFiltered[tasksInDestColumnFiltered.length - 1].order);
         } else {
-          newOrderCalculated = 10;
+          newOrderCalculated = 10; // Deveria ser coberto pelo caso de insertAtIndex === 0 e coluna vazia
+          console.log('[KanbanBoard.tsx] handleDragEnd: New order (insert at end, empty column - fallback):', newOrderCalculated);
         }
       } else {
         const prevTaskOrder = tasksInDestColumnFiltered[insertAtIndex - 1].order || 0;
         const nextTaskOrder = tasksInDestColumnFiltered[insertAtIndex].order || 0;
         newOrderCalculated = (prevTaskOrder + nextTaskOrder) / 2;
+        console.log('[KanbanBoard.tsx] handleDragEnd: New order (insert between):', newOrderCalculated, 'based on prev/next orders:', prevTaskOrder, nextTaskOrder);
       }
       
       const roundedNewOrder = newOrderCalculated !== undefined ? parseFloat(newOrderCalculated.toFixed(5)) : undefined;
+      console.log('[KanbanBoard.tsx] handleDragEnd: Rounded new order:', roundedNewOrder);
 
       // Verifica se houve mudança de status ou de ordem para chamar o callback
       const statusChanged = newApiStatus !== undefined && newApiStatus !== taskToMove.status;
       const orderChanged = roundedNewOrder !== undefined && roundedNewOrder !== taskToMove.order;
+      console.log('[KanbanBoard.tsx] handleDragEnd: Status changed?', statusChanged, 'Order changed?', orderChanged);
 
-      if (statusChanged || orderChanged) {
-        if (onTaskStatusChange) {
-          // Se newApiStatus não foi definido (ex: mesma coluna de status, só mudou ordem),
-          // passamos o status atual da tarefa.
-          // Se roundedNewOrder não mudou, onTaskStatusChange em ProjectView não o incluirá no payload.
-          await onTaskStatusChange(taskToMove, newApiStatus || taskToMove.status, roundedNewOrder);
-          toast.success(`Tarefa "${taskToMove.title}" movida.`);
-          // A chamada para onTasksUpdated() foi removida, pois onTaskStatusChange (handleTaskStatusAndTimerUpdate)
-          // já chama updateProjectTasks em ProjectView.
+        const taskToMoveIdStr = String(taskToMove.id);
+        const finalDestStatus = newApiStatus || taskToMove.status; 
+        console.log('[KanbanBoard.tsx] handleDragEnd: Final destination status for timer logic:', finalDestStatus);
+
+        // Etapa 1: Lidar com o timer da tarefa que está sendo movida, se ela estava rodando e VAI PARAR.
+        // Isso deve acontecer ANTES de onTaskStatusChange, que pode recarregar os dados e resetar currentTimerValues.
+        if (timerRunningTaskId === taskToMoveIdStr && finalDestStatus !== 'em_andamento') {
+          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 1 - Stopping timer for moved task.', { taskToMoveIdStr, currentTimerValue: currentTimerValues[taskToMoveIdStr] });
+          const currentTimeToSave = currentTimerValues[taskToMoveIdStr]; 
+          setTimerRunningTaskId(null); // Para o timer localmente
+          if (currentTimeToSave !== undefined) {
+            // Salva o timer na API. Isso chamará onGenericTaskUpdate, que recarrega as tarefas.
+            await handleTimerUpdate(taskToMoveIdStr, currentTimeToSave);
+          }
         }
 
-        // Lógica para iniciar/parar o timer
-        const finalStatusForTimerLogic = newApiStatus || taskToMove.status; // Status que a tarefa terá após a movimentação
-        const taskToMoveIdStr = String(taskToMove.id);
+        // Etapa 2: Se houve mudança de status ou ordem, notificar o componente pai.
+        // Isso também pode recarregar as tarefas.
+        if (statusChanged || orderChanged) {
+          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 2 - Calling onTaskStatusChange.', { taskId: taskToMove.id, finalDestStatus, roundedNewOrder });
+          if (onTaskStatusChange) {
+            await onTaskStatusChange(taskToMove, finalDestStatus, roundedNewOrder);
+            // O toast de "movida" pode ser mostrado aqui ou dentro de onTaskStatusChange no pai.
+            // Por ora, mantemos aqui para feedback imediato do drag.
+            toast.success(`Tarefa "${taskToMove.title}" movida.`);
+          }
+        } else {
+          console.log('[KanbanBoard.tsx] handleDragEnd: No status or order change detected. No call to onTaskStatusChange.');
+        }
 
-        if (finalStatusForTimerLogic === 'em_andamento') {
+        // Etapa 3: Lidar com o início do timer para a tarefa movida, ou parar um timer de OUTRA tarefa.
+        if (finalDestStatus === 'em_andamento') {
+          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 3 - Task moved to "em_andamento".');
+          // Se a tarefa movida VAI PARA "em_andamento"
+          // Se a tarefa movida VAI PARA "em_andamento"
           if (timerRunningTaskId && timerRunningTaskId !== taskToMoveIdStr) {
-            // Outra tarefa estava com o timer rodando, parar e salvar o timer dela.
-            const previousTimerValue = currentTimerValues[timerRunningTaskId];
-            if (previousTimerValue !== undefined) {
-              await handleTimerUpdate(timerRunningTaskId, previousTimerValue);
+            console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 3 - Another timer was running. Stopping it.', { oldRunningTaskId: timerRunningTaskId, value: currentTimerValues[timerRunningTaskId] });
+            // Outra tarefa (NÃO a que foi movida) estava com o timer rodando. Parar e salvar.
+            const otherTaskTimerValue = currentTimerValues[timerRunningTaskId];
+            const oldRunningTaskId = timerRunningTaskId; // Capturar antes de setTimerRunningTaskId(null) ou setTimerRunningTaskId(taskToMoveIdStr)
+            // Não chamamos setTimerRunningTaskId(null) aqui ainda, pois a próxima linha pode definir para taskToMoveIdStr.
+            // Apenas salvamos o tempo da tarefa anterior.
+            if (otherTaskTimerValue !== undefined) {
+              await handleTimerUpdate(oldRunningTaskId, otherTaskTimerValue);
             }
           }
-          // Iniciar timer para a tarefa movida, mesmo que já fosse ela, para garantir que o estado do timer está correto.
+          // Iniciar timer para a tarefa movida (ou garantir que continue se já era ela e já estava em "em_andamento")
+          // Se timerRunningTaskId já era taskToMoveIdStr, esta chamada não muda nada, o que é bom.
+          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 3 - Setting timerRunningTaskId to:', taskToMoveIdStr);
           setTimerRunningTaskId(taskToMoveIdStr);
-        } else if (timerRunningTaskId === taskToMoveIdStr && finalStatusForTimerLogic !== 'em_andamento') {
-          // A tarefa que estava com o timer rodando foi movida para fora de "em andamento"
-          setTimerRunningTaskId(null);
-          const currentTime = currentTimerValues[taskToMoveIdStr];
-          if (currentTime !== undefined) {
-            await handleTimerUpdate(taskToMoveIdStr, currentTime);
-          }
         }
-      }
-      // A chamada direta a taskService.updateTask e onTasksUpdated foi removida.
-      // O estado visual do dnd-kit é temporário; a fonte da verdade é atualizada
-      // pela prop onTaskStatusChange que atualiza rawTasks em ProjectView.
+        // Não precisamos de um 'else' aqui para parar o timer da tarefa movida se ela NÃO VAI PARA 'em_andamento',
+        // pois isso já foi tratado na Etapa 1.
 
     } catch (err) {
       console.error("Erro ao processar drag-and-drop no KanbanBoard:", err);
@@ -811,6 +849,7 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       // A prop onTaskStatusChange em ProjectView lida com o tratamento de erro da API.
     } finally {
       setActiveId(null);
+      console.log('[KanbanBoard.tsx] handleDragEnd FINALLY - activeId set to null.');
     }
   };
 
@@ -866,38 +905,41 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
   // Função para lidar com a mudança de status de uma tarefa (ex: pelo temporizador)
   const handleTaskStatusChange = async (taskId: number, newStatus: TaskStatus) => {
     const taskIdStr = String(taskId);
-    const currentTask = processedTasksMap[taskIdStr];
+    const currentTask = processedTasksMap[taskIdStr]; 
 
     if (!currentTask) return;
+
+    const previousTimerRunningId = timerRunningTaskId; // Capturar o ID do timer antes de qualquer mudança
 
     // Notificar o pai sobre a mudança de status para que ele atualize a API e rawTasks
     // Somente se o status realmente mudou.
     if (currentTask.status !== newStatus) {
-      if (onTaskStatusChange) {
-        await onTaskStatusChange(currentTask, newStatus);
+      if (onTaskStatusChange) { // Prop do KanbanBoard (Tasks.handleKanbanTaskStatusChange)
+        await onTaskStatusChange(currentTask, newStatus); // Isso vai atualizar rawTasks, e então processedTasksMap
       }
     }
 
     // Lógica do timer local ao KanbanBoard, baseada no newStatus
     // Esta lógica é acionada pela interação do usuário com o TaskTimer (via TaskCard)
     if (newStatus === 'em_andamento') {
-      if (timerRunningTaskId && timerRunningTaskId !== taskIdStr) {
+      if (previousTimerRunningId && previousTimerRunningId !== taskIdStr) {
         // Outra tarefa estava com o timer rodando, parar e salvar o timer dela.
-        const previousTimerValue = currentTimerValues[timerRunningTaskId];
+        const previousTimerValue = currentTimerValues[previousTimerRunningId];
         if (previousTimerValue !== undefined) {
-          await handleTimerUpdate(timerRunningTaskId, previousTimerValue);
+          await handleTimerUpdate(previousTimerRunningId, previousTimerValue);
         }
       }
       setTimerRunningTaskId(taskIdStr);
       // O useEffect de timerRunningTaskId pegará o valor de task.timer do processedTasksMap atualizado
       // para inicializar currentTimerValues[taskIdStr] se necessário.
-    } else if (timerRunningTaskId === taskIdStr && newStatus !== 'em_andamento') {
-      // O timer desta tarefa estava rodando e o status mudou para algo que não é 'em_andamento'
+    } else if (previousTimerRunningId === taskIdStr && newStatus !== 'em_andamento') {
+      // O timer desta tarefa (taskIdStr) estava rodando (previousTimerRunningId === taskIdStr)
+      // e o status mudou para algo que não é 'em_andamento'
       // (ou o usuário pausou o timer manualmente, o que também pode mudar o status para a_fazer)
-      setTimerRunningTaskId(null);
-      const currentTime = currentTimerValues[taskIdStr];
+      setTimerRunningTaskId(null); // Para o timer
+      const currentTime = currentTimerValues[taskIdStr]; // Pega o valor mais recente de currentTimerValues
       if (currentTime !== undefined) {
-        await handleTimerUpdate(taskIdStr, currentTime);
+        await handleTimerUpdate(taskIdStr, currentTime); // Salva
       }
     }
     // Se o status não mudou (ex: tarefa já 'em_andamento' e usuário clica play),

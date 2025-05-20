@@ -73,10 +73,9 @@ Para enviar suas alterações locais para o GitHub sem precisar fazer merge:
 git checkout main
 
 # Adicione suas alterações
-git add .
-
+c
 # Faça o commit das alterações
-git commit -m "[CORREÇÃO DE BUGS, adição de funcionalidades voltadas para Task e refatoração do kanban board]"
+git commit -m "[CORREÇÃO DE BUGS do kanban board]"
 
 # Faça o push forçado (use com cuidado!)
 git push --force-with-lease origin main

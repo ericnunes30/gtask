@@ -58,6 +58,9 @@ const Tasks = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const permissions = usePermissions();
+  // Extrair valores primitivos para estabilizar dependências de useCallback
+  const currentUserId = user?.id;
+  const isUserMember = permissions.isMember;
   // const [kanbanFilteredProjectIds, setKanbanFilteredProjectIds] = useState<Set<number> | null>(null); // Removido
 
   const searchParams = new URLSearchParams(location.search);
@@ -70,12 +73,12 @@ const Tasks = () => {
     setError(null);
     try {
       let allTasks = await taskService.getTasks();
-      if (permissions.isMember && user) {
+      if (isUserMember && currentUserId) { // Usar as variáveis estabilizadas
         allTasks = allTasks.filter(task => {
           if (!task.users || !Array.isArray(task.users) || task.users.length === 0) return false;
           return task.users.some(taskUser =>
-            (typeof taskUser === 'number' && taskUser === user.id) ||
-            (typeof taskUser === 'object' && taskUser !== null && taskUser.id === user.id)
+            (typeof taskUser === 'number' && taskUser === currentUserId) ||
+            (typeof taskUser === 'object' && taskUser !== null && taskUser.id === currentUserId)
           );
         });
       }
@@ -89,7 +92,7 @@ const Tasks = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, permissions.isMember]); // Dependências do useCallback
+  }, [currentUserId, isUserMember, setLoading, setError, setRawTasks]); // Dependências atualizadas
 
   useEffect(() => {
     fetchAllTasks(false); // Chamar sem feedback na carga inicial
@@ -156,19 +159,26 @@ const Tasks = () => {
     newStatus: TaskStatus, // TaskStatus de @/lib/api
     newOrder?: number
   ) => {
+    console.log('[Tasks.tsx] handleKanbanTaskStatusChange called with - Full Task Object:', JSON.parse(JSON.stringify(task)));
+    console.log('[Tasks.tsx] handleKanbanTaskStatusChange called with - Details:', { taskId: task.id, typeofTaskId: typeof task.id, currentStatus: task.status, currentOrder: task.order, newStatus, newOrder });
     try {
       const updateData: UpdateTaskRequest = { status: newStatus };
       if (newOrder !== undefined) {
-        updateData.order = newOrder;
+        // TESTE: Enviar order como inteiro arredondado
+        updateData.order = Math.round(newOrder); 
+        console.log(`[Tasks.tsx] TESTE: Original newOrder: ${newOrder}, Enviando order arredondado: ${updateData.order}`);
       }
-
+      console.log('[Tasks.tsx] Updating task on API with data:', updateData);
       await taskService.updateTask(Number(task.id), updateData);
+      console.log('[Tasks.tsx] Task updated on API. Fetching all tasks...');
       // O KanbanBoard já pode mostrar um toast "movida". Se precisar de outro, adicione aqui.
       // toast.success(`Tarefa "${task.title}" atualizada.`); 
       await fetchAllTasks(false); // Recarregar silenciosamente para garantir consistência
+      console.log('[Tasks.tsx] All tasks fetched after update.');
     } catch (error) {
       console.error('Erro ao atualizar tarefa via Kanban:', error);
       toast.error(`Falha ao atualizar tarefa "${task.title}".`);
+      console.log('[Tasks.tsx] Error updating task. Fetching all tasks with feedback...');
       await fetchAllTasks(true); // Recarregar com feedback em caso de erro
     }
   };
