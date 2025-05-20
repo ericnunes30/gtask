@@ -16,7 +16,6 @@ import NotFound from "./pages/NotFound";
 // Calendário removido conforme solicitado
 import Settings from "./pages/Settings";
 import Users from "./pages/Users";
-import TestPage from "./pages/TestPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -72,11 +71,7 @@ const AppRoutes = () => {
           <Users />
         </ProtectedRoute>
       } />
-      <Route path="/test" element={
-        <ProtectedRoute>
-          <TestPage />
-        </ProtectedRoute>
-      } />
+      
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

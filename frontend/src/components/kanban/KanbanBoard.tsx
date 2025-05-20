@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useCallback, useImperativeHandle, useMemo, useRef } from 'react';
 import {
   DndContext,
   closestCorners,
@@ -31,15 +31,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { taskService, Task, TaskStatus } from '@/lib/api';
+import { taskService, Task as ApiTask, TaskStatus } from '@/lib/api';
 import { UpdateTaskRequest } from '@/lib/api/tasks';
 import TaskDetailsModal from "@/components/tasks/TaskDetailsModal";
+import useProcessedKanbanData from '@/hooks/useProcessedKanbanData';
+import {
+  KanbanTask, // Alterado de Task para KanbanTask
+  ViewMode,
+  BoardMode,
+  FiltersObject,
+  ProcessedKanbanColumns, // Removido alias desnecessário
+  TasksMap,
+  ProcessedColumnOrder, // Removido alias desnecessário
+  ProcessedKanbanColumn,
+} from './kanbanTypes';
 import { TaskForm } from '@/components/forms/TaskForm';
+import { TaskFormRef } from '@/components/forms/TaskForm'; // Importar TaskFormRef
 import { TaskTimer } from '@/components/tasks/TaskTimer';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -80,32 +90,40 @@ const statusColumnOrder = ['backlog', 'todo', 'inProgress', 'review', 'done'];
 // Ordem das colunas para o modo de data
 const dateColumnOrder = ['overdue', 'today', 'tomorrow', 'future'];
 
-// Interface para as colunas do Kanban
-interface Column {
-  id: string;
-  title: string;
-  taskIds: string[];
-}
+// Interface local Column removida pois ProcessedKanbanColumn de kanbanTypes é usada.
+// interface Column {
+//   id: string;
+//   title: string;
+//   taskIds: string[];
+// }
 
 // Interface para o objeto de colunas
-interface KanbanColumns {
-  [key: string]: Column;
-}
+// Esta interface local KanbanColumns será removida/substituída pela do hook.
+// interface KanbanColumns {
+//   [key: string]: Column;
+// }
 
 interface KanbanBoardProps {
-  projectId?: number;
-  teams?: any[];
-  selectedTeamId?: number | null;
-  onTeamChange?: (teamId: number | null) => void;
-  selectedUserId?: number | null;
-  onUserChange?: (userId: number | null) => void;
-  viewMode?: 'status' | 'date';
-  onViewModeChange?: (mode: 'status' | 'date') => void;
-  priorityFilter?: string | null;
-  onTasksUpdated?: () => Promise<void>;
-  forceUserFilter?: boolean;
-  onTasksFiltered?: (tasks: Task[]) => void;
-  showCompleted?: boolean;
+  rawTasks: KanbanTask[];
+  viewMode: ViewMode;
+  boardMode: BoardMode;
+  filters: FiltersObject;
+  projectId?: string; // projectId agora é string e opcional, conforme kanbanTypes
+  project?: any; // Manter por enquanto, para compatibilidade
+  onTasksUpdated?: () => Promise<void>; // Manter por enquanto
+  // As props abaixo serão removidas pois seus valores virão através do objeto `filters`
+  // ou são controladas pelo componente pai que fornecerá viewMode, boardMode e filters.
+  // teams?: any[];
+  // selectedTeamId?: number | null;
+  // onTeamChange?: (teamId: number | null) => void;
+  // selectedUserId?: number | null;
+  // onUserChange?: (userId: number | null) => void;
+  // onViewModeChange?: (mode: 'status' | 'date') => void;
+  // priorityFilter?: string | null;
+  // forceUserFilter?: boolean;
+  // onTasksFiltered?: (tasks: KanbanTask[]) => void; // Ajustado para KanbanTask
+  // mode: 'project-view' | 'tasks-view'; // boardMode substitui 'mode'
+  // showCompleted?: boolean;
 }
 
 // Componente para renderizar uma tarefa
@@ -117,14 +135,14 @@ const TaskCard = ({
   setTimerRunningTaskId,
   onTimerUpdate
 }: {
-  task: Task,
+  task: KanbanTask, // Alterado para KanbanTask
   onClick: () => void,
   onTaskStatusChange?: (taskId: number, newStatus: TaskStatus) => void,
   timerRunningTaskId: string | null,
   setTimerRunningTaskId: (id: string | null) => void,
-  onTimerUpdate?: (seconds: number) => void
+  onTimerUpdate?: (seconds: number) => void // onTimerUpdate em TaskCard espera (seconds: number)
 }) => {
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => { // dateString pode ser undefined
     if (!dateString) return '';
 
     // Usar a abordagem de comparação por string para evitar problemas de fuso horário
@@ -323,15 +341,15 @@ const SortableTaskCard = ({
   onTaskStatusChange,
   timerRunningTaskId,
   setTimerRunningTaskId,
-  onTimerUpdate
+  onTimerUpdate // Esta prop espera (taskId: string, seconds: number) de Column, mas TaskCard passa (seconds: number)
 }: {
   id: string,
-  task: Task,
+  task: KanbanTask, // Alterado para KanbanTask
   onClick: () => void,
   onTaskStatusChange?: (taskId: number, newStatus: TaskStatus) => void,
   timerRunningTaskId: string | null,
   setTimerRunningTaskId: (id: string | null) => void,
-  onTimerUpdate?: (seconds: number) => void
+  onTimerUpdate?: (seconds: number) => void // Mantido como (seconds: number) para corresponder ao TaskCard
 }) => {
   const {
     attributes,
@@ -375,10 +393,9 @@ const DroppableColumn = ({ id, children }: { id: string, children: React.ReactNo
     id
   });
 
-  // Log quando o mouse está sobre a coluna
+  // Efeito para observar quando o mouse está sobre a coluna (pode ser usado para feedback visual)
   React.useEffect(() => {
-    if (isOver) {
-    }
+    // console.log(`Mouse over column: ${id}, isOver: ${isOver}`);
   }, [isOver, id]);
 
   return (
@@ -399,23 +416,30 @@ const Column = ({
   onAddTask,
   onTaskClick,
   onTaskStatusChange,
-  id,
+  id, // id da coluna
   timerRunningTaskId,
   setTimerRunningTaskId,
-  onTimerUpdate
+  onTimerUpdate,
+  boardMode // Adicionar boardMode como prop
 }: {
-  column: Column,
-  tasks: Task[],
+  column: ProcessedKanbanColumn, // Usar ProcessedKanbanColumn
+  tasks: KanbanTask[], // Usar KanbanTask
   onAddTask: (columnId: string) => void,
-  onTaskClick: (taskId: number) => void,
+  onTaskClick: (task: KanbanTask) => void, // Passar a task inteira
   onTaskStatusChange?: (taskId: number, newStatus: TaskStatus) => void,
   id: string,
   timerRunningTaskId: string | null,
   setTimerRunningTaskId: (id: string | null) => void,
-  onTimerUpdate?: (seconds: number) => void
+  onTimerUpdate?: (taskId: string, seconds: number) => void, // Modificado para incluir taskId
+  boardMode: BoardMode; // Adicionado tipo para boardMode
 }) => {
   // Hook de permissões
   const permissions = usePermissions();
+
+  // Determinar se o botão de adicionar tarefa deve ser exibido
+  const showAddTaskButton = !(permissions.isMember && (boardMode === 'tasks-view' || boardMode === 'project-view'));
+
+
   return (
     <div
       className="kanban-column flex-1 min-w-[200px] bg-card flex flex-col border rounded-lg overflow-hidden"
@@ -430,7 +454,7 @@ const Column = ({
             </span>
           </h3>
           <div className="flex items-center gap-1">
-            {!permissions.isMember && (
+            {showAddTaskButton && (
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onAddTask(id)}>
                 <PlusCircle className="h-4 w-4" />
               </Button>
@@ -452,11 +476,17 @@ const Column = ({
               key={String(task.id)}
               id={String(task.id)}
               task={task}
-              onClick={() => onTaskClick(task.id)}
+              onClick={() => onTaskClick(task)}
               onTaskStatusChange={onTaskStatusChange}
               timerRunningTaskId={timerRunningTaskId}
               setTimerRunningTaskId={setTimerRunningTaskId}
-              onTimerUpdate={onTimerUpdate}
+              // onTimerUpdate em SortableTaskCard espera (seconds: number)
+              // onTimerUpdate em Column espera (taskId: string, seconds: number)
+              // handleTimerUpdate no KanbanBoard espera (taskId: string, seconds: number)
+              // A chamada de onTimerUpdate de Column para SortableTaskCard precisa ser ajustada
+              // ou a prop onTimerUpdate em SortableTaskCard e TaskCard precisa ser (taskId: string, seconds: number)
+              // Por ora, vamos manter a chamada como está e ajustar a prop em Column se necessário.
+              onTimerUpdate={(seconds) => onTimerUpdate && onTimerUpdate(String(task.id), seconds)}
             />
           ))}
         </SortableContext>
@@ -465,65 +495,64 @@ const Column = ({
   );
 };
 
-export const KanbanBoard = React.forwardRef<{ fetchTasks: () => Promise<void> }, KanbanBoardProps>(({
-  projectId,
-  teams: propTeams,
-  selectedTeamId: propSelectedTeamId,
-  onTeamChange,
-  selectedUserId: propSelectedUserId,
-  onUserChange,
-  viewMode = 'status',
-  onViewModeChange,
-  priorityFilter,
-  onTasksUpdated,
-  forceUserFilter,
-  onTasksFiltered, // Adiciona a nova prop aqui
-  showCompleted
-}, ref) => {
+export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, ref) => {
+  const {
+    rawTasks,
+    viewMode,
+    boardMode,
+    filters,
+    projectId,
+    // project, // project prop pode não ser mais necessária se rawTasks e filters cobrem tudo
+    onTasksUpdated,
+  } = props;
+
+  // Consumir o hook useProcessedKanbanData
+  const {
+    columns: processedColumns, // Renomear para evitar conflito com a 'Column' local
+    tasksMap: processedTasksMap, // Renomear para evitar conflito
+    columnOrder: processedColumnOrder,
+    isLoading: processedDataIsLoading, // Estado de loading do hook
+    error: processedDataError, // Estado de erro do hook
+  } = useProcessedKanbanData({
+    rawTasks,
+    viewMode,
+    boardMode,
+    filters,
+    projectId: projectId !== undefined ? String(projectId) : undefined,
+  });
+
   // Hooks de autenticação e permissões
   const { user } = useAuth();
   const permissions = usePermissions();
-  // Colunas para visualização por status
-  const statusColumns: KanbanColumns = {
-    backlog: { id: 'backlog', title: 'Pendente', taskIds: [] },
-    todo: { id: 'todo', title: 'A Fazer', taskIds: [] },
-    inProgress: { id: 'inProgress', title: 'Em Andamento', taskIds: [] },
-    review: { id: 'review', title: 'Em Revisão', taskIds: [] },
-    done: { id: 'done', title: 'Concluído', taskIds: [] },
-  };
 
-  // Colunas para visualização por data
-  const dateColumns: KanbanColumns = {
-    overdue: { id: 'overdue', title: 'Atrasadas', taskIds: [] },
-    today: { id: 'today', title: 'Hoje', taskIds: [] },
-    tomorrow: { id: 'tomorrow', title: 'Amanhã', taskIds: [] },
-    future: { id: 'future', title: 'Futuras', taskIds: [] },
-  };
-
-  // Estado para as colunas atuais
-  const [columns, setColumns] = useState<KanbanColumns>(viewMode === 'status' ? { ...statusColumns } : { ...dateColumns });
-
-
-  const [tasks, setTasks] = useState<Record<string, Task>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Estado para o item ativo durante o drag
   const [activeId, setActiveId] = useState<string | null>(null);
+  // const [activeTaskState, setActiveTaskState] = useState<KanbanTask | null>(null); // activeTask será derivado de processedTasksMap
 
   // Estados para o modal de detalhes da tarefa
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
-  const [timerRunningTaskId, setTimerRunningTaskId] = useState<string | null>(null); // ID da tarefa com timer em execução
-  const [currentTimerValues, setCurrentTimerValues] = useState<Record<string, number>>({}); // Valores atuais dos timers
+  const [isTaskDetailsModalOpen, setIsTaskDetailsModalOpen] = useState(false);
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState<KanbanTask | null>(null);
 
-  // Estado para o diálogo de adicionar tarefa
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
+  // Estado para o diálogo de criação/edição de tarefa
+  const [isCreateEditDialogOpen, setIsCreateEditDialogOpen] = useState(false);
+  const [currentColumnIdForNewTask, setCurrentColumnIdForNewTask] = useState<string | null>(null);
+  const [createTaskFormInstanceId, setCreateTaskFormInstanceId] = useState<string | null>(null); // Novo estado
+  const [timerRunningTaskId, setTimerRunningTaskId] = useState<string | null>(null);
+  const createTaskFormRef = useRef<TaskFormRef>(null); // Ref para o TaskForm de criação
+  const [currentTimerValues, setCurrentTimerValues] = useState<Record<string, number>>({});
 
-// Log do estado do modal de adicionar tarefa e coluna selecionada
-useEffect(() => {
-  console.log('[KanbanBoard] Estado modal adicionar tarefa:', { isDialogOpen, selectedColumnId });
-}, [isDialogOpen, selectedColumnId]);
+  // Log para depuração do estado do modal do KanbanBoard
+  console.log(`[KanbanBoard.tsx] Renderizando. isCreateEditDialogOpen: ${isCreateEditDialogOpen}, createTaskFormInstanceId: ${createTaskFormInstanceId}`);
 
+  // Função para fechar e resetar o diálogo de criação de tarefa do Kanban
+  const handleCloseKanbanDialog = () => {
+    setIsCreateEditDialogOpen(false);
+    setCurrentColumnIdForNewTask(null); 
+    // Resetar o instanceId pode ajudar a garantir que o TaskForm seja remontado se necessário,
+    // mas pode ser opcional dependendo do comportamento desejado.
+    // Por ora, vamos manter o reset para maior clareza de estado.
+    setCreateTaskFormInstanceId(null); 
+  };
 
   // Configurar sensores para o drag and drop
   const sensors = useSensors(
@@ -537,336 +566,31 @@ useEffect(() => {
     })
   );
 
-  // Efeito para limpar o estado quando o projectId muda
-  // Removido para evitar chamadas duplicadas - agora o ProjectView é responsável por chamar fetchTasks
-  // quando o projectId muda, e fetchTasks já limpa o estado antes de carregar novas tarefas
+  // As funções fetchTasks, filterTasks, distributeTasksToColumns e processTasks foram removidas.
+  // A lógica de busca, filtragem e geração de colunas agora é tratada pelos componentes pais
+  // e pelo hook useProcessedKanbanData.
 
-  // Função para carregar tarefas da API
-  const fetchTasks = useCallback(async () => {
-    console.log('[KanbanBoard][fetchTasks] Iniciando fetch de tarefas');
-    setLoading(true);
-    setError(null);
-
-
-    try {
-      // Limpar o estado das tarefas e colunas antes de carregar novas
-      setTasks({});
-
-      // Redefinir as colunas com base no modo de visualização atual
-      const emptyColumns = viewMode === 'status'
-        ? {
-            backlog: { id: 'backlog', title: 'Pendente', taskIds: [] },
-            todo: { id: 'todo', title: 'A Fazer', taskIds: [] },
-            inProgress: { id: 'inProgress', title: 'Em Andamento', taskIds: [] },
-            review: { id: 'review', title: 'Em Revisão', taskIds: [] },
-            done: { id: 'done', title: 'Concluído', taskIds: [] }
-          }
-        : {
-            overdue: { id: 'overdue', title: 'Atrasadas', taskIds: [] },
-            today: { id: 'today', title: 'Hoje', taskIds: [] },
-            tomorrow: { id: 'tomorrow', title: 'Amanhã', taskIds: [] },
-            future: { id: 'future', title: 'Futuras', taskIds: [] }
-          };
-
-      setColumns(emptyColumns);
-
-      // Carregar tarefas do projeto ou todas as tarefas
-      const tasksList = projectId
-        ? await taskService.getTasksByProject(projectId)
-        : await taskService.getTasks();
-
-
-
-      // Filtrar tarefas por equipe se houver uma equipe selecionada
-      let filteredTasks = tasksList;
-
-      if (propSelectedTeamId) {
-        filteredTasks = filteredTasks.filter(task => {
-          // Verificar se a tarefa tem ocupações (equipes) e se a equipe selecionada está entre elas
-          if (!task.occupations) return false;
-
-          // Verificar se occupations é um array de objetos ou de IDs
-          return task.occupations.some(occupation => {
-            if (typeof occupation === 'number') {
-              return occupation === propSelectedTeamId;
-            } else {
-              return occupation.id === propSelectedTeamId;
-            }
-          });
-        });
-      }
-
-      // Filtrar tarefas por usuário responsável (selecionado ou usuário atual se for membro)
-      let userIdToFilter = propSelectedUserId;
-
-      // Se o usuário for um membro ou se forceUserFilter for true, forçar a filtragem pelo ID do usuário logado
-      // Mas não aplicar o filtro se forceUserFilter for explicitamente false
-
-      if ((permissions.isMember && forceUserFilter !== false) || forceUserFilter === true) {
-        // Obter o ID do usuário do localStorage
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          try {
-            const parsedUser = JSON.parse(userData);
-            userIdToFilter = parsedUser.id;
-
-          } catch (e) {
-            console.error('Erro ao obter ID do usuário do localStorage:', e);
-          }
-        } else {
-          // Tentar obter o ID do usuário do contexto de autenticação
-          if (user && user.id) {
-            userIdToFilter = user.id;
-          }
-        }
-      }
-
-      if (userIdToFilter) {
-
-        filteredTasks = filteredTasks.filter(task => {
-          // Verificar se a tarefa tem usuários e se o usuário selecionado está entre eles
-          if (!task.users || !Array.isArray(task.users) || task.users.length === 0) return false;
-
-          // Verificar se users é um array de objetos ou de IDs
-          return task.users.some(taskUser => {
-            if (typeof taskUser === 'number') {
-              return taskUser === userIdToFilter;
-            } else {
-              return taskUser.id === userIdToFilter;
-            }
-          });
-        });
-
-      }
-
-      // Aplicar filtro de prioridade
-      if (priorityFilter) {
-
-        filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
-      }
- 
-      // Aplicar filtro de tarefas concluídas
-      if (!showCompleted) {
-        console.log('KanbanBoard: Aplicando filtro para ocultar tarefas concluídas.');
-        filteredTasks = filteredTasks.filter(task => task.status !== 'concluido');
-        console.log('KanbanBoard: Tarefas após filtro de concluídas:', filteredTasks.length);
-      }
-
-      // Chamar o callback com as tarefas filtradas ANTES de processá-las
-      if (onTasksFiltered) {
-        onTasksFiltered(filteredTasks);
-      }
-
-      // Transformar array de tarefas em objeto para facilitar acesso
-      const tasksMap: Record<string, Task> = {};
-      filteredTasks.forEach(task => {
-        const taskId = String(task.id);
-        // Verificar se a tarefa pertence ao projeto atual
-        const taskProjectId = Number(task.project_id || task.projectId);
-        const currentProjectId = Number(projectId);
-
-
-        if (!currentProjectId || taskProjectId === currentProjectId) {
-          tasksMap[taskId] = task;
-        } else {
-
-        }
-      });
-
-      setTasks(tasksMap);
-
-      // Criar uma cópia das colunas atuais para preservar a estrutura
-      // Usar o estado atual das colunas como base
-      const taskColumns: KanbanColumns = {};
-
-      // Garantir que estamos usando o modo de visualização correto
-      if (viewMode === 'status') {
-        // Colunas para modo de status
-        taskColumns.backlog = { id: 'backlog', title: 'Pendente', taskIds: [] };
-        taskColumns.todo = { id: 'todo', title: 'A Fazer', taskIds: [] };
-        taskColumns.inProgress = { id: 'inProgress', title: 'Em Andamento', taskIds: [] };
-        taskColumns.review = { id: 'review', title: 'Em Revisão', taskIds: [] };
-        taskColumns.done = { id: 'done', title: 'Concluído', taskIds: [] };
-      } else {
-        // Colunas para modo de data
-        taskColumns.overdue = { id: 'overdue', title: 'Atrasadas', taskIds: [] };
-        taskColumns.today = { id: 'today', title: 'Hoje', taskIds: [] };
-        taskColumns.tomorrow = { id: 'tomorrow', title: 'Amanhã', taskIds: [] };
-        taskColumns.future = { id: 'future', title: 'Futuras', taskIds: [] };
-      }
-
-
-
-      // Distribuir tarefas nas colunas de acordo com o modo de visualização
-      // Primeiro, vamos criar um mapa para armazenar as tarefas por coluna com suas datas
-      const tasksByColumn: Record<string, Array<{id: string, dueDate: Date | null}>> = {};
-
-      // Inicializar o mapa para todas as colunas
-      Object.keys(taskColumns).forEach(columnId => {
-        tasksByColumn[columnId] = [];
-      });
-
-      // Distribuir tarefas nas colunas
-      filteredTasks.forEach(task => {
-        if (viewMode === 'status') {
-          // Mapear o status da API para a coluna correspondente
-          const columnId = statusMap[task.status] || 'todo';
-          if (taskColumns[columnId]) {
-            // Para o modo de status, não precisamos ordenar por data
-            taskColumns[columnId].taskIds.push(String(task.id));
-          }
-        } else {
-          // Modo de visualização por data
-          // Verificar se a tarefa tem data de vencimento
-          let dueDate: Date | null = null;
-          let columnId = 'today'; // Coluna padrão se não tiver data
-
-          if (task.due_date) {
-            // Usar a abordagem de comparação por string para evitar problemas de fuso horário
-            const dueDate = new Date(task.due_date);
-            const dueDateStr = dueDate.toISOString().split('T')[0];
-
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
-
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-
-
-            if (dueDateStr < todayStr) {
-              // Tarefa atrasada
-              columnId = 'overdue';
-
-            } else if (dueDateStr === todayStr) {
-              // Tarefa para hoje
-              columnId = 'today';
-
-            } else if (dueDateStr === tomorrowStr) {
-              // Tarefa para amanhã
-              columnId = 'tomorrow';
-
-            } else {
-              // Tarefas futuras (após amanhã) vão para 'future'
-              columnId = 'future';
-
-            }
-          }
-
-
-
-          // Verificar se a coluna existe antes de adicionar a tarefa
-          if (taskColumns[columnId]) {
-            // Adicionar a tarefa ao mapa com sua data de vencimento
-            tasksByColumn[columnId].push({
-              id: String(task.id),
-              dueDate: dueDate
-            });
-          } else {
-
-            // Adicionar à coluna 'today' como fallback
-            if (taskColumns['today']) {
-              tasksByColumn['today'].push({
-                id: String(task.id),
-                dueDate: dueDate
-              });
-            }
-          }
-        }
-      });
-
-      // Se estamos no modo de data, ordenar as tarefas por data e adicionar às colunas
-      if (viewMode === 'date') {
-        // Ordenar tarefas atrasadas da mais antiga para a mais recente (mais urgente primeiro)
-        tasksByColumn['overdue'].sort((a, b) => {
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          // Usar toISOString para garantir comparação consistente
-          return a.dueDate.toISOString().localeCompare(b.dueDate.toISOString());
-        });
-
-        // Tarefas de hoje e amanhã têm a mesma data dentro de cada coluna, não precisam ser ordenadas
-
-        // Ordenar tarefas futuras da mais recente para a mais antiga (mais próxima primeiro)
-        tasksByColumn['future'].sort((a, b) => {
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          // Usar toISOString para garantir comparação consistente
-          return a.dueDate.toISOString().localeCompare(b.dueDate.toISOString());
-        });
-
-        // Adicionar as tarefas ordenadas às colunas
-        Object.keys(tasksByColumn).forEach(columnId => {
-          taskColumns[columnId].taskIds = tasksByColumn[columnId].map(task => task.id);
-        });
-      }
-
-
-
-      // Verificar se as colunas correspondem ao modo atual
-      const expectedColumnIds = viewMode === 'status' ? statusColumnOrder : dateColumnOrder;
-      const actualColumnIds = Object.keys(taskColumns);
-
-      const hasCorrectColumns = expectedColumnIds.every(id => actualColumnIds.includes(id));
-
-      if (!hasCorrectColumns) {
-
-        // Não atualizar as colunas se elas não corresponderem ao modo atual
-        return;
-      }
-
-      setColumns(taskColumns);
-    } catch (err) {
-      console.error('Erro ao carregar tarefas:', err);
-      setError('Não foi possível carregar as tarefas. Tente novamente mais tarde.');
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, propSelectedTeamId, propSelectedUserId, viewMode, priorityFilter, forceUserFilter, user?.id, permissions.isMember, showCompleted]); // Adicionado showCompleted
-
-  // Efeito para forçar a atualização das tarefas quando a página é carregada
-  useEffect(() => {
-    // Pequeno delay para garantir que o estado foi atualizado
-    const timer = setTimeout(() => {
-      fetchTasks();
-    }, 300); // 300ms de delay
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Expor o método fetchTasks através da referência
+  // Não é mais necessário expor fetchTasks via ref, pois o KanbanBoard não busca mais seus dados.
   useImperativeHandle(ref, () => ({
-    fetchTasks: fetchTasks // Expor diretamente a função definida com useCallback
+    // Se houver outros métodos que o pai precise chamar, eles podem ser expostos aqui.
+    // Por enquanto, não há necessidade de fetchTasks.
   }));
 
-  // Efeito inicial para carregar tarefas
-  // Removido para evitar chamadas duplicadas, já que agora temos um efeito específico para projectId
-  // useEffect(() => {
-  //   fetchTasks();
-  // }, [fetchTasks]);
-
-  // Atualizar colunas quando o modo de visualização mudar
-  useEffect(() => {
-    // Quando o modo de visualização muda, recarregar as tarefas
-    // para garantir que elas sejam distribuídas corretamente
-    fetchTasks();
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode]);
+  // O useEffect que chamava fetchTasks na mudança de viewMode foi removido.
+  // O hook useProcessedKanbanData já reage a mudanças em viewMode.
 
   // Efeito para atualizar o valor atual do timer quando ele está em execução
   useEffect(() => {
     if (!timerRunningTaskId) return;
 
     // Verificar se já temos um valor inicial para o timer
-    if (!currentTimerValues[timerRunningTaskId]) {
-      // Se não temos, usar o valor do timer da tarefa
-      const task = tasks[timerRunningTaskId];
+    if (currentTimerValues[timerRunningTaskId] === undefined) { // Checar por undefined para permitir timer 0
+      // Se não temos, usar o valor do timer da tarefa do processedTasksMap
+      const task = processedTasksMap[timerRunningTaskId];
       if (task) {
         setCurrentTimerValues(prev => ({
           ...prev,
-          [timerRunningTaskId]: task.timer || 0
+          [timerRunningTaskId]: task.timer || 0,
         }));
       }
     }
@@ -886,7 +610,7 @@ useEffect(() => {
     return () => {
       clearInterval(interval);
     };
-  }, [timerRunningTaskId, tasks]); // Removido currentTimerValues das dependências para evitar loop
+  }, [timerRunningTaskId, processedTasksMap, currentTimerValues]);
 
   // Função chamada quando o usuário começa a arrastar um item
   const handleDragStart = (event: DragStartEvent) => {
@@ -895,599 +619,272 @@ useEffect(() => {
   };
 
   // Função para encontrar a coluna que contém um determinado ID de tarefa
-  const findColumnOfTask = (taskId: string): string | null => {
-    for (const [columnId, column] of Object.entries(columns)) {
-      if (column.taskIds.includes(taskId)) {
+  // Agora usa processedColumns do hook.
+  const findColumnOfTask = useCallback((taskId: string): string | null => {
+    for (const [columnId, columnData] of Object.entries(processedColumns)) {
+      if (columnData.taskIds.includes(taskId)) {
         return columnId;
       }
     }
     return null;
-  };
+  }, [processedColumns]);
 
   // Função chamada quando o usuário termina de arrastar um item
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
-
     if (!over) {
+      setActiveId(null);
       return;
     }
 
-    const activeId = String(active.id);
-    const overId = String(over.id);
+    const activeIdStr = String(active.id);
+    const overIdStr = String(over.id);
 
-
-    if (activeId === overId) {
+    if (activeIdStr === overIdStr) {
+      setActiveId(null);
       return;
     }
 
-    const sourceColumnId = findColumnOfTask(activeId);
+    const sourceColumnId = findColumnOfTask(activeIdStr);
     if (!sourceColumnId) {
+      setActiveId(null);
       return;
     }
 
-    // Verificar se o overId é uma coluna ou uma tarefa
-    let destinationColumnId = overId;
-    if (!(overId in columns)) {
-      // Se não for uma coluna, encontrar a coluna que contém a tarefa
-      destinationColumnId = findColumnOfTask(overId) || sourceColumnId;
-
-    }
-
-
-
-    // Verificar se estamos movendo entre colunas ou dentro da mesma coluna
-    if (sourceColumnId !== destinationColumnId) {
-      // Movendo para outra coluna
-      const sourceColumn = columns[sourceColumnId];
-      const destinationColumn = columns[destinationColumnId];
-
-      // Remover da coluna de origem
-      const newSourceTaskIds = sourceColumn.taskIds.filter(id => id !== activeId);
-
-      // Adicionar à coluna de destino
-      const newDestinationTaskIds = [...destinationColumn.taskIds, activeId];
-
-      // Atualizar o estado
-      const newColumns = {
-        ...columns,
-        [sourceColumnId]: {
-          ...sourceColumn,
-          taskIds: newSourceTaskIds
-        },
-        [destinationColumnId]: {
-          ...destinationColumn,
-          taskIds: newDestinationTaskIds
-        }
-      };
-
-      setColumns(newColumns);
-
-      // Atualizar a tarefa na API
-      try {
-        const taskId = parseInt(activeId);
-        const currentTask = tasks[activeId];
-
-        if (!currentTask) {
-          toast.error('Tarefa não encontrada.');
-          setColumns(columns); // Reverter mudanças
-          return;
-        }
-
-        // Preparar os dados para atualização
-        // Incluir campos obrigatórios para garantir que a validação passe
-        const updateData: any = {
-          title: currentTask.title,
-          priority: currentTask.priority,
-          start_date: currentTask.start_date,
-          due_date: currentTask.due_date,
-          project_id: currentTask.project_id
-        };
-
-        if (viewMode === 'status') {
-          // No modo de status, atualizar o status da tarefa
-          const newStatus = columnToStatusMap[destinationColumnId];
-          updateData.status = newStatus;
-        } else {
-          // No modo de data, atualizar a data de vencimento da tarefa
-          const today = new Date();
-          // Definir a hora para meio-dia para evitar problemas de fuso horário
-          today.setHours(12, 0, 0, 0);
-
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-
-          if (destinationColumnId === 'today') {
-            updateData.dueDate = today.toISOString();
-
-          } else if (destinationColumnId === 'tomorrow') {
-            updateData.dueDate = tomorrow.toISOString();
-
-          } else if (destinationColumnId === 'overdue') {
-            // Para tarefas atrasadas, definir a data para ontem
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            updateData.dueDate = yesterday.toISOString();
-
-          } else if (destinationColumnId === 'future') {
-            // Para tarefas futuras, definir a data para 2 dias a partir de hoje
-            const futureDays = new Date(today);
-            futureDays.setDate(futureDays.getDate() + 2);
-            updateData.dueDate = futureDays.toISOString();
-
-          }
-        }
-
-        const updatedTask = await taskService.updateTask(taskId, updateData);
-
-        // Notificar o componente pai sobre a atualização das tarefas
-        if (onTasksUpdated) {
-          await onTasksUpdated();
-        }
-
-        // Atualizar o estado local
-        const updatedTasksMap = { ...tasks };
-        if (viewMode === 'status' && updateData.status) {
-          updatedTasksMap[activeId] = { ...updatedTasksMap[activeId], status: updateData.status };
-
-          // Verificar se o status foi alterado para "em_andamento"
-          if (updateData.status === 'em_andamento') {
-            // Iniciar o timer
-            setTimerRunningTaskId(activeId);
-
-            // Inicializar o valor atual do timer
-            setCurrentTimerValues(prev => ({
-              ...prev,
-              [activeId]: updatedTasksMap[activeId].timer || 0
-            }));
-          } else if (timerRunningTaskId === activeId && updateData.status !== 'em_andamento') {
-            // Se o timer estiver em execução para esta tarefa e o status for alterado para algo diferente de "em_andamento", parar o timer
-
-            // Obter o valor atual do timer
-            const currentTimerValue = currentTimerValues[activeId] || updatedTasksMap[activeId].timer || 0;
-
-            // Atualizar o timer na API
-            const timerUpdateData = {
-              timer: currentTimerValue
-            };
-
-            // Mostrar toast de informação
-            toast.info('Atualizando tempo da tarefa...');
-
-            // Atualizar o timer na API
-            taskService.updateTask(parseInt(activeId), timerUpdateData)
-              .then(response => {
-                toast.success('Tempo da tarefa atualizado com sucesso!');
-
-                // Atualizar o valor do timer no estado local
-                if (response && response.timer !== undefined) {
-                  setCurrentTimerValues(prev => ({
-                    ...prev,
-                    [activeId]: response.timer
-                  }));
-
-                  // Atualizar o timer na tarefa
-                  updatedTasksMap[activeId] = {
-                    ...updatedTasksMap[activeId],
-                    timer: response.timer
-                  };
-                }
-              })
-              .catch(err => {
-                toast.error('Erro ao atualizar timer');
-              });
-
-            // Parar o timer
-            setTimerRunningTaskId(null);
-          }
-        } else if (updateData.dueDate) {
-          // Atualizar o campo due_date no estado local (formato interno)
-          updatedTasksMap[activeId] = { ...updatedTasksMap[activeId], due_date: updateData.dueDate };
-        }
-        setTasks(updatedTasksMap);
-
-        toast.success(`Tarefa movida para ${destinationColumn.title}`);
-      } catch (err) {
-        toast.error('Erro ao atualizar status da tarefa. Tente novamente.');
-
-        // Reverter as mudanças no estado local em caso de erro
-        setColumns(columns);
-      }
-    } else {
-      // Movendo dentro da mesma coluna
-      const sourceColumn = columns[sourceColumnId];
-      const currentIndex = sourceColumn.taskIds.indexOf(activeId);
-      const overTaskId = findTaskIdFromOver(over);
-
-      if (!overTaskId || currentIndex === -1) return;
-
-      const destinationIndex = sourceColumn.taskIds.indexOf(overTaskId);
-      if (destinationIndex === -1) return;
-
-      // Reordenar os IDs das tarefas
-      const newTaskIds = arrayMove(sourceColumn.taskIds, currentIndex, destinationIndex);
-
-      // Se estamos no modo de data e a coluna é 'overdue' ou 'future', reordenar por data
-      if (viewMode === 'date' && (sourceColumnId === 'overdue' || sourceColumnId === 'future')) {
-        // Obter as tarefas com suas datas
-        const tasksWithDates = newTaskIds.map(taskId => {
-          const task = tasks[taskId];
-          let dueDate = null;
-          if (task && task.due_date) {
-            dueDate = new Date(task.due_date);
-            dueDate.setHours(0, 0, 0, 0);
-          }
-          return { id: taskId, dueDate };
-        });
-
-        // Ordenar por data
-        tasksWithDates.sort((a, b) => {
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          // Usar toISOString para garantir comparação consistente
-          return a.dueDate.toISOString().localeCompare(b.dueDate.toISOString());
-        });
-
-        // Atualizar os IDs das tarefas ordenadas
-        const orderedTaskIds = tasksWithDates.map(task => task.id);
-
-        // Atualizar o estado
-        const newColumns = {
-          ...columns,
-          [sourceColumnId]: {
-            ...sourceColumn,
-            taskIds: orderedTaskIds
-          }
-        };
-
-        setColumns(newColumns);
-
-        // Mostrar mensagem informativa
-        if (sourceColumnId === 'overdue' || sourceColumnId === 'future') {
-          toast.info(`As tarefas na coluna ${sourceColumn.title} foram reordenadas por data.`);
-        }
+    let destinationColumnId = overIdStr;
+    // Se overIdStr não é uma chave em processedColumns, significa que 'over' é uma tarefa,
+    // então precisamos encontrar a coluna dessa tarefa.
+    if (!(overIdStr in processedColumns)) {
+      const columnContainingOverTask = findColumnOfTask(overIdStr);
+      if (columnContainingOverTask) {
+        destinationColumnId = columnContainingOverTask;
       } else {
-        // Para outras colunas ou modo de status, manter a ordem definida pelo usuário
-        const newColumns = {
-          ...columns,
-          [sourceColumnId]: {
-            ...sourceColumn,
-            taskIds: newTaskIds
-          }
-        };
-
-        setColumns(newColumns);
+        // Se não encontrar a coluna da tarefa 'over', não faz nada ou reverte para a coluna original
+        setActiveId(null);
+        return;
       }
+    }
+    
+    const taskToMove = processedTasksMap[activeIdStr];
+    if (!taskToMove) {
+      toast.error('Tarefa não encontrada para mover.');
+      setActiveId(null);
+      return;
+    }
+    console.log('[KanbanBoard.tsx] handleDragEnd - taskToMove:', JSON.parse(JSON.stringify(taskToMove)));
+
+    // Lógica de atualização da API
+    try {
+      const updateData: UpdateTaskRequest = {};
+      let newOrderCalculated: number | undefined = undefined;
+
+      if (sourceColumnId !== destinationColumnId) { // Movendo para outra coluna
+        if (viewMode === 'status') {
+          const newStatus = columnToStatusMap[destinationColumnId];
+          if (newStatus && newStatus !== taskToMove.status) {
+            updateData.status = newStatus;
+          } else if (!newStatus) {
+            console.warn(`Status não mapeado para a coluna de destino: ${destinationColumnId}`);
+          }
+        } else { // viewMode === 'date'
+          const today = new Date(); today.setHours(12,0,0,0);
+          const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+          const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1); // Para 'overdue'
+          const futureDate = new Date(today); futureDate.setDate(today.getDate() + 3); // Um pouco mais no futuro
+
+          let newDueDateStr: string | undefined = undefined;
+          if (destinationColumnId === 'today') newDueDateStr = today.toISOString().split('T')[0];
+          else if (destinationColumnId === 'tomorrow') newDueDateStr = tomorrow.toISOString().split('T')[0];
+          else if (destinationColumnId === 'overdue') newDueDateStr = yesterday.toISOString().split('T')[0];
+          else if (destinationColumnId === 'future') newDueDateStr = futureDate.toISOString().split('T')[0];
+          
+          if (newDueDateStr && newDueDateStr !== taskToMove.due_date?.split('T')[0]) {
+            updateData.dueDate = newDueDateStr;
+          }
+        }
+      }
+
+      // Lógica refatorada para calcular a nova ordem
+      const tasksInDestColumnFiltered = (processedColumns[destinationColumnId]?.taskIds || [])
+        .filter(id => id !== activeIdStr) // Exclui a tarefa ativa da lista de referência
+        .map(id => processedTasksMap[id])
+        .filter(Boolean) as KanbanTask[];
+      
+      tasksInDestColumnFiltered.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      let insertAtIndex = tasksInDestColumnFiltered.length; // Padrão: inserir no final
+
+      if (processedTasksMap[overIdStr] && overIdStr !== activeIdStr) { // Se 'over' é uma tarefa válida e não a própria tarefa ativa
+        // Encontrar o índice de 'overIdStr' na lista ordenada e filtrada da coluna de destino
+        const overTaskActualIndex = tasksInDestColumnFiltered.findIndex(t => String(t.id) === overIdStr);
+        if (overTaskActualIndex !== -1) {
+          insertAtIndex = overTaskActualIndex;
+        }
+      }
+      // Se 'over' é a própria coluna (overIdStr === destinationColumnId), já estamos inserindo no final (insertAtIndex = tasksInDestColumnFiltered.length)
+
+      if (insertAtIndex === 0) { // Inserir no início da coluna de destino
+        if (tasksInDestColumnFiltered.length > 0) {
+          newOrderCalculated = (tasksInDestColumnFiltered[0].order || 1) / 2;
+        } else { // A coluna de destino (sem a tarefa ativa) está vazia
+          newOrderCalculated = 10; // Ordem padrão para a primeira tarefa
+        }
+      } else if (insertAtIndex >= tasksInDestColumnFiltered.length) { // Inserir no final
+        if (tasksInDestColumnFiltered.length > 0) {
+          newOrderCalculated = (tasksInDestColumnFiltered[tasksInDestColumnFiltered.length - 1].order || 0) + 10;
+        } else { // A coluna de destino (sem a tarefa ativa) estava vazia
+          newOrderCalculated = 10; // Ordem padrão
+        }
+      } else { // Inserir entre duas tarefas existentes na coluna de destino
+        const prevTaskOrder = tasksInDestColumnFiltered[insertAtIndex - 1].order || 0;
+        const nextTaskOrder = tasksInDestColumnFiltered[insertAtIndex].order || 0;
+        newOrderCalculated = (prevTaskOrder + nextTaskOrder) / 2;
+      }
+      
+      // Adicionar a ordem ao updateData apenas se ela mudou
+      if (newOrderCalculated !== undefined && newOrderCalculated !== taskToMove.order) {
+        // Arredondar para evitar problemas de precisão excessiva com floats
+        const roundedNewOrder = parseFloat(newOrderCalculated.toFixed(5));
+        if (roundedNewOrder !== taskToMove.order) {
+             updateData.order = roundedNewOrder;
+        }
+      }
+      
+      if (Object.keys(updateData).length > 0) {
+        const taskIdNumber = Number(taskToMove.id);
+        if (isNaN(taskIdNumber)) {
+            console.error(`[KanbanBoard.tsx] handleDragEnd - ID da tarefa inválido: ${taskToMove.id}`);
+            toast.error('ID da tarefa inválido.');
+            setActiveId(null);
+            return;
+        }
+        console.log(`[KanbanBoard.tsx] handleDragEnd - Chamando updateTask com ID: ${taskIdNumber}, Dados:`, updateData);
+        await taskService.updateTask(taskIdNumber, updateData);
+        toast.success(`Tarefa "${taskToMove.title}" atualizada.`);
+        if (onTasksUpdated) {
+          await onTasksUpdated(); // Notifica o pai para recarregar rawTasks
+        }
+      }
+      // Não é necessário um 'else if' aqui. Se updateData estiver vazio, nenhuma chamada API é feita.
+      // O estado visual do dnd-kit é temporário; a fonte da verdade é atualizada via onTasksUpdated após sucesso da API.
+
+    } catch (err) {
+      console.error("Erro ao atualizar tarefa após drag-and-drop:", err);
+      toast.error('Erro ao mover tarefa.');
+      // Idealmente, o hook useProcessedKanbanData reverteria para o estado anterior
+      // ou o onTasksUpdated traria o estado correto da API.
+    } finally {
+      setActiveId(null);
     }
   };
 
   // Função para encontrar o ID da tarefa a partir do objeto over
-  const findTaskIdFromOver = (over: any): string | null => {
-    // Se o over.id é uma coluna, retorna null
-    if (over.id in columns) return null;
+  // Esta função pode não ser mais necessária se a lógica de handleDragEnd for simplificada
+  // para usar diretamente os IDs de active e over.
 
-    // Caso contrário, o over.id é o ID da tarefa
-    return String(over.id);
-  };
-
-  const handleTaskClick = (taskId: number) => {
-    setSelectedTaskId(taskId);
-    setIsTaskModalOpen(true);
+  const handleTaskClick = (task: KanbanTask) => {
+    setSelectedTaskForModal(task);
+    setIsTaskDetailsModalOpen(true);
   };
 
   const handleTaskModalClose = () => {
-    setIsTaskModalOpen(false);
-    setSelectedTaskId(null);
+    setIsTaskDetailsModalOpen(false);
+    setSelectedTaskForModal(null);
   };
 
   const handleTaskUpdated = async () => {
     // Notificar o componente pai sobre a atualização das tarefas
     if (onTasksUpdated) {
-      await onTasksUpdated();
+      await onTasksUpdated(); // Isso fará com que rawTasks seja recarregado
     }
-
-    // Primeiro, recarregar todas as tarefas para garantir que temos os dados mais recentes
-    await fetchTasks();
-
-    // Se temos uma tarefa selecionada, verificar se precisamos atualizar o timer e a posição do card
-    if (selectedTaskId) {
-      // Buscar a tarefa atualizada diretamente da API para garantir que temos os dados mais recentes
-      try {
-        const updatedTask = await taskService.getTask(selectedTaskId);
-
-        const taskIdStr = String(selectedTaskId);
-
-        // Sempre atualizar o estado local da tarefa com os dados mais recentes
-        const updatedTasks = { ...tasks };
-        updatedTasks[taskIdStr] = {
-          ...updatedTasks[taskIdStr],
-          ...updatedTask
-        };
-        setTasks(updatedTasks);
-
-        // Sempre atualizar o valor do timer no estado global
-        // Isso é crucial para garantir que o valor exibido no KanbanBoard seja o mesmo que estava no modal
-        setCurrentTimerValues(prev => ({
-          ...prev,
-          [taskIdStr]: updatedTask.timer || 0
-        }));
-
-        // Verificar se a tarefa está em modo "em_andamento"
-        if (updatedTask && updatedTask.status === 'em_andamento') {
-          // Atualizar o timerRunningTaskId para iniciar o timer
-          setTimerRunningTaskId(taskIdStr);
-        } else if (updatedTask && updatedTask.status !== 'em_andamento' && timerRunningTaskId === taskIdStr) {
-          // Se a tarefa não está mais em andamento e o timer está em execução, parar o timer
-          setTimerRunningTaskId(null);
-        }
-      } catch (error) {
-        toast.error('Erro ao buscar tarefa');
-      }
-    }
-
-    // Verificar todas as tarefas e atualizar suas posições no modo de visualização por status
-    if (viewMode === 'status') {
-      // Criar uma cópia das colunas
-      const updatedColumns = { ...columns };
-      let columnsChanged = false;
-
-      // Para cada tarefa, verificar se está na coluna correta
-      Object.entries(tasks).forEach(([taskIdStr, task]) => {
-        // Encontrar a coluna atual da tarefa
-        const currentColumnId = findColumnOfTask(taskIdStr);
-
-        // Encontrar a coluna correta com base no status da tarefa
-        const correctColumnId = statusMap[task.status];
-
-        // Se a tarefa estiver na coluna errada, movê-la para a coluna correta
-        if (currentColumnId && correctColumnId && currentColumnId !== correctColumnId) {
-          // Remover a tarefa da coluna atual
-          updatedColumns[currentColumnId] = {
-            ...updatedColumns[currentColumnId],
-            taskIds: updatedColumns[currentColumnId].taskIds.filter(id => id !== taskIdStr)
-          };
-
-          // Adicionar a tarefa à coluna correta
-          updatedColumns[correctColumnId] = {
-            ...updatedColumns[correctColumnId],
-            taskIds: [...updatedColumns[correctColumnId].taskIds, taskIdStr]
-          };
-
-          columnsChanged = true;
-        }
-      });
-
-      // Se houve alterações nas colunas, atualizar o estado
-      if (columnsChanged) {
-        setColumns(updatedColumns);
-      }
-    }
+    // O hook useProcessedKanbanData reagirá à mudança em rawTasks e reprocessará os dados.
+    // A lógica de timer e atualização de estado local que estava aqui foi simplificada
+    // pois a fonte da verdade (rawTasks) será atualizada pelo pai.
   };
 
   // Função para atualizar o timer de uma tarefa
-  const handleTimerUpdate = (seconds: number) => {
-    if (!timerRunningTaskId) return;
-
-    // Garantir que o valor seja um número válido
+  const handleTimerUpdate = async (taskIdStr: string, seconds: number) => {
+    if (!taskIdStr) return;
     const timerValue = Number(seconds);
-
     if (isNaN(timerValue)) {
-      toast.error('Erro ao processar o tempo. Usando valor padrão.');
-      return; // Não prosseguir com a atualização
+      toast.error('Erro ao processar o tempo.');
+      return;
     }
 
-    // Atualizar o valor atual do timer para esta tarefa
-    setCurrentTimerValues(prev => ({
-      ...prev,
-      [timerRunningTaskId]: timerValue
-    }));
+    setCurrentTimerValues(prev => ({ ...prev, [taskIdStr]: timerValue }));
 
-    // Atualizar o estado local da tarefa
-    if (tasks[timerRunningTaskId]) {
-      // Criar uma cópia do objeto de tarefas
-      const updatedTasks = { ...tasks };
-      // Atualizar o timer da tarefa
-      updatedTasks[timerRunningTaskId] = {
-        ...updatedTasks[timerRunningTaskId],
-        timer: timerValue
-      };
-      // Atualizar o estado
-      setTasks(updatedTasks);
-    }
-
-    // Criar objeto de atualização explicitamente
-    const updateData = {
-      timer: timerValue
-    };
-
-    // Mostrar toast de informação
-    toast.info('Atualizando tempo da tarefa...');
-
-    // Obter o ID da tarefa como número
-    const taskId = Number(timerRunningTaskId);
-
-    taskService.updateTask(taskId, updateData)
-      .then(response => {
-        toast.success('Tempo da tarefa atualizado com sucesso!');
-
-        // Garantir que o estado local seja atualizado com o valor retornado da API
-        if (response && response.timer !== undefined) {
-          // Atualizar o valor atual do timer para esta tarefa
-          setCurrentTimerValues(prev => ({
-            ...prev,
-            [timerRunningTaskId]: response.timer
-          }));
-
-          // Atualizar o estado local da tarefa
-          if (tasks[timerRunningTaskId]) {
-            // Criar uma cópia do objeto de tarefas
-            const updatedTasks = { ...tasks };
-            // Atualizar o timer da tarefa com o valor retornado da API
-            updatedTasks[timerRunningTaskId] = {
-              ...updatedTasks[timerRunningTaskId],
-              timer: response.timer
-            };
-            // Atualizar o estado
-            setTasks(updatedTasks);
-          }
-        }
-      })
-      .catch(err => {
-        toast.error('Erro ao atualizar timer');
-      });
-  };
-
-  // Função para lidar com a mudança de status de uma tarefa pelo temporizador
-  const handleTaskStatusChange = (taskId: number, newStatus: TaskStatus) => {
-
-    // Atualizar o estado local da tarefa
-    const taskIdStr = String(taskId);
-    if (tasks[taskIdStr]) {
-      // Criar uma cópia do objeto de tarefas
-      const updatedTasks = { ...tasks };
-
-      // Preservar o valor atual do timer e outros campos
-      const currentTask = tasks[taskIdStr];
-
-      // Atualizar o status da tarefa mantendo todos os outros campos
-      updatedTasks[taskIdStr] = {
-        ...currentTask,
-        status: newStatus
-      };
-
-      // Atualizar o estado
-      setTasks(updatedTasks);
-
-      // Mover a tarefa para a coluna correta
-      if (viewMode === 'status') {
-        // Encontrar a coluna atual da tarefa
-        const currentColumnId = findColumnOfTask(taskIdStr);
-        // Encontrar a nova coluna com base no status
-        const newColumnId = statusMap[newStatus];
-
-        if (currentColumnId && newColumnId && currentColumnId !== newColumnId) {
-          // Criar uma cópia das colunas
-          const updatedColumns = { ...columns };
-
-          // Remover a tarefa da coluna atual
-          updatedColumns[currentColumnId] = {
-            ...updatedColumns[currentColumnId],
-            taskIds: updatedColumns[currentColumnId].taskIds.filter(id => id !== taskIdStr)
-          };
-
-          // Adicionar a tarefa à nova coluna
-          updatedColumns[newColumnId] = {
-            ...updatedColumns[newColumnId],
-            taskIds: [...updatedColumns[newColumnId].taskIds, taskIdStr]
-          };
-
-          // Atualizar o estado das colunas
-          setColumns(updatedColumns);
-
-
-        }
-      }
-
-      // Forçar a atualização do timer no estado local
-      if (currentTask.timer !== undefined) {
-        // Atualizar o valor atual do timer para esta tarefa
-        setCurrentTimerValues(prev => ({
-          ...prev,
-          [taskIdStr]: currentTask.timer || 0
-        }));
-      }
-
-      // Se o status for alterado para "em_andamento", iniciar o timer automaticamente
-      if (newStatus === 'em_andamento') {
-        setTimerRunningTaskId(taskIdStr);
-      } else if (timerRunningTaskId === taskIdStr) { // Removido '&& newStatus !== "em_andamento"' (redundante)
-        // Se o timer estiver em execução para esta tarefa e o status for alterado para algo diferente de "em_andamento", parar o timer
-
-        // Obter o valor atual do timer
-        const currentTimerValue = currentTimerValues[taskIdStr] || currentTask.timer || 0;
-
-        // Atualizar o timer na API
-        const timerUpdateData = {
-          timer: currentTimerValue
-        };
-
-        // Mostrar toast de informação
-        toast.info('Atualizando tempo da tarefa...');
-
-        // Atualizar o timer na API
-        taskService.updateTask(taskId, timerUpdateData)
-          .then(response => {
-            toast.success('Tempo da tarefa atualizado com sucesso!');
-
-            // Atualizar o valor do timer no estado local
-            if (response && response.timer !== undefined) {
-              setCurrentTimerValues(prev => ({
-                ...prev,
-                [taskIdStr]: response.timer
-              }));
-
-              // Atualizar o timer na tarefa
-              const updatedTasks = { ...tasks };
-              updatedTasks[taskIdStr] = {
-                ...updatedTasks[taskIdStr],
-                timer: response.timer
-              };
-              setTasks(updatedTasks);
-            }
-          })
-          .catch(err => {
-            toast.error('Erro ao atualizar timer');
-          });
-
-        // Parar o timer
-        setTimerRunningTaskId(null);
-      }
-    }
-  };
-
-  const handleTaskFormSuccess = async (taskData: any) => {
-    console.log('[KanbanBoard][handleTaskFormSuccess] Dados recebidos:', taskData);
     try {
-      // Criar a tarefa na API e obter a resposta
-      const newTask = await taskService.createTask(taskData);
-      console.log('[KanbanBoard][handleTaskFormSuccess] Nova tarefa criada:', newTask);
+      await taskService.updateTask(Number(taskIdStr), { timer: timerValue });
+      toast.success('Tempo da tarefa atualizado.');
+      // O onTasksUpdated será chamado pelo TaskDetailsModal ou handleTaskStatusChange se necessário
+      // para recarregar os dados e refletir no rawTasks.
+    } catch (err) {
+      toast.error('Erro ao atualizar timer da tarefa.');
+    }
+  };
 
-      setIsDialogOpen(false);
-      toast.success('Tarefa criada com sucesso!');
+  // Função para lidar com a mudança de status de uma tarefa (ex: pelo temporizador)
+  const handleTaskStatusChange = async (taskId: number, newStatus: TaskStatus) => {
+    const taskIdStr = String(taskId);
+    const currentTask = processedTasksMap[taskIdStr];
 
-      // Atualizar estado local: adicionar nova tarefa sem recarregar tudo
-      setTasks(prev => ({ ...prev, [newTask.id]: newTask }));
-      setColumns(prev => ({
-        ...prev,
-        [newTask.status]: {
-          ...prev[newTask.status],
-          taskIds: [...prev[newTask.status].taskIds, String(newTask.id)]
+    if (currentTask && currentTask.status !== newStatus) {
+      try {
+        await taskService.updateTask(taskId, { status: newStatus });
+        toast.success(`Status da tarefa atualizado para ${newStatus}.`);
+        if (onTasksUpdated) {
+          await onTasksUpdated(); // Recarrega rawTasks
         }
-      }));
 
-      // Notificar o componente pai
+        // Lógica do timer
+        if (newStatus === 'em_andamento') {
+          setTimerRunningTaskId(taskIdStr);
+          setCurrentTimerValues(prev => ({ ...prev, [taskIdStr]: currentTask.timer || 0 }));
+        } else if (timerRunningTaskId === taskIdStr) {
+          // Se o timer estava rodando para esta tarefa e o status mudou, parar e salvar o timer.
+          const currentTimerValue = currentTimerValues[taskIdStr] || currentTask.timer || 0;
+          await taskService.updateTask(taskId, { timer: currentTimerValue });
+          toast.info('Tempo da tarefa salvo.');
+          setTimerRunningTaskId(null);
+        }
+
+      } catch (error) {
+        toast.error('Erro ao atualizar status da tarefa.');
+      }
+    }
+  };
+
+  const handleTaskFormSuccess = async (taskData: any) => { // Aceitar taskData
+    console.log('[KanbanBoard.tsx] handleTaskFormSuccess INÍCIO. taskData:', taskData);
+    try {
+      console.log('[KanbanBoard.tsx] handleTaskFormSuccess: ANTES de chamar taskService.createTask.');
+      // Adicionar a lógica para criar a tarefa na API
+      // Certifique-se de que taskData está no formato esperado por createTask
+      // (pode ser necessário ajustar os nomes dos campos se TaskForm envia algo diferente do que createTask espera)
+      const newTask = await taskService.createTask(taskData);
+      console.log('[KanbanBoard.tsx] handleTaskFormSuccess: DEPOIS de chamar taskService.createTask. Nova tarefa:', newTask);
+
+      handleCloseKanbanDialog(); // Usa a função centralizada para fechar e resetar
+      toast.success('Tarefa criada com sucesso!');
       if (onTasksUpdated) {
-        await onTasksUpdated();
+        await onTasksUpdated(); // Recarrega rawTasks (que agora incluirá a nova tarefa)
       }
     } catch (error) {
-      toast.error('Erro ao criar tarefa. Verifique os dados e tente novamente.');
+      console.error('[KanbanBoard.tsx] ERRO CAPTURADO em handleTaskFormSuccess:', error);
+      toast.error('Erro ao criar tarefa no Kanban. Verifique os dados e tente novamente.');
+      // Não fechar o diálogo em caso de erro para o usuário poder corrigir
     }
   };
 
-  // Definir a ordem das colunas com base no modo de visualização
-  const statusColumnOrder = ['backlog', 'todo', 'inProgress', 'review', 'done'];
-  const dateColumnOrder = ['overdue', 'today', 'tomorrow', 'future'];
-  const columnOrder = viewMode === 'status' ? statusColumnOrder : dateColumnOrder;
+  // A ordem das colunas (processedColumnOrder) vem do hook useProcessedKanbanData
+  // As colunas (processedColumns) e o mapa de tarefas (processedTasksMap) também vêm do hook.
 
-
-
-
-
-  if (loading) {
+  if (processedDataIsLoading) {
     return (
       <div className="h-full">
         <div className="flex gap-4 h-full overflow-x-auto pb-4">
-          {columnOrder.map(columnId => (
+          {(processedColumnOrder.length > 0 ? processedColumnOrder : statusColumnOrder).map(columnId => ( // Fallback para statusColumnOrder se processedColumnOrder estiver vazio durante o loading inicial
             <div key={columnId} className="kanban-column min-w-[280px] max-w-[280px] bg-card flex flex-col border rounded-lg overflow-hidden">
               <div className="p-3 border-b border-border">
                 <div className="flex items-center justify-between">
@@ -1498,27 +895,14 @@ useEffect(() => {
                   </div>
                 </div>
               </div>
-
               <div className="p-2 flex-1 overflow-y-auto min-h-[50px]">
                 {Array.from({ length: 3 }).map((_, index) => (
                   <div key={index} className="p-3 mb-2 bg-background rounded-md border shadow-sm">
-                    {/* Projeto */}
-                    <div className="mb-1">
-                      <Skeleton className="h-3 w-24" />
-                    </div>
-
-                    {/* Nome da tarefa */}
+                    <Skeleton className="h-3 w-24 mb-1" />
                     <Skeleton className="h-4 w-full mb-2" />
-
-                    {/* Linha única com usuário, data e prioridade */}
                     <div className="flex items-center gap-2">
-                      {/* Ícone do usuário */}
                       <Skeleton className="h-5 w-5 rounded-full" />
-
-                      {/* Data */}
                       <Skeleton className="h-3 w-16" />
-
-                      {/* Prioridade */}
                       <Skeleton className="h-4 w-12 rounded-full" />
                     </div>
                   </div>
@@ -1530,38 +914,17 @@ useEffect(() => {
       </div>
     );
   }
-
-  // Preparar as tarefas para cada coluna
-
-
-  const columnTasks = columnOrder.reduce((acc: Record<string, Task[]>, columnId: string) => {
-    const column = columns[columnId];
-    if (!column) return acc;
-
-    acc[columnId] = column.taskIds
-      .map(taskId => tasks[taskId])
-      .filter(Boolean);
-
-
-
-    return acc;
-  }, {} as Record<string, Task[]>);
-
-  // Encontrar a tarefa ativa
-  const activeTask = activeId ? tasks[activeId] : null;
-
-
+  
+  const activeTask = activeId ? processedTasksMap[activeId] : null;
 
   return (
     <div className="h-full w-full">
-      {error && (
+      {processedDataError && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{processedDataError}</AlertDescription>
         </Alert>
       )}
-
-
 
       <DndContext
         sensors={sensors}
@@ -1571,55 +934,32 @@ useEffect(() => {
         autoScroll={true}
       >
         <div className="flex gap-4 h-full w-full overflow-x-auto pb-4">
-          {columnOrder.map(columnId => {
-            const column = columns[columnId];
-
-            // Se a coluna não existir, criar uma coluna vazia com o ID e título corretos
-            if (!column) {
-
-              let title = columnId;
-
-              // Definir títulos para colunas de data
-              if (columnId === 'overdue') title = 'Atrasadas';
-              else if (columnId === 'today') title = 'Hoje';
-              else if (columnId === 'tomorrow') title = 'Amanhã';
-              else if (columnId === 'future') title = 'Futuras';
-
-              // Definir títulos para colunas de status
-              else if (columnId === 'backlog') title = 'Pendente';
-              else if (columnId === 'todo') title = 'A Fazer';
-              else if (columnId === 'inProgress') title = 'Em Andamento';
-              else if (columnId === 'review') title = 'Em Revisão';
-              else if (columnId === 'done') title = 'Concluído';
-
+          {processedColumnOrder.map(columnId => {
+            const columnData = processedColumns[columnId];
+            if (!columnData) {
+              // Isso não deve acontecer se useProcessedKanbanData estiver funcionando corretamente
+              // Mas como fallback, podemos renderizar uma coluna vazia ou um placeholder.
+              console.warn(`Dados da coluna ${columnId} não encontrados.`);
               return (
-                <Column
-                  key={columnId}
-                  id={columnId}
-                  column={{ id: columnId, title, taskIds: [] }}
-                  tasks={[]}
-                  onAddTask={(columnId) => {
-                    setSelectedColumnId(columnId);
-                    setIsDialogOpen(true);
-                  }}
-                  onTaskClick={handleTaskClick}
-                  onTaskStatusChange={handleTaskStatusChange}
-                  timerRunningTaskId={timerRunningTaskId}
-                  setTimerRunningTaskId={setTimerRunningTaskId}
-                  onTimerUpdate={handleTimerUpdate}
-                />
+                <div key={columnId} className="kanban-column min-w-[280px] max-w-[280px] bg-card flex flex-col border rounded-lg overflow-hidden p-3">
+                  <h3 className="font-medium">{columnId} (Erro)</h3>
+                </div>
               );
             }
 
+            const tasksInColumn = columnData.taskIds.map(taskId => processedTasksMap[taskId]).filter(Boolean) as KanbanTask[];
+
             return (
               <Column
-                key={column.id}
-                id={column.id}
-                column={column}
-                tasks={columnTasks[columnId] || []}
-                onAddTask={(columnId) => {
-                  setSelectedColumnId(columnId);
-                  setIsDialogOpen(true);
+                key={columnData.id}
+                id={columnData.id} // id da coluna
+                column={columnData}
+                tasks={tasksInColumn}
+                boardMode={boardMode} // Passar boardMode para Column
+                onAddTask={(colId) => {
+                  setCurrentColumnIdForNewTask(colId);
+                  setCreateTaskFormInstanceId(`kanban-create-task-${Date.now()}`); // Gerar ID único
+                  setIsCreateEditDialogOpen(true);
                 }}
                 onTaskClick={handleTaskClick}
                 onTaskStatusChange={handleTaskStatusChange}
@@ -1636,31 +976,43 @@ useEffect(() => {
             <div className="w-[280px] opacity-80 shadow-lg">
               <TaskCard
                 task={activeTask}
-                onClick={() => {}}
-                onTaskStatusChange={handleTaskStatusChange}
-                timerRunningTaskId={timerRunningTaskId}
-                setTimerRunningTaskId={setTimerRunningTaskId}
-                onTimerUpdate={handleTimerUpdate}
+                onClick={() => {}} // DragOverlay não deve ser clicável
+                onTaskStatusChange={handleTaskStatusChange} // Passar para consistência, mas não será usado no overlay
+                timerRunningTaskId={timerRunningTaskId} // Passar para consistência
+                setTimerRunningTaskId={setTimerRunningTaskId} // Passar para consistência
+                onTimerUpdate={(seconds) => activeTask && handleTimerUpdate(String(activeTask.id), seconds)}
               />
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
 
-      {/* Modal de detalhes da tarefa */}
-      <TaskDetailsModal
-        isOpen={isTaskModalOpen}
-        onClose={handleTaskModalClose}
-        taskId={selectedTaskId}
-        onTaskUpdated={handleTaskUpdated}
-        timerRunningTaskId={timerRunningTaskId}
-        currentTimerValues={currentTimerValues}
-        setCurrentTimerValues={setCurrentTimerValues}
-        setTimerRunningTaskId={setTimerRunningTaskId}
-      />
+      {selectedTaskForModal && typeof selectedTaskForModal.id === 'number' && ( // Garante que id é number
+        <TaskDetailsModal
+          isOpen={isTaskDetailsModalOpen}
+          onClose={handleTaskModalClose}
+          taskId={selectedTaskForModal.id}
+          onTaskUpdated={handleTaskUpdated}
+          timerRunningTaskId={timerRunningTaskId}
+          currentTimerValues={currentTimerValues}
+          setCurrentTimerValues={setCurrentTimerValues}
+          setTimerRunningTaskId={setTimerRunningTaskId}
+        />
+      )}
 
-      {/* Diálogo para adicionar tarefa */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog 
+        key={createTaskFormInstanceId || 'kanban-create-dialog'} 
+        open={isCreateEditDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCloseKanbanDialog();
+          } else {
+            // Se estiver abrindo, o KanbanBoard já define o instanceId e currentColumnId
+            // onde o botão de "+" é clicado.
+            setIsCreateEditDialogOpen(true);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Criar Nova Tarefa</DialogTitle>
@@ -1670,50 +1022,27 @@ useEffect(() => {
           </DialogHeader>
           <div className="py-4">
             <TaskForm
+              key={createTaskFormInstanceId || 'kanban-create-form'}
+              ref={createTaskFormRef}
               onSuccess={handleTaskFormSuccess}
-              defaultProjectId={projectId}
-              defaultStatus={selectedColumnId ? columnToStatusMap[selectedColumnId] : undefined}
-              projectUsers={propTeams?.flatMap(team => {
-                // Garantir que estamos obtendo usuários válidos das equipes
-                if (!team.users) return [];
-
-                // Filtrar usuários duplicados por ID
-                const uniqueUsers = new Map();
-
-                team.users.forEach(user => {
-                  // Se o usuário for apenas um ID, criar um objeto básico
-                  if (typeof user === 'number') {
-                    uniqueUsers.set(user, { id: user, name: `Usuário ${user}` });
-                  } else if (user && user.id) {
-                    uniqueUsers.set(user.id, user);
-                  }
-                });
-
-                return Array.from(uniqueUsers.values());
-              }) || []}
-              projectTeams={propTeams || []}
+              defaultProjectId={projectId ? Number(projectId) : undefined}
+              defaultStatus={currentColumnIdForNewTask ? columnToStatusMap[currentColumnIdForNewTask] : undefined}
+              formInstanceId={createTaskFormInstanceId || undefined}
             />
           </div>
-
-          {/* Botões de ação fora do formulário */}
           <DialogFooter className="flex justify-between">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsDialogOpen(false)}
+              onClick={handleCloseKanbanDialog} // Usa a função centralizada
             >
               Cancelar
             </Button>
             <Button
               type="button"
               onClick={() => {
-                // Encontrar o botão de submit do formulário pelo ID e clicar nele
-                const submitButton = document.getElementById('task-form-submit');
-                if (submitButton) {
-                  (submitButton as HTMLButtonElement).click();
-                } else {
-                  console.error('Botão de submit não encontrado');
-                }
+                console.log(`[KanbanBoard.tsx] Botão Salvar do modal clicado. Acionando submit via ref. InstanceId: ${createTaskFormInstanceId}`);
+                createTaskFormRef.current?.triggerSubmit();
               }}
             >
               Salvar

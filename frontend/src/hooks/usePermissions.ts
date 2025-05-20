@@ -64,32 +64,48 @@ export const usePermissions = (): Permissions => {
 
   useEffect(() => {
     if (!user || !user.roles || !Array.isArray(user.roles) || user.roles.length === 0) {
+      console.log('[usePermissions] Condição inicial falhou: Usuário ou papéis ausentes/inválidos.', { user });
+      // Se não há usuário ou papéis, retorna as permissões padrão (tudo false)
+      // Isso pode estar acontecendo se user.roles estiver vazio ou não for um array
+      setPermissions({
+        canViewAllProjects: false,
+        canEditProjects: false,
+        canCreateProjects: false,
+        canDeleteProjects: false,
+        canViewAllTasks: false,
+        canCreateTasks: false,
+        canEditAllTaskFields: false,
+        canEditTaskStatus: false,
+        canEditTaskComments: false,
+        canAssignTasks: false,
+        canDeleteTasks: false,
+        canManageUsers: false,
+        canManageTeams: false,
+        userRole: null,
+        isMember: false,
+        isAdmin: false,
+        isManager: false,
+        isGuest: false,
+      });
       return;
     }
 
-    // Obter o papel do usuário
-    // Assumindo que user.roles é um array de objetos ou números
-    const roleId = typeof user.roles[0] === 'number' ? user.roles[0] : user.roles[0]?.id;
-    let roleName: UserRole | null = null;
+    console.log('[usePermissions] Dados do usuário recebidos:', JSON.parse(JSON.stringify(user))); // Log profundo do usuário
+    console.log('[usePermissions] user.roles:', JSON.parse(JSON.stringify(user.roles)));
 
-    // Mapear o ID do papel para o nome
-    // IDs baseados no seed do backend
-    switch (roleId) {
-      case 1:
-        roleName = 'Administrador';
-        break;
-      case 2:
-        roleName = 'Gerente';
-        break;
-      case 3:
-        roleName = 'Membro';
-        break;
-      case 4:
-        roleName = 'Convidado';
-        break;
-      default:
-        roleName = null;
+    // Obter o papel do usuário
+    let roleName: UserRole | null = null;
+    const firstRole = user.roles[0]; // Pega o primeiro papel do array
+
+    // Verifica se o primeiro papel existe e tem a propriedade 'name'
+    if (firstRole && typeof firstRole === 'object' && firstRole.name) {
+      const potentialRoleName = firstRole.name as UserRole;
+      // Valida se o nome do papel é um dos UserRole esperados
+      if (['Administrador', 'Gerente', 'Membro', 'Convidado'].includes(potentialRoleName)) {
+        roleName = potentialRoleName;
+      }
     }
+    console.log('[usePermissions] roleName mapeado:', roleName);
 
     // Definir permissões com base no papel
     const newPermissions: Permissions = {
@@ -181,6 +197,7 @@ export const usePermissions = (): Permissions => {
       newPermissions.canDeleteTasks = false;
     }
 
+    console.log('[usePermissions] Novas permissões calculadas:', JSON.parse(JSON.stringify(newPermissions)));
     setPermissions(newPermissions);
   }, [user]);
 

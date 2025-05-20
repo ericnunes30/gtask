@@ -16,8 +16,15 @@ export interface User {
   name: string;
   email: string;
   occupation_id?: number;
+  roles?: Role[]; // Adicionar/Corrigir a propriedade roles
   created_at: string;
   updated_at: string;
+}
+
+export interface Role { // Definir a interface Role
+  id: number;
+  name: string;
+  description?: string | null;
 }
 
 const authService = {

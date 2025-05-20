@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PlusCircle, MoreHorizontal, Users, Calendar, ArrowRight, ClipboardList, AlertCircle, Edit, Pencil, Trash2 } from 'lucide-react';
 import {
   Dialog,
@@ -666,27 +673,29 @@ const Projects = () => {
               Gerencie seus projetos e acompanhe o progresso.
             </p>
           </div>
-          {!permissions.isMember ? (
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-1">
-                  <PlusCircle className="h-4 w-4" />
-                  Novo Projeto
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Criar Novo Projeto</DialogTitle>
-                  <DialogDescription>
-                    Preencha os detalhes do projeto. Clique em salvar quando terminar.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  <ProjectForm onSuccess={handleAddProject} />
-                </div>
-              </DialogContent>
-            </Dialog>
-          ) : null}
+          <div className="flex gap-2">
+            {!permissions.isMember ? (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-1">
+                    <PlusCircle className="h-4 w-4" />
+                    Novo Projeto
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Criar Novo Projeto</DialogTitle>
+                    <DialogDescription>
+                      Preencha os detalhes do projeto. Clique em salvar quando terminar.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <ProjectForm onSuccess={handleAddProject} />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            ) : null}
+          </div>
         </div>
 
         {error && (
@@ -739,7 +748,17 @@ const Projects = () => {
               </Card>
             ))
           ) : projects.length > 0 ? (
-            projects.map((project) => {
+            projects
+            .sort((a, b) => {
+              const priorityOrder: Record<ProjectPriority, number> = {
+                'urgente': 4,
+                'alta': 3,
+                'media': 2,
+                'baixa': 1
+              };
+              return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+            })
+            .map((project) => {
               // Obter membros do projeto (usando a propriedade users da API)
               const members = getProjectMembers((project as UIProject).members || project.users?.map(u => typeof u === 'object' ? u.id : u) || []);
 
@@ -832,6 +851,13 @@ const Projects = () => {
                       </div>
 
                       <div className="flex items-center justify-between mb-4">
+                        <Badge variant={
+                          project.priority === 'urgente' ? 'destructive' :
+                          project.priority === 'alta' ? 'outline' :
+                          project.priority === 'media' ? 'secondary' : 'default'
+                        }>
+                          {project.priority.charAt(0).toUpperCase() + project.priority.slice(1)}
+                        </Badge>
                         <Badge variant={project.status ? "default" : "secondary"}>
                           {project.status ? "Ativo" : "Inativo"}
                         </Badge>
@@ -858,15 +884,11 @@ const Projects = () => {
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-1" />
                           <span>
-                            {project.start_date
+                            {project.start_date 
                               ? new Date(project.start_date).toLocaleDateString('pt-BR')
-                              : project.startDate
-                                ? new Date(project.startDate).toLocaleDateString('pt-BR')
-                                : 'N/D'} - {project.end_date
-                                  ? new Date(project.end_date).toLocaleDateString('pt-BR')
-                                  : project.endDate
-                                    ? new Date(project.endDate).toLocaleDateString('pt-BR')
-                                    : 'N/D'}
+                              : 'N/D'} - {project.end_date 
+                                ? new Date(project.end_date).toLocaleDateString('pt-BR')
+                                : 'N/D'}
                           </span>
                         </div>
                         <div className="flex items-center">

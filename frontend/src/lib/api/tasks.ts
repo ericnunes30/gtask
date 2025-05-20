@@ -94,6 +94,7 @@ const taskService = {
 
   // Criar uma nova tarefa
   createTask: async (taskData: CreateTaskRequest) => {
+    console.log('[taskService.ts] createTask iniciado com taskData:', taskData);
     // Usar diretamente os nomes de campos que o backend espera
     const apiTaskData: any = { ...taskData };
 
@@ -124,10 +125,28 @@ const taskService = {
       apiTaskData.occupations = apiTaskData.occupations.map(id => Number(id));
     }
 
-    const response = await api.post<Task>('/task', apiTaskData);
-
-    // Converter os nomes dos campos da API para o formato usado no frontend
-    return convertApiTaskToFrontend(response.data);
+    console.log('[taskService.ts] Enviando para API (/task) via POST, apiTaskData:', apiTaskData);
+    try {
+      const response = await api.post<Task>('/task', apiTaskData);
+      console.log('[taskService.ts] Resposta da API (createTask):', response.data);
+      // Converter os nomes dos campos da API para o formato usado no frontend
+      return convertApiTaskToFrontend(response.data);
+    } catch (error) {
+      console.error('[taskService.ts] ERRO CAPTURADO DENTRO DE createTask (api.post):', error);
+      if (error.response) {
+        // O servidor respondeu com um status fora do range 2xx
+        console.error('[taskService.ts] Dados do erro da API:', error.response.data);
+        console.error('[taskService.ts] Status do erro da API:', error.response.status);
+        console.error('[taskService.ts] Headers do erro da API:', error.response.headers);
+      } else if (error.request) {
+        // A requisição foi feita mas não houve resposta
+        console.error('[taskService.ts] Nenhuma resposta recebida da API:', error.request);
+      } else {
+        // Algo aconteceu ao configurar a requisição que acionou um erro
+        console.error('[taskService.ts] Erro ao configurar requisição para API:', error.message);
+      }
+      throw error; // Re-lançar o erro para que possa ser tratado pelo chamador
+    }
   },
 
   // Atualizar uma tarefa existente

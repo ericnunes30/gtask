@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useImperativeHandle } from 'react';
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -72,13 +72,22 @@ export interface TaskFormProps {
   projectUsers?: any[];
   projectTeams?: any[];
   isEditMode?: boolean; // Indica se o formulário está em modo de edição
+  formInstanceId?: string; // Adicionado para rastrear a instância
 }
 
-export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStatus, projectUsers, projectTeams, isEditMode = false }: TaskFormProps) {
+export interface TaskFormRef {
+  triggerSubmit: () => void;
+}
+
+export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
+  ({ initialData, onSuccess, defaultProjectId, defaultStatus, projectUsers, projectTeams, isEditMode = false, formInstanceId }, ref) => {
     // Log para depuração de status inicial
     useEffect(() => {
-      console.log('[TaskForm] initialData e defaultStatus:', initialData, defaultStatus);
-    }, [initialData, defaultStatus]);
+      const mountUpdateId = Date.now();
+      console.log(`[TaskForm] MOUNT/UPDATE (ID: ${mountUpdateId}). Instance ID Prop: ${formInstanceId}, isEditMode: ${isEditMode}, defaultStatus: ${defaultStatus}, initialData ID: ${initialData?.id}`);
+      console.log(`[TaskForm] (ID: ${mountUpdateId}) Props na montagem/atualização (detalhe). isEditMode:`, isEditMode, 'initialData:', initialData);
+      console.log(`[TaskForm] (ID: ${mountUpdateId}) Received onSuccess prop definition:`, onSuccess.toString().substring(0, 300) + "...");
+    }, [initialData, defaultStatus, isEditMode, formInstanceId, onSuccess]); // Adicionado onSuccess às dependências para logar se ela mudar
   const statusLabels: Record<TaskStatus, string> = {
     pendente: "Pendente",
     a_fazer: "A Fazer",
@@ -554,11 +563,16 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
   };
 
   const onSubmit = async (values: TaskFormValues) => {
+    console.log(`[TaskForm.tsx] onSubmit from instance ID: ${formInstanceId}. Modo Edição: ${isEditMode}, Formulário sujo: ${form.formState.isDirty}`);
+    console.log('[TaskForm.tsx] Valores recebidos no onSubmit:', values);
+
     if (!form.formState.isDirty && isEditMode) {
       toast.info("Nenhuma alteração foi feita");
+      console.log('[TaskForm.tsx] Nenhuma alteração detectada no modo de edição.');
       return;
     }
     setLoading(true);
+    console.log('[TaskForm.tsx] setLoading(true)');
     try {
       // Converter datas para string no formato ISO
       const formattedValues = {
@@ -595,14 +609,26 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
         };
       }
 
-      // onSuccess(apiValues); // REMOVIDO: Salvamento agora é feito pelo debounce
+      console.log('[TaskForm.tsx] apiValues preparados para onSuccess:', apiValues);
+      console.log(`[TaskForm.tsx] Verificando a função onSuccess (prop) ANTES da chamada. Instance ID Prop: ${formInstanceId}. onSuccess definition:`, onSuccess.toString().substring(0, 300) + "...");
+      await onSuccess(apiValues); // Adicionado await
+      console.log('[TaskForm.tsx] onSuccess (prop) chamada e concluída.');
+
     } catch (error) {
-      console.error("Erro ao processar formulário:", error);
+      console.error("[TaskForm.tsx] Erro DENTRO do onSubmit OU na chamada de onSuccess (prop):", error);
       toast.error("Erro ao processar formulário. Tente novamente.");
     } finally {
       setLoading(false);
+      console.log('[TaskForm.tsx] setLoading(false) executado no finally do onSubmit.');
     }
   };
+
+  // Expor a função de submit via ref
+  useImperativeHandle(ref, () => ({
+    triggerSubmit: () => {
+      form.handleSubmit(onSubmit)();
+    }
+  }));
 
   return (
     <Form {...form}>
@@ -1011,12 +1037,12 @@ export function TaskForm({ initialData, onSuccess, defaultProjectId, defaultStat
               Remover
             </Button>
           )}
-          {/* Botão de submit oculto para ser acionado pelos botões externos */}
-          <Button type="submit" className="hidden" id="task-form-submit">
+          {/* Botão de submit oculto para ser acionado pelos botões externos, com ID dinâmico */}
+          <Button type="submit" className="hidden" id={`task-form-submit-${formInstanceId || 'default'}`}>
             Submit
           </Button>
         </div>
       </form>
     </Form>
   );
-}
+});

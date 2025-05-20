@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { projectService, Project } from '@/lib/api';
+import { projectService, Project, ProjectPriority } from '@/lib/api';
 import { convertApiProjectToFrontend } from '@/lib/api/projects';
 import { taskService, userService, teamService, User, Team } from '@/lib/api';
 import { ProjectForm } from '@/components/forms/ProjectForm';
@@ -29,12 +29,13 @@ const ProjectView = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [rawTasks, setRawTasks] = useState<any[]>([]); // Renomeado de tasks para rawTasks
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<ProjectPriority | 'todos'>('todos');
   const [kanbanViewMode, setKanbanViewMode] = useState<'status' | 'date'>('status');
   const [projectUsers, setProjectUsers] = useState<User[]>([]);
   const [projectTeams, setProjectTeams] = useState<Team[]>([]);
@@ -46,8 +47,8 @@ const ProjectView = () => {
   const { user } = useAuth();
   const permissions = usePermissions();
 
-  // Referência para o componente KanbanBoard
-  const kanbanBoardRef = React.useRef<{ fetchTasks: () => Promise<void> }>(null);
+  // Referência para o componente KanbanBoard - Removida
+  // const kanbanBoardRef = React.useRef<{ fetchTasks: () => Promise<void> }>(null);
 
   // Função para atualizar as tarefas do projeto
   const updateProjectTasks = useCallback(async () => {
@@ -61,22 +62,16 @@ const ProjectView = () => {
 
       // Atualizar as tarefas
       const projectTasks = projectData.tasks || [];
+      setRawTasks(projectTasks); // Atualiza rawTasks
 
       // Log para verificar tarefas atrasadas
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const atrasadas = projectTasks.filter(t => {
+      projectTasks.filter(t => {
         if (!t.due_date) return false;
         const dueDate = new Date(t.due_date);
         return dueDate < today && t.status !== 'concluido';
       });
-
-      // Verificar se o estado atual é diferente do novo estado
-      const currentTasksLength = tasks.length;
-      const newTasksLength = projectTasks.length;
-
-      // Atualizar o estado das tarefas
-      setTasks(projectTasks);
 
       // Recalcular progresso
       if (projectTasks.length > 0) {
@@ -88,7 +83,7 @@ const ProjectView = () => {
     } catch (err) {
       console.error('Erro ao atualizar tarefas do projeto:', err);
     }
-  }, [projectId, tasks.length]);
+  }, [projectId]); // Removido tasks.length, pois agora setRawTasks é chamado
 
   // Efeito para forçar a atualização das estatísticas quando o componente é montado
   useEffect(() => {
@@ -129,7 +124,7 @@ const ProjectView = () => {
 
         // Usar as tarefas que já vêm incluídas no projeto
         const projectTasks = projectData.tasks || [];
-        setTasks(projectTasks);
+        setRawTasks(projectTasks); // Define rawTasks
 
         // Calcular progresso com base nas tarefas concluídas
         if (projectTasks.length > 0) {
@@ -190,23 +185,14 @@ const ProjectView = () => {
     // Só executar quando o projeto estiver carregado e não estiver mais em loading
     if (project && !isLoading) {
       // Limpar seleções de filtro ao mudar de projeto
-      setSelectedTeamId(null);
-      setSelectedUserId(null);
+      // setSelectedTeamId(null); // Estes filtros agora são parte do objeto 'filters'
+      // setSelectedUserId(null);
 
-      // Pequeno atraso para garantir que os componentes estejam montados
-      const timer = setTimeout(() => {
-        if (kanbanBoardRef.current) {
-          kanbanBoardRef.current.fetchTasks();
-        }
-
-        if (tasksListRef.current) {
-          tasksListRef.current.fetchTasks();
-        }
-      }, 500);
-
-      return () => clearTimeout(timer);
+      // Não é mais necessário chamar fetchTasks diretamente no KanbanBoard ou TasksList
+      // Eles reagirão às props rawTasks e filters.
+      // A lógica de timeout pode ser removida ou repensada se ainda for necessária para algo.
     }
-  }, [projectId, project, isLoading]);
+  }, [projectId, project, isLoading]); // Removidas as refs dos componentes filhos
 
   if (isLoading) {
     return (
@@ -328,11 +314,12 @@ const ProjectView = () => {
     }
 
     // Atualizar o Kanban após a mudança de filtro
-    setTimeout(() => {
-      if (kanbanBoardRef.current) {
-        kanbanBoardRef.current.fetchTasks();
-      }
-    }, 100);
+    // Não é mais necessário chamar fetchTasks diretamente, pois os filtros são passados via props.
+    // setTimeout(() => {
+    //   if (kanbanBoardRef.current) {
+    //     kanbanBoardRef.current.fetchTasks();
+    //   }
+    // }, 100);
   };
 
   // Função para lidar com a mudança de usuário selecionado
@@ -344,11 +331,12 @@ const ProjectView = () => {
     }
 
     // Atualizar o Kanban após a mudança de filtro
-    setTimeout(() => {
-      if (kanbanBoardRef.current) {
-        kanbanBoardRef.current.fetchTasks();
-      }
-    }, 100);
+    // Não é mais necessário chamar fetchTasks diretamente, pois os filtros são passados via props.
+    // setTimeout(() => {
+    //   if (kanbanBoardRef.current) {
+    //     kanbanBoardRef.current.fetchTasks();
+    //   }
+    // }, 100);
   };
 
   // Função para lidar com a mudança de modo de visualização
@@ -370,7 +358,7 @@ const ProjectView = () => {
 
         // Usar as tarefas que já vêm incluídas no projeto
         const projectTasks = projectData.tasks || [];
-        setTasks(projectTasks);
+        setRawTasks(projectTasks); // Corrigido de setTasks para setRawTasks
 
         // Recalcular progresso com base nas tarefas concluídas
         if (projectTasks.length > 0) {
@@ -483,8 +471,8 @@ const ProjectView = () => {
                   <div className="h-full bg-primary rounded-full" style={{ width: `${progress}%` }} />
                 </div>
                 <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                  <span>Concluídas: {tasks.filter(t => t.status === 'concluido').length} de {tasks.length}</span>
-                  <span>Em andamento: {tasks.filter(t => ['em_andamento', 'em_revisao'].includes(t.status)).length}</span>
+                  <span>Concluídas: {rawTasks.filter(t => t.status === 'concluido').length} de {rawTasks.length}</span>
+                  <span>Em andamento: {rawTasks.filter(t => ['em_andamento', 'em_revisao'].includes(t.status)).length}</span>
                 </div>
               </div>
 
@@ -591,13 +579,13 @@ const ProjectView = () => {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-accent/20 rounded-lg p-3 flex flex-col items-center justify-center">
                     <p className="text-xs text-muted-foreground mb-1">Total</p>
-                    <p className="text-xl font-bold">{tasks.length}</p>
+                    <p className="text-xl font-bold">{rawTasks.length}</p>
                   </div>
                   <div className="bg-accent/20 rounded-lg p-3 flex flex-col items-center justify-center">
                     <p className="text-xs text-muted-foreground mb-1">Atrasadas</p>
                     <p className="text-xl font-bold text-red-500">
                       {(() => {
-                        const atrasadas = tasks.filter(t => {
+                        const atrasadas = rawTasks.filter(t => {
                           if (!t.due_date) return false;
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
@@ -610,7 +598,7 @@ const ProjectView = () => {
                   </div>
                   <div className="bg-accent/20 rounded-lg p-3 flex flex-col items-center justify-center">
                     <p className="text-xs text-muted-foreground mb-1">Concluídas</p>
-                    <p className="text-xl font-bold">{tasks.filter(t => t.status === 'concluido').length}</p>
+                    <p className="text-xl font-bold">{rawTasks.filter(t => t.status === 'concluido').length}</p>
                   </div>
                 </div>
               </div>
@@ -623,13 +611,13 @@ const ProjectView = () => {
                   <div className="grid grid-cols-[1fr,auto] gap-x-4 gap-y-2 items-center">
                     {/* Pendente */}
                     <span className="text-sm text-muted-foreground">Pendente:</span>
-                    <span className="text-sm font-medium">{tasks.filter(t => t.status === 'pendente').length}</span>
+                    <span className="text-sm font-medium">{rawTasks.filter(t => t.status === 'pendente').length}</span>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden col-span-2">
                       <div
                         className="h-full bg-blue-500 rounded-full"
                         style={{
-                          width: tasks.length > 0
-                            ? `${(tasks.filter(t => t.status === 'pendente').length / tasks.length) * 100}%`
+                          width: rawTasks.length > 0
+                            ? `${(rawTasks.filter(t => t.status === 'pendente').length / rawTasks.length) * 100}%`
                             : '0%'
                         }}
                       />
@@ -637,13 +625,13 @@ const ProjectView = () => {
 
                     {/* A Fazer */}
                     <span className="text-sm text-muted-foreground">A Fazer:</span>
-                    <span className="text-sm font-medium">{tasks.filter(t => t.status === 'a_fazer').length}</span>
+                    <span className="text-sm font-medium">{rawTasks.filter(t => t.status === 'a_fazer').length}</span>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden col-span-2">
                       <div
                         className="h-full bg-yellow-500 rounded-full"
                         style={{
-                          width: tasks.length > 0
-                            ? `${(tasks.filter(t => t.status === 'a_fazer').length / tasks.length) * 100}%`
+                          width: rawTasks.length > 0
+                            ? `${(rawTasks.filter(t => t.status === 'a_fazer').length / rawTasks.length) * 100}%`
                             : '0%'
                         }}
                       />
@@ -651,13 +639,13 @@ const ProjectView = () => {
 
                     {/* Em Andamento */}
                     <span className="text-sm text-muted-foreground">Em Andamento:</span>
-                    <span className="text-sm font-medium">{tasks.filter(t => t.status === 'em_andamento').length}</span>
+                    <span className="text-sm font-medium">{rawTasks.filter(t => t.status === 'em_andamento').length}</span>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden col-span-2">
                       <div
                         className="h-full bg-orange-500 rounded-full"
                         style={{
-                          width: tasks.length > 0
-                            ? `${(tasks.filter(t => t.status === 'em_andamento').length / tasks.length) * 100}%`
+                          width: rawTasks.length > 0
+                            ? `${(rawTasks.filter(t => t.status === 'em_andamento').length / rawTasks.length) * 100}%`
                             : '0%'
                         }}
                       />
@@ -665,13 +653,13 @@ const ProjectView = () => {
 
                     {/* Em Revisão */}
                     <span className="text-sm text-muted-foreground">Em Revisão:</span>
-                    <span className="text-sm font-medium">{tasks.filter(t => t.status === 'em_revisao').length}</span>
+                    <span className="text-sm font-medium">{rawTasks.filter(t => t.status === 'em_revisao').length}</span>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden col-span-2">
                       <div
                         className="h-full bg-purple-500 rounded-full"
                         style={{
-                          width: tasks.length > 0
-                            ? `${(tasks.filter(t => t.status === 'em_revisao').length / tasks.length) * 100}%`
+                          width: rawTasks.length > 0
+                            ? `${(rawTasks.filter(t => t.status === 'em_revisao').length / rawTasks.length) * 100}%`
                             : '0%'
                         }}
                       />
@@ -679,13 +667,13 @@ const ProjectView = () => {
 
                     {/* Concluído */}
                     <span className="text-sm text-muted-foreground">Concluído:</span>
-                    <span className="text-sm font-medium">{tasks.filter(t => t.status === 'concluido').length}</span>
+                    <span className="text-sm font-medium">{rawTasks.filter(t => t.status === 'concluido').length}</span>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden col-span-2">
                       <div
                         className="h-full bg-green-500 rounded-full"
                         style={{
-                          width: tasks.length > 0
-                            ? `${(tasks.filter(t => t.status === 'concluido').length / tasks.length) * 100}%`
+                          width: rawTasks.length > 0
+                            ? `${(rawTasks.filter(t => t.status === 'concluido').length / rawTasks.length) * 100}%`
                             : '0%'
                         }}
                       />
@@ -708,6 +696,22 @@ const ProjectView = () => {
               </TabsList>
 
               <div className="flex items-center gap-2">
+                <Select
+                  value={priorityFilter}
+                  onValueChange={(value) => setPriorityFilter(value as ProjectPriority | 'todos')}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Prioridade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas Prioridades</SelectItem>
+                    <SelectItem value="baixa">Baixa</SelectItem>
+                    <SelectItem value="media">Média</SelectItem>
+                    <SelectItem value="alta">Alta</SelectItem>
+                    <SelectItem value="urgente">Urgente</SelectItem>
+                  </SelectContent>
+                </Select>
+
                 <Select
                   value={selectedTeamId ? String(selectedTeamId) : 'all'}
                   onValueChange={handleTeamChange}
@@ -760,34 +764,43 @@ const ProjectView = () => {
             </div>
             <TabsContent value="kanban" className="mt-6">
               <div className="px-5">
-                <KanbanBoard
-                  ref={kanbanBoardRef}
-                  projectId={parseInt(projectId || '0')}
-                  teams={projectTeams}
-                  selectedTeamId={selectedTeamId}
-                  onTeamChange={setSelectedTeamId}
-                  selectedUserId={selectedUserId}
-                  onUserChange={setSelectedUserId}
-                  viewMode={kanbanViewMode}
-                  onViewModeChange={setKanbanViewMode}
-                  onTasksUpdated={updateProjectTasks}
-                  // Não forçar filtro de usuário dentro da visualização do projeto
-                  forceUserFilter={false}
-                />
+                {isLoading && !rawTasks.length ? (
+                  <Skeleton className="w-full h-[500px]" />
+                ) : (
+                  <KanbanBoard
+                    rawTasks={rawTasks}
+                    boardMode="project-view"
+                    viewMode={kanbanViewMode}
+                    filters={{
+                      priority: priorityFilter === 'todos' ? null : priorityFilter,
+                      teamId: selectedTeamId,
+                      userId: selectedUserId,
+                      // No ProjectView, geralmente mostramos todas as tarefas (concluídas ou não)
+                      // a menos que haja um switch específico para isso nesta página.
+                      // Por ora, vamos assumir que sempre mostra concluídas.
+                      showCompleted: true,
+                    }}
+                    projectId={projectId} // Passar o projectId string
+                    project={project} // Passar o objeto do projeto se o KanbanBoard ainda o utiliza
+                    onTasksUpdated={updateProjectTasks} // Manter para recarregar rawTasks
+                  />
+                )}
               </div>
             </TabsContent>
             <TabsContent value="list" className="mt-6">
               <div className="px-5">
+                {/* TasksList também precisará ser refatorado para usar rawTasks e filters */}
                 <TasksList
                   ref={tasksListRef}
-                  projectId={parseInt(projectId || '0')}
-                  teams={projectTeams}
-                  selectedTeamId={selectedTeamId}
-                  selectedUserId={selectedUserId}
-                  viewMode={kanbanViewMode}
-                  onTasksUpdated={updateProjectTasks}
-                  // Não forçar filtro de usuário dentro da visualização do projeto
-                  forceUserFilter={false}
+                  projectId={parseInt(projectId || '0')} // Manter por compatibilidade
+                  teams={projectTeams} // Manter por compatibilidade
+                  selectedTeamId={selectedTeamId} // Manter por compatibilidade
+                  selectedUserId={selectedUserId} // Manter por compatibilidade
+                  priorityFilter={priorityFilter === 'todos' ? undefined : priorityFilter} // Manter por compatibilidade
+                  viewMode={kanbanViewMode} // Manter por compatibilidade
+                  onTasksUpdated={updateProjectTasks} // Manter por compatibilidade
+                  forceUserFilter={false} // Manter por compatibilidade
+                  // showCompleted={true} // Adicionar se TasksList tiver essa prop
                 />
               </div>
             </TabsContent>

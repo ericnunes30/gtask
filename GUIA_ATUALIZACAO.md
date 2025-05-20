@@ -76,7 +76,7 @@ git checkout main
 git add .
 
 # Faça o commit das alterações
-git commit -m "[CORREÇÃO DE BUGS] Corrigido requests em excesso na renderização do estado no add task"
+git commit -m "[adição de funcionalidade] Filtro de ocultar tarefas com status de concluidas"
 
 # Faça o push forçado (use com cuidado!)
 git push --force-with-lease origin main
