@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 // ... outros imports
-import { AppLayout } from '@/components/layout/AppLayout'; // Modificar esta linha
+import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
-import { KanbanTask } from '@/components/kanban/kanbanTypes'; // TaskStatus de kanbanTypes é o mesmo de @/lib/api
+import { KanbanTask } from '@/components/kanban/kanbanTypes';
 import {
   Dialog,
   DialogContent,
@@ -16,50 +16,51 @@ import {
   DialogClose,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { TasksList, TasksListRef } from '@/components/dashboard/TasksList'; // Supondo que TasksListRef exista ou possa ser criado se necessário
+import { TasksList } from '@/components/dashboard/TasksList';
 import { TaskForm } from '@/components/forms/TaskForm';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { projectService, Project, taskService, Task, TaskStatus } from '@/lib/api';
+import { projectService, Project, taskService, Task, TaskStatus, userService, User, TaskPriority } from '@/lib/api';
 import { UpdateTaskRequest } from '@/lib/api/tasks';
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// Remover a linha duplicada
-import { Switch } from "@/components/ui/switch"; // Importando o Switch
+
+import { Switch } from "@/components/ui/switch";
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaskFormRef } from '@/components/forms/TaskForm';
 
 const Tasks = () => {
-  console.error("!!!!!!!!!!!!!!!!!!!! TASKS.TSX EXECUTANDO - VERSÃO MAIS RECENTE !!!!!!!!!!!!!!!!!!!!!"); // Adicionar este log
+  console.error("!!!!!!!!!!!!!!!!!!!! TASKS.TSX EXECUTANDO - VERSÃO MAIS RECENTE !!!!!!!!!!!!!!!!!!!!!");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [taskFormKey, setTaskFormKey] = useState(0); // Chave para TaskForm
-  const successCallbackInstanceCounter = useRef(0); // Novo ref
+  const [taskFormKey, setTaskFormKey] = useState(0);
+  const successCallbackInstanceCounter = useRef(0);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsWithTasks, setProjectsWithTasks] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("kanban");
-  const [rawTasks, setRawTasks] = useState<Task[]>([]); // Novo estado para rawTasks
+  const [rawTasks, setRawTasks] = useState<Task[]>([]);
   const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<string | null>(null);
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null); // NOVO ESTADO PARA FILTRO DE USUÁRIO
+  const [allUsers, setAllUsers] = useState<User[]>([]); // NOVO ESTADO PARA TODOS OS USUÁRIOS
   const [viewMode, setViewMode] = useState<'status' | 'date'>('status');
   const [showCompleted, setShowCompleted] = useState(() => {
-    // Recuperar do localStorage ou usar false como padrão
     const savedShowCompleted = localStorage.getItem('showCompletedTasksPage');
     return savedShowCompleted === 'true';
   });
-  const tasksListRef = useRef<TasksListRef>(null); // Ajustar tipo se TasksListRef for diferente
+  const tasksListRef = useRef<{ fetchTasks: () => Promise<void> }>(null);
   const taskFormRef = useRef<TaskFormRef>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const permissions = usePermissions();
   // Extrair valores primitivos para estabilizar dependências de useCallback
-  const currentUserId = user?.id;
+  const currentUserIdAuth = user?.id; // Renomeado para evitar conflito com selectedUserId (estado do filtro)
   const isUserMember = permissions.isMember;
   // const [kanbanFilteredProjectIds, setKanbanFilteredProjectIds] = useState<Set<number> | null>(null); // Removido
 
@@ -72,17 +73,9 @@ const Tasks = () => {
     setLoading(true);
     setError(null);
     try {
-      let allTasks = await taskService.getTasks();
-      if (isUserMember && currentUserId) { // Usar as variáveis estabilizadas
-        allTasks = allTasks.filter(task => {
-          if (!task.users || !Array.isArray(task.users) || task.users.length === 0) return false;
-          return task.users.some(taskUser =>
-            (typeof taskUser === 'number' && taskUser === currentUserId) ||
-            (typeof taskUser === 'object' && taskUser !== null && taskUser.id === currentUserId)
-          );
-        });
-      }
-      setRawTasks(allTasks);
+      const allTasksData = await taskService.getTasks(); // Não aplicar filtro de membro aqui
+      setRawTasks(allTasksData);
+      // O filtro de membro será aplicado em filteredTasks
       if (showFeedback) toast.success("Tarefas recarregadas!");
     } catch (err) {
       console.error('Erro ao carregar todas as tarefas:', err);
@@ -92,11 +85,25 @@ const Tasks = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, isUserMember, setLoading, setError, setRawTasks]); // Dependências atualizadas
+  }, [setLoading, setError, setRawTasks]); // Removido currentUserIdAuth e isUserMember das dependências
 
   useEffect(() => {
     fetchAllTasks(false); // Chamar sem feedback na carga inicial
   }, [fetchAllTasks]); // Depender da função memoizada
+
+  // useEffect para buscar todos os usuários
+  useEffect(() => {
+    const fetchAllUsers = async () => {
+      try {
+        const usersData = await userService.getUsers();
+        setAllUsers(usersData);
+      } catch (err) {
+        console.error('Erro ao carregar todos os usuários:', err);
+        toast.error('Falha ao carregar lista de usuários para filtro.');
+      }
+    };
+    fetchAllUsers();
+  }, []); // Executar apenas uma vez na montagem
 
   // useEffect para buscar projetos e atualizar a lista de projetos com tarefas
   useEffect(() => {
@@ -165,14 +172,14 @@ const Tasks = () => {
       const updateData: UpdateTaskRequest = { status: newStatus };
       if (newOrder !== undefined) {
         // TESTE: Enviar order como inteiro arredondado
-        updateData.order = Math.round(newOrder); 
+        updateData.order = Math.round(newOrder);
         console.log(`[Tasks.tsx] TESTE: Original newOrder: ${newOrder}, Enviando order arredondado: ${updateData.order}`);
       }
       console.log('[Tasks.tsx] Updating task on API with data:', updateData);
       await taskService.updateTask(Number(task.id), updateData);
       console.log('[Tasks.tsx] Task updated on API. Fetching all tasks...');
       // O KanbanBoard já pode mostrar um toast "movida". Se precisar de outro, adicione aqui.
-      // toast.success(`Tarefa "${task.title}" atualizada.`); 
+      // toast.success(`Tarefa "${task.title}" atualizada.`);
       await fetchAllTasks(false); // Recarregar silenciosamente para garantir consistência
       console.log('[Tasks.tsx] All tasks fetched after update.');
     } catch (error) {
@@ -260,8 +267,6 @@ const Tasks = () => {
     } else {
       setSelectedPriorityFilter(value);
     }
-    // Não é mais necessário chamar fetchTasks no KanbanBoard diretamente
-    // A mudança de filtro será refletida através da prop 'filters'
   };
 
   const handleProjectChange = (value: string) => {
@@ -270,52 +275,76 @@ const Tasks = () => {
     } else {
       setSelectedProjectFilter(Number(value));
     }
-    // Não é mais necessário chamar fetchTasks no KanbanBoard diretamente
+  };
+
+  const handleUserChange = (value: string) => {
+    if (value === 'all') {
+      setSelectedUserId(null);
+    } else {
+      setSelectedUserId(Number(value));
+    }
   };
 
   const handleViewModeChange = (value: 'status' | 'date') => {
     setViewMode(value);
-    // Não é mais necessário chamar fetchTasks no KanbanBoard diretamente
-    // O KanbanBoard reagirá à mudança da prop viewMode
   };
 
   const handleShowCompletedChange = (checked: boolean) => {
     setShowCompleted(checked);
     localStorage.setItem('showCompletedTasksPage', String(checked));
-    // Não é mais necessário chamar fetchTasks no KanbanBoard diretamente
   };
 
-  // const debounce = <T extends (...args: any[]) => any>(fn: T, delay: number) => { // Removido se handleTasksFiltered for removido
-  //   let timer: NodeJS.Timeout;
-  //   return (...args: Parameters<T>) => {
-  //     clearTimeout(timer);
-  //     timer = setTimeout(() => fn(...args), delay);
-  //   };
-  // };
+  // Memoized filtered tasks to avoid re-calculating on every render
+  const filteredTasks = useMemo(() => {
+    let tasksToFilter = [...rawTasks];
 
-  // const handleTasksFiltered = debounce((filteredTasks: Task[]) => { // Removido
-  //   console.log("Tasks.tsx: Recebido callback onTasksFiltered com", filteredTasks.length, "tarefas.");
-  //   const projectIds = new Set<number>();
-  //   filteredTasks.forEach(task => {
-  //     const taskId = typeof task.project_id === 'string' ? parseInt(task.project_id) : task.project_id;
-  //     if (taskId) {
-  //       projectIds.add(taskId);
-  //     }
-  //   });
-  //   console.log("Tasks.tsx: IDs de projetos extraídos das tarefas filtradas:", projectIds);
-  //   // Comparar com o estado anterior para evitar re-renders desnecessários
-  //   if (JSON.stringify(Array.from(projectIds)) !== JSON.stringify(Array.from(kanbanFilteredProjectIds || []))) {
-  //       setKanbanFilteredProjectIds(projectIds);
-  //   }
-  // }, 300);
+    // Apply project filter
+    if (selectedProjectFilter !== null) {
+      tasksToFilter = tasksToFilter.filter(task => {
+        const taskProjectId = typeof task.project_id === 'string' ? parseInt(task.project_id) : task.project_id;
+        return taskProjectId === selectedProjectFilter;
+      });
+    }
 
-  // Dentro do componente Tasks, antes do return
-  console.log('[Tasks.tsx] Verificando Permissões:', {
-    canCreateTasks: permissions.canCreateTasks,
-    isMember: permissions.isMember,
-    // Se houver outras flags relevantes no seu hook usePermissions, adicione-as aqui
-    // Ex: userRoles: user?.roles (se user vier do useAuth e tiver papéis)
-  });
+    // Apply priority filter
+    if (selectedPriorityFilter !== null) {
+      tasksToFilter = tasksToFilter.filter(task => task.priority === selectedPriorityFilter);
+    }
+
+    // Apply user filter (novo filtro de responsável)
+    if (selectedUserId !== null) {
+      tasksToFilter = tasksToFilter.filter(task =>
+        task.users && task.users.some(userRef =>
+          (typeof userRef === 'number' && userRef === selectedUserId) ||
+          (typeof userRef === 'object' && userRef !== null && userRef.id === selectedUserId)
+        )
+      );
+    }
+
+    // Apply show completed filter
+    if (!showCompleted) {
+      tasksToFilter = tasksToFilter.filter(task => task.status !== 'concluido');
+    }
+
+    // Apply member filter (if user is a member, only show their tasks)
+    // Este filtro é aplicado DEPOIS do filtro de selectedUserId,
+    // o que significa que se um membro selecionar "Todos os Responsáveis", ele ainda verá apenas suas tarefas.
+    // Se a intenção for que "Todos os Responsáveis" mostre TUDO para um membro, esta lógica precisaria ser ajustada.
+    if (isUserMember && currentUserIdAuth) {
+      tasksToFilter = tasksToFilter.filter(task => {
+        if (!task.users || !Array.isArray(task.users) || task.users.length === 0) return false;
+        return task.users.some(taskUser =>
+          (typeof taskUser === 'number' && taskUser === currentUserIdAuth) ||
+          (typeof taskUser === 'object' && taskUser !== null && taskUser.id === currentUserIdAuth)
+        );
+      });
+    }
+
+    return tasksToFilter;
+  }, [rawTasks, selectedProjectFilter, selectedPriorityFilter, selectedUserId, showCompleted, isUserMember, currentUserIdAuth]);
+
+
+  // Os console.log abaixo foram removidos do JSX para evitar erros de renderização.
 
   return (
     <AppLayout>
@@ -328,7 +357,7 @@ const Tasks = () => {
         )}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            {loading ? (
+            {loading && !filteredTasks.length ? ( // Ajustado para considerar filteredTasks no loading inicial
               <div className="flex flex-col">
                 <Skeleton className="h-10 w-64 mb-2" />
                 <Skeleton className="h-5 w-48" />
@@ -371,7 +400,7 @@ const Tasks = () => {
           {permissions.canCreateTasks && !permissions.isMember && (
             <Button className="gap-1" disabled={loading} onClick={() => {
               const newKey = taskFormKey + 1;
-              setTaskFormKey(newKey); 
+              setTaskFormKey(newKey);
               // successCallbackInstanceCounter.current += 1; // Movido para onOpenChange do Dialog
               const currentCallbackId = successCallbackInstanceCounter.current;
               console.log(`[Tasks.tsx] "Nova Tarefa" BTN CLICK. New taskFormKey: ${newKey}. Callback ID for onSuccess: ${currentCallbackId}. Current handleTaskFormSuccess:`, handleTaskFormSuccess.toString().substring(0, 300) + "..."); // Log da definição da função (truncada para legibilidade)
@@ -381,8 +410,7 @@ const Tasks = () => {
               Nova Tarefa
             </Button>
           )}
-          {isDialogOpen && console.log(`[Tasks.tsx] CHECK isDialogOpen is TRUE. taskFormKey: ${taskFormKey}. successCallbackInstanceCounter: ${successCallbackInstanceCounter.current}`)}
-          {isDialogOpen && (
+          {isDialogOpen && (/* {isDialogOpen && console.log(`[Tasks.tsx] CHECK isDialogOpen is TRUE...`)} */ true) && (
             <Dialog key={`dialog-${taskFormKey}`} open={isDialogOpen} onOpenChange={(open) => {
               // Se estiver fechando o diálogo, podemos incrementar o contador para a próxima vez que handleTaskFormSuccess for definido
               if (!open) {
@@ -399,15 +427,15 @@ const Tasks = () => {
                     Preencha os detalhes da tarefa. Clique em salvar quando terminar.
                   </DialogDescription>
                 </DialogHeader>
-                {console.log(`[Tasks.tsx] RENDERING DIALOG CONTENT. Key for Dialog: dialog-${taskFormKey}. Callback ID for onSuccess: ${successCallbackInstanceCounter.current}. handleTaskFormSuccess to be passed:`, handleTaskFormSuccess.toString().substring(0, 300) + "...")}
+                {/* {console.log(`[Tasks.tsx] RENDERING DIALOG CONTENT...`)} */}
                 <div className="py-4">
-                  {console.log(`[Tasks.tsx] RENDERING TASKFORM. Key for TaskForm: taskform-${taskFormKey}. InstanceId to be passed: tasks-page-create-dialog-${taskFormKey}`)}
+                  {/* {console.log(`[Tasks.tsx] RENDERING TASKFORM...`)} */}
                   <TaskForm
-                    key={`taskform-${taskFormKey}`} 
+                    key={`taskform-${taskFormKey}`}
                     ref={taskFormRef}
                     onSuccess={handleTaskFormSuccess}
                     defaultProjectId={projectId}
-                    formInstanceId={`tasks-page-create-dialog-${taskFormKey}`} 
+                    formInstanceId={`tasks-page-create-dialog-${taskFormKey}`}
                   />
                 </div>
                 <DialogFooter className="flex justify-between">
@@ -438,13 +466,13 @@ const Tasks = () => {
               <TabsTrigger value="kanban">Kanban</TabsTrigger>
               <TabsTrigger value="list">Lista</TabsTrigger>
             </TabsList>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap"> {/* Adicionado flex-wrap */}
               <Select
                 value={selectedPriorityFilter || 'all'}
                 onValueChange={handlePriorityChange}
               >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrar por prioridade" />
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Prioridade" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as prioridades</SelectItem>
@@ -458,15 +486,30 @@ const Tasks = () => {
                 value={selectedProjectFilter ? String(selectedProjectFilter) : 'all'}
                 onValueChange={handleProjectChange}
               >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrar por projeto" />
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Todos os projetos" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os projetos</SelectItem>
-                  {/* Simplificado para usar projectsWithTasks, que já deve ser filtrado adequadamente */}
                   {projectsWithTasks.map((project) => (
                     <SelectItem key={project.id} value={String(project.id)}>
                       {project.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select // NOVO FILTRO DE USUÁRIO
+                value={selectedUserId?.toString() || 'all'}
+                onValueChange={handleUserChange}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os usuários</SelectItem>
+                  {allUsers.map((u) => (
+                    <SelectItem key={u.id} value={u.id.toString()}>
+                      {u.name || `Usuário ${u.id}`} {/* Fallback para nome de usuário */}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -475,8 +518,8 @@ const Tasks = () => {
                 value={viewMode}
                 onValueChange={handleViewModeChange}
               >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Modo de visualização" />
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Visualização" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="status">Por Status</SelectItem>
@@ -484,7 +527,7 @@ const Tasks = () => {
                 </SelectContent>
               </Select>
               <div className="flex items-center gap-2">
-                <span className="text-sm">Mostrar concluídas</span>
+                <span className="text-sm">Mostrar Concluídas</span>
                 <Switch
                   checked={showCompleted}
                   onCheckedChange={handleShowCompletedChange}
@@ -494,19 +537,18 @@ const Tasks = () => {
           </div>
           <TabsContent value="kanban" className="mt-6">
             <div className="min-h-[500px]">
-              {loading && !rawTasks.length ? (
+              {loading && !filteredTasks.length ? (
                 <Skeleton className="w-full h-[500px]" />
               ) : (
                 <KanbanBoard
-                  rawTasks={rawTasks}
+                  rawTasks={filteredTasks} // Passando as tarefas já filtradas
                   boardMode="tasks-view"
                   viewMode={viewMode}
                   filters={{
-                    priority: selectedPriorityFilter,
-                    projectId: selectedProjectFilter || projectId, // projectId do filtro ou da URL
-                    userId: permissions.isMember && user ? user.id : undefined,
+                    priority: selectedPriorityFilter ? selectedPriorityFilter as TaskPriority : undefined,
+                    projectId: selectedProjectFilter || projectId,
+                    userId: selectedUserId, // Usando o estado do filtro de usuário
                     showCompleted: showCompleted,
-                    // Adicionar outros filtros conforme necessário, ex: searchTerm, tags, etc.
                   }}
                   onTaskStatusChange={handleKanbanTaskStatusChange}
                   onGenericTaskUpdate={handleKanbanGenericTaskUpdate}
@@ -517,13 +559,15 @@ const Tasks = () => {
           <TabsContent value="list" className="mt-6">
             <div className="border rounded-lg p-4">
               <TasksList
-                ref={tasksListRef} // TasksList também precisará ser refatorado para usar rawTasks e filters
-                projectId={selectedProjectFilter || projectId} // Manter por compatibilidade com TasksList atual
-                priorityFilter={selectedPriorityFilter} // Manter por compatibilidade
-                viewMode={viewMode} // Manter por compatibilidade
-                selectedUserId={permissions.isMember && user ? user.id : undefined} // Manter por compatibilidade
-                forceUserFilter={permissions.isMember} // Manter por compatibilidade
+                ref={tasksListRef}
+                projectId={selectedProjectFilter || projectId} // Passando projectId do filtro ou URL
+                selectedTeamId={null} // Não há filtro de equipe nesta página
+                selectedUserId={selectedUserId} // Passando o ID do usuário do filtro
+                priorityFilter={selectedPriorityFilter ? selectedPriorityFilter as TaskPriority : undefined} // Passando prioridade
+                viewMode={viewMode}
+                forceUserFilter={isUserMember} // Mantendo a lógica de forçar filtro de usuário para membros
                 showCompleted={showCompleted}
+                onTasksUpdated={fetchAllTasks} // Callback para atualizar a lista principal
               />
             </div>
           </TabsContent>
