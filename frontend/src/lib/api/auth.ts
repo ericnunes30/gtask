@@ -1,4 +1,5 @@
 import api from './axios';
+import logger from '../logger';
 
 export interface LoginCredentials {
   email: string;
@@ -47,7 +48,7 @@ const authService = {
       }
     }
 
-    console.log('Login response:', response.data);
+    logger.info('Login response:', response.data);
     return response.data;
   },
 
@@ -101,7 +102,7 @@ const authService = {
 
       return null;
     } catch (error) {
-      console.error('Erro ao obter usuário atual:', error);
+      logger.error('Erro ao obter usuário atual:', error);
 
       // Tenta criar um objeto de usuário com os dados do localStorage
       const userId = localStorage.getItem('user_id');

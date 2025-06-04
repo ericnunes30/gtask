@@ -1,4 +1,5 @@
 import axios from 'axios';
+import logger from '../logger';
 
 // Cria uma instância do axios com configurações padrão
 const api = axios.create({
@@ -19,17 +20,17 @@ api.interceptors.request.use(
 
     // Log detalhado para requisições PATCH
     if (config.method === 'patch') {
-      console.log('INTERCEPTOR - PATCH Request:', {
+      logger.info('INTERCEPTOR - PATCH Request:', {
         url: config.url,
         data: JSON.stringify(config.data, null, 2),
-        headers: config.headers
+        headers: config.headers,
       });
     }
 
     return config;
   },
   (error) => {
-    console.error('Erro na requisição:', error);
+    logger.error('Erro na requisição:', error);
     return Promise.reject(error);
   }
 );
@@ -48,7 +49,7 @@ api.interceptors.response.use(
           try {
             return obj;
           } catch (e) {
-            console.error('Erro ao processar string:', e);
+            logger.error('Erro ao processar string:', e);
             return obj;
           }
         }
@@ -76,18 +77,18 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('Erro na resposta:', error.response?.status, error.response?.data);
+    logger.error('Erro na resposta:', error.response?.status, error.response?.data);
 
     // Se o erro for 401 (não autorizado), redireciona para a página de login
     if (error.response && error.response.status === 401) {
-      console.warn('Token inválido ou expirado, redirecionando para login');
+      logger.warn('Token inválido ou expirado, redirecionando para login');
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
 
     // Tratamento de erros específicos
     if (error.response && error.response.status === 404) {
-      console.error(`Endpoint ${error.config.url} não encontrado`);
+      logger.error(`Endpoint ${error.config.url} não encontrado`);
     }
 
     return Promise.reject(error);

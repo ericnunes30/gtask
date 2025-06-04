@@ -1,6 +1,7 @@
 import api from './axios';
 import { User } from './users';
 import { Occupation } from './occupations';
+import logger from '../logger';
 
 export interface Team {
   id: number;
@@ -60,7 +61,7 @@ const teamService = {
 
       return teamsFromOccupations;
     } catch (error) {
-      console.error('Erro ao buscar ocupações:', error);
+      logger.error('Erro ao buscar ocupações:', error);
       return [];
     }
   },
@@ -81,7 +82,7 @@ const teamService = {
         users: response.data.users || []
       };
     } catch (error) {
-      console.error(`Erro ao buscar ocupação ${id}:`, error);
+      logger.error(`Erro ao buscar ocupação ${id}:`, error);
       throw error;
     }
   },
@@ -105,7 +106,7 @@ const teamService = {
         users: response.data.users || []
       };
     } catch (error) {
-      console.error('Erro ao criar equipe via API de ocupações:', error);
+      logger.error('Erro ao criar equipe via API de ocupações:', error);
       throw error;
     }
   },
@@ -129,7 +130,7 @@ const teamService = {
         users: response.data.users || []
       };
     } catch (error) {
-      console.error('Erro ao atualizar equipe via API de ocupações:', error);
+      logger.error('Erro ao atualizar equipe via API de ocupações:', error);
       throw error;
     }
   },
@@ -141,7 +142,7 @@ const teamService = {
       const response = await api.delete(`/occupation/${id}`);
       return response.data;
     } catch (error) {
-      console.error('Erro ao excluir equipe via API de ocupações:', error);
+      logger.error('Erro ao excluir equipe via API de ocupações:', error);
       throw error;
     }
   },
@@ -180,7 +181,7 @@ const teamService = {
         }
       }));
     } catch (error) {
-      console.error(`Erro ao buscar usuários da ocupação ${teamId}:`, error);
+      logger.error(`Erro ao buscar usuários da ocupação ${teamId}:`, error);
       return [];
     }
   },
@@ -192,7 +193,7 @@ const teamService = {
       const response = await api.put<any>(`/user/${userData.user_id}`, { occupation_id: teamId });
       return response.data;
     } catch (error) {
-      console.error('Erro ao adicionar usuário via API de ocupações:', error);
+      logger.error('Erro ao adicionar usuário via API de ocupações:', error);
       throw error; // Propagar o erro para ser tratado pelo chamador
     }
   },
@@ -204,7 +205,7 @@ const teamService = {
       const response = await api.put<any>(`/user/${userId}`, { occupation_id: null });
       return response.data;
     } catch (error) {
-      console.error('Erro ao remover usuário via API de ocupações:', error);
+      logger.error('Erro ao remover usuário via API de ocupações:', error);
       throw error; // Propagar o erro para ser tratado pelo chamador
     }
   }

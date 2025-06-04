@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 
 import User from '#models/user'
 import { createUserValidator, updateUserValidator } from '#validators/user'
+import logger from '@adonisjs/core/services/logger'
 
 export default class UsersController {
   async index() {
@@ -45,20 +46,20 @@ export default class UsersController {
 
   async update({ params, request, response }: HttpContext) {
     try {
-      console.log('Método de requisição:', request.method())
-      console.log('Dados recebidos para atualização:', request.body())
+      logger.info('Método de requisição:', request.method())
+      logger.info('Dados recebidos para atualização:', request.body())
 
       const user = await User.findByOrFail('id', params.id)
-      console.log('Usuário antes da atualização:', user.toJSON())
+      logger.debug('Usuário antes da atualização:', user.toJSON())
 
       const { name, email, password, occupations, roles } = await request.validateUsing(updateUserValidator)
-      console.log('Dados validados:', { name, email, password: password ? '[REDACTED]' : undefined, occupations, roles })
+      logger.debug('Dados validados:', { name, email, password: password ? '[REDACTED]' : undefined, occupations, roles })
 
       // Incluir email na operação merge
       user.merge({ name, email, password })
       await user.save()
 
-      console.log('Usuário após atualização:', user.toJSON())
+      logger.debug('Usuário após atualização:', user.toJSON())
 
       if (roles && roles.length > 0) {
         await user.related('roles').sync(roles)
