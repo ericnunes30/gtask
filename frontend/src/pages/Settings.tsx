@@ -88,14 +88,15 @@ const Settings = () => {
           </p>
         </div>
         
-        <Tabs defaultValue="profile" className="w-full">
+        <Tabs defaultValue="appearance" className="w-full">
           <TabsList className="w-full md:w-auto">
-            <TabsTrigger value="profile">Perfil</TabsTrigger>
+            {/** <TabsTrigger value="profile">Perfil</TabsTrigger> */}
             <TabsTrigger value="appearance">Aparência</TabsTrigger>
-            <TabsTrigger value="notifications">Notificações</TabsTrigger>
-            <TabsTrigger value="system">Sistema</TabsTrigger>
+            {/** <TabsTrigger value="notifications">Notificações</TabsTrigger> */}
+            {/** <TabsTrigger value="system">Sistema</TabsTrigger> */}
           </TabsList>
           
+          {/**
           <TabsContent value="profile">
             <Card>
               <CardHeader>
@@ -168,6 +169,7 @@ const Settings = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          */}
           
           <TabsContent value="appearance">
             <Card>
@@ -194,6 +196,7 @@ const Settings = () => {
             </Card>
           </TabsContent>
           
+          {/**
           <TabsContent value="notifications">
             <Card>
               <CardHeader>
@@ -212,7 +215,7 @@ const Settings = () => {
                   </div>
                   <Switch defaultChecked />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Notificações no Navegador</p>
@@ -222,7 +225,7 @@ const Settings = () => {
                   </div>
                   <Switch defaultChecked />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Lembretes de Tarefas</p>
@@ -235,7 +238,9 @@ const Settings = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          */}
           
+          {/**
           <TabsContent value="system">
             <Card>
               <CardHeader>
@@ -254,7 +259,7 @@ const Settings = () => {
                   </div>
                   <Button variant="outline">Alterar</Button>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Backup de Dados</p>
@@ -264,7 +269,7 @@ const Settings = () => {
                   </div>
                   <Button variant="outline">Exportar</Button>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Limpar Cache</p>
@@ -280,6 +285,7 @@ const Settings = () => {
               </CardFooter>
             </Card>
           </TabsContent>
+          */}
         </Tabs>
       </div>
     </AppLayout>
