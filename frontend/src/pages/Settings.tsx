@@ -88,14 +88,17 @@ const Settings = () => {
           </p>
         </div>
         
-        <Tabs defaultValue="profile" className="w-full">
+        <Tabs defaultValue="appearance" className="w-full">
           <TabsList className="w-full md:w-auto">
+            {/*
             <TabsTrigger value="profile">Perfil</TabsTrigger>
-            <TabsTrigger value="appearance">Aparência</TabsTrigger>
             <TabsTrigger value="notifications">Notificações</TabsTrigger>
             <TabsTrigger value="system">Sistema</TabsTrigger>
+            */}
+            <TabsTrigger value="appearance">Aparência</TabsTrigger>
           </TabsList>
           
+          {/*
           <TabsContent value="profile">
             <Card>
               <CardHeader>
@@ -123,7 +126,7 @@ const Settings = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="email"
@@ -140,7 +143,7 @@ const Settings = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="bio"
@@ -161,13 +164,14 @@ const Settings = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <Button type="submit">Salvar alterações</Button>
                   </form>
                 </Form>
               </CardContent>
             </Card>
           </TabsContent>
+          */}
           
           <TabsContent value="appearance">
             <Card>
@@ -194,6 +198,7 @@ const Settings = () => {
             </Card>
           </TabsContent>
           
+          {/*
           <TabsContent value="notifications">
             <Card>
               <CardHeader>
@@ -235,7 +240,9 @@ const Settings = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          */}
           
+          {/*
           <TabsContent value="system">
             <Card>
               <CardHeader>
@@ -280,6 +287,7 @@ const Settings = () => {
               </CardFooter>
             </Card>
           </TabsContent>
+          */}
         </Tabs>
       </div>
     </AppLayout>
