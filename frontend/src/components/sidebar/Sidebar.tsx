@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Briefcase, ListChecks, Users, ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { Briefcase, ListChecks, Users, ChevronLeft, ChevronRight, User, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { SidebarItem } from './SidebarItem';
@@ -78,10 +78,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             </>
           )}
           {/* Item de Calendário removido conforme solicitado */}
+          <SidebarItem
+            icon={Settings}
+            label="Configurações"
+            href="/settings"
+            collapsed={collapsed}
+            active={isActive('/settings')}
+          />
         </div>
       </nav>
-
-      {/* Item de Configurações removido conforme solicitado */}
       <div className="p-2 border-t border-sidebar-border mt-auto">
         {/* Espaço reservado para o rodapé do menu lateral */}
       </div>
