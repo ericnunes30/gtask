@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
+import AppLayout from '@/components/layout/AppLayout';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { ProjectsList } from '@/components/dashboard/ProjectsList';
 import { TasksList } from '@/components/dashboard/TasksList';

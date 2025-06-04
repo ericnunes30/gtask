@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Users from "./pages/Users";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 const queryClient = new QueryClient();
 
@@ -85,9 +86,11 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AuthProvider>
-              <AppRoutes />
-            </AuthProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                <AppRoutes />
+              </AuthProvider>
+            </ThemeProvider>
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
