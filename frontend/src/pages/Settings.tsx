@@ -90,7 +90,7 @@ const Settings = () => {
         
         <Tabs defaultValue="appearance" className="w-full">
           <TabsList className="w-full md:w-auto">
-            {/*
+            {/* Outras abas desativadas
             <TabsTrigger value="profile">Perfil</TabsTrigger>
             <TabsTrigger value="notifications">Notificações</TabsTrigger>
             <TabsTrigger value="system">Sistema</TabsTrigger>
