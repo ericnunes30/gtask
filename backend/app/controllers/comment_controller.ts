@@ -5,6 +5,7 @@ import Comment from '#models/comment'
 import Task from '#models/task'
 import CommentLike from '#models/comment_like'
 import ActivityLog from '#models/activity_log' // Importação adicionada
+import logger from '@adonisjs/core/services/logger'
 
 export default class CommentsController {
     async index({ auth }: HttpContext) {
@@ -15,7 +16,7 @@ export default class CommentsController {
 
     async store({ request, auth }: HttpContext) {
         const validatedData = await request.validateUsing(createCommentValidator)
-        console.log('Dados validados no controller:', validatedData) // Log para depuração
+        logger.debug('Dados validados no controller:', validatedData)
         const { content, task_id, parentId } = validatedData
         const user = auth.user!
 
@@ -255,7 +256,7 @@ export default class CommentsController {
 
     // Helper para respostas de erro do servidor
     private handleServerError(response: HttpContext['response'], error: any) {
-        console.error(error) 
+        logger.error(error)
         return response.status(500).json({ error: 'An unexpected error occurred on the server.' })
     }
 }

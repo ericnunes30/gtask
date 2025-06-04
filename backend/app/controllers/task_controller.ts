@@ -3,6 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { createTaskValidator, updateTaskValidator } from '#validators/task'
 import Task from '#models/task'
 import ActivityLog from '#models/activity_log' // Importar ActivityLog
+import logger from '@adonisjs/core/services/logger'
 
 export default class TasksController {
     async index({}: HttpContext) {
@@ -121,7 +122,7 @@ export default class TasksController {
 
     async show({ params, response }: HttpContext) {
         try {
-            console.log(`TasksController.show - Attempting to find task with params.id: ${params.id} (Type: ${typeof params.id})`)
+            logger.info(`TasksController.show - Attempting to find task with params.id: ${params.id} (Type: ${typeof params.id})`)
             const task = await Task.findByOrFail('id', params.id)
             await task.load('project')
             await task.load('users')
@@ -151,7 +152,7 @@ export default class TasksController {
 
             return taskData
         } catch (error) {
-            console.error(`TasksController.show - Error finding task with params.id: ${params.id}:`, error)
+            logger.error(`TasksController.show - Error finding task with params.id: ${params.id}:`, error)
             return response.status(400).json({error: "Task not found!"})
         }
     }
@@ -180,7 +181,7 @@ export default class TasksController {
             const data = await request.validateUsing(updateTaskValidator)
 
             // Log para depuração
-            console.log('Dados recebidos para atualização:', data)
+            logger.debug('Dados recebidos para atualização:', data)
 
             task.merge(data as any)
             await task.save()
@@ -250,7 +251,7 @@ export default class TasksController {
             }
 
             // Log para depuração (pode ser removido em produção)
-            console.log('Tarefa atualizada e logs gerados (se houveram mudanças):', task.toJSON())
+            logger.debug('Tarefa atualizada e logs gerados (se houveram mudanças):', task.toJSON())
 
             // Preparar dados de resposta
             const responseData = task.toJSON()
@@ -258,7 +259,7 @@ export default class TasksController {
 
             return responseData
         } catch (error) {
-            console.error('Erro ao atualizar tarefa:', error)
+            logger.error('Erro ao atualizar tarefa:', error)
             return response.status(400).json({error: "Task not found!"})
         }
     }
@@ -299,7 +300,7 @@ export default class TasksController {
                 return response.status(404).json({ error: 'Task not found' })
             }
             // Usar um helper genérico para outros erros (poderia ser definido aqui ou importado)
-            console.error('Erro ao buscar histórico da tarefa:', error)
+            logger.error('Erro ao buscar histórico da tarefa:', error)
             return response.status(500).json({ error: 'An unexpected error occurred on the server.' })
         }
     }

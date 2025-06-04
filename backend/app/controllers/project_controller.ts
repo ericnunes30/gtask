@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 
 import { createProjectValidator, updateProjectValidator } from '#validators/project'
 import Project from '#models/project'
+import logger from '@adonisjs/core/services/logger'
 
 export default class ProjectsController {
     async index() {
@@ -97,10 +98,10 @@ export default class ProjectsController {
     async destroy({ params, response }: HttpContext) {
         try {
             // Adicionar log para depuração
-            console.log(`Tentando excluir projeto com ID: ${params.id}`)
+            logger.info(`Tentando excluir projeto com ID: ${params.id}`)
 
             const project = await Project.findByOrFail('id', params.id)
-            console.log(`Projeto encontrado:`, project.toJSON())
+            logger.info(`Projeto encontrado:`, project.toJSON())
 
             // Remover as relações antes de excluir o projeto
             // Desanexar todas as ocupações (equipes)
@@ -114,7 +115,7 @@ export default class ProjectsController {
 
             // Excluir todas as tarefas relacionadas ao projeto
             if (project.tasks && project.tasks.length > 0) {
-                console.log(`Excluindo ${project.tasks.length} tarefas relacionadas ao projeto ${params.id}`)
+                logger.info(`Excluindo ${project.tasks.length} tarefas relacionadas ao projeto ${params.id}`)
                 for (const task of project.tasks) {
                     // Desanexar relações da tarefa
                     await task.related('users').detach()
@@ -132,7 +133,7 @@ export default class ProjectsController {
             // O status 203 (Non-Authoritative Information) não é apropriado para exclusões
             return response.status(204).send({})
         } catch (error) {
-            console.error(`Erro ao excluir projeto:`, error)
+            logger.error(`Erro ao excluir projeto:`, error)
             return response.status(400).json({error: "Project not found!"})
         }
     }

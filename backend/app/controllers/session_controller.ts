@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { createSessionValidator } from "#validators/session";
 import User from '#models/user';
+import logger from '@adonisjs/core/services/logger'
 
 export default class SessionController {
     async store({ request }:HttpContext) {
@@ -26,11 +27,11 @@ export default class SessionController {
                 name: user.name
             }
 
-            console.log('Session response with user_id:', response);
+            logger.info('Session response with user_id:', response);
 
             return response
         } catch (err: any) {
-            console.error('Error in session store:', err)
+            logger.error('Error in session store:', err)
             return {
                 error: err.message
             }
@@ -43,7 +44,7 @@ export default class SessionController {
             await User.accessTokens.delete(user, user.currentAccessToken.identifier)
             return response.status(203).json({ message: 'Logout realizado com sucesso' })
         } catch (err: any) {
-            console.error('Error in session destroy:', err)
+            logger.error('Error in session destroy:', err)
             return response.status(400).json({
                 error: err.message
             })
