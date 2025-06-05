@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 
-import { createTaskValidator, updateTaskValidator } from '#validators/task'
+import { createTaskValidator } from '#validators/task'
+import vine from '@vinejs/vine'
 import Task from '#models/task'
 import ActivityLog from '#models/activity_log' // Importar ActivityLog
 
@@ -11,6 +12,8 @@ export default class TasksController {
             .preload('project')
             .preload('users')
             .preload('occupations')
+            .orderBy('status')
+            .orderBy('order')
 
         // Incluir o campo timer em cada tarefa
         const tasksWithTimer = tasks.map(task => {
@@ -37,6 +40,13 @@ export default class TasksController {
         if (data.projectId !== undefined) {
             data.project_id = data.projectId
             delete data.projectId
+        }
+
+        // Definir ordem padrão caso não seja fornecida
+        if (data.order === undefined || data.order === null) {
+            const maxOrderRow = await Task.query().max('order as max').first()
+            const nextOrder = (Number(maxOrderRow?.$extras.max) || 0) + 10
+            data.order = nextOrder
         }
 
         const {
@@ -156,110 +166,40 @@ export default class TasksController {
         }
     }
 
-    async update({ request, params, response, auth }: HttpContext) { // 1. Adicionar auth
+    async update({ request, params, response, auth }: HttpContext) {
         try {
-            const actingUserId = auth.user!.id // 2. Definir actingUserId
-            const taskId = params.id
+            const { order } = await request.validateUsing(
+                vine.compile(vine.object({ order: vine.number() }))
+            )
 
-            // 3. Buscar o estado original da tarefa ANTES de qualquer modificação
-            const task = await Task.findByOrFail('id', taskId)
-            await task.load('users') // Carregar usuários para obter a lista original
+            const task = await Task.findByOrFail('id', params.id)
+            const oldOrder = task.order
 
-            const originalTaskState = {
-                title: task.title,
-                description: task.description,
-                priority: task.priority,
-                status: task.status,
-                start_date: task.start_date ? task.start_date.toISODate() : null,
-                due_date: task.due_date ? task.due_date.toISODate() : null,
-                project_id: task.project_id,
-            }
-            const originalUserIds = task.users.map(u => u.id).sort()
-            // Neste ponto, 'task' ainda é a instância original.
-            // 'originalTaskState' e 'originalUserIds' guardam os valores antes da validação e do merge.
-            const data = await request.validateUsing(updateTaskValidator)
-
-            // Log para depuração
-            console.log('Dados recebidos para atualização:', data)
-
-            task.merge(data as any)
+            task.order = order
             await task.save()
 
-            if (data.users && data.users.length > 0) {
-                await task.related('users').sync(data.users)
-            }
-
-            if (data.occupations && data.occupations.length > 0) {
-                await task.related('occupations').sync(data.occupations)
-            }
-
-            // Recarregar a tarefa com seus relacionamentos para obter o estado final
-            await task.refresh() // Ensures `task` has the latest data from DB for direct fields
-            await task.load('project') // Keep for response consistency
-            await task.load('users')   // Load users again to get the state after potential sync
-            await task.load('occupations') // Keep for response consistency
-
-            // 4. Compare and Log changes
-            const updatedTaskState = {
-                title: task.title,
-                description: task.description,
-                priority: task.priority,
-                status: task.status,
-                start_date: task.start_date ? task.start_date.toISODate() : null,
-                due_date: task.due_date ? task.due_date.toISODate() : null,
-                project_id: task.project_id,
-            }
-            const updatedUserIds = task.users.map(u => u.id).sort()
-
-            const fieldsToLog: Array<{key: keyof typeof originalTaskState, name?: string}> = [
-                { key: 'title' },
-                { key: 'description' },
-                { key: 'priority' },
-                { key: 'status' },
-                { key: 'start_date' },
-                { key: 'due_date' },
-                { key: 'project_id' },
-            ]
-
-            for (const field of fieldsToLog) {
-                const oldValue = originalTaskState[field.key]
-                const newValue = updatedTaskState[field.key]
-
-                if (String(oldValue ?? '') !== String(newValue ?? '')) {
-                    await ActivityLog.create({
-                        userId: actingUserId,
-                        taskId: task.id,
-                        actionType: `TASK_${String(field.key).toUpperCase()}_UPDATED`, // Garantir que field.key é string
-                        changedField: String(field.key), // Garantir que field.key é string
-                        oldValue: oldValue !== null ? String(oldValue) : null,
-                        newValue: newValue !== null ? String(newValue) : null,
-                    })
-                }
-            }
-
-            // Compare and log user changes (assignees)
-            if (JSON.stringify(originalUserIds) !== JSON.stringify(updatedUserIds)) {
+            if (oldOrder !== order) {
                 await ActivityLog.create({
-                    userId: actingUserId,
+                    userId: auth.user!.id,
                     taskId: task.id,
-                    actionType: 'TASK_ASSIGNEES_UPDATED',
-                    changedField: 'users',
-                    oldValue: JSON.stringify(originalUserIds),
-                    newValue: JSON.stringify(updatedUserIds),
+                    actionType: 'TASK_ORDER_UPDATED',
+                    changedField: 'order',
+                    oldValue: oldOrder !== null ? String(oldOrder) : null,
+                    newValue: String(order),
                 })
             }
 
-            // Log para depuração (pode ser removido em produção)
-            console.log('Tarefa atualizada e logs gerados (se houveram mudanças):', task.toJSON())
+            await task.refresh()
+            await task.load('project')
+            await task.load('users')
+            await task.load('occupations')
 
-            // Preparar dados de resposta
             const responseData = task.toJSON()
-            responseData.timer = task.timer || 0 // Manter a lógica do timer
-
+            responseData.timer = task.timer || 0
             return responseData
         } catch (error) {
             console.error('Erro ao atualizar tarefa:', error)
-            return response.status(400).json({error: "Task not found!"})
+            return response.status(400).json({ error: 'Task not found!' })
         }
     }
 

@@ -52,7 +52,7 @@ export default class ConsolidatedInitialSchema extends BaseSchema {
     // --- 005_create_tasks_table.ts ---
     this.schema.createTable('tasks', (table) => {
       table.increments('id')
-      table.integer('order').nullable()
+      table.decimal('order', 10, 2).nullable()
       table.string('title').notNullable()
       table.text('description').nullable()
       table.enum('priority', Object.values(TaskPriorityLevel)).notNullable()
@@ -62,6 +62,7 @@ export default class ConsolidatedInitialSchema extends BaseSchema {
       table.integer('project_id').nullable().unsigned().references('id').inTable('projects')
       table.timestamp('created_at')
       table.timestamp('updated_at')
+      table.index(['status', 'order'])
     })
 
     // --- 006_create_access_tokens_table.ts ---

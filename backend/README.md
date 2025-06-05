@@ -175,12 +175,16 @@ Content-Type: application/json
   "start_date": "2025-05-05",               // Obrigatório
   "due_date": "2025-05-15",                 // Obrigatório
   "project_id": 1,                          // Obrigatório
-  "order": 1,                               // Opcional
+  "order": 10.0,                            // Opcional (decimal)
   "timer": 0,                               // Opcional - Tempo em segundos
   "users": [4, 5],                          // Opcional - IDs dos usuários
   "occupations": [2, 3]                     // Opcional - IDs das ocupações
 }
 ```
+
+Ao criar uma tarefa sem informar o campo `order`, o sistema atribui
+automaticamente o próximo valor disponível, sempre incrementando dez
+unidades em relação ao maior valor já existente na coluna.
 
 **Corpo da Requisição (PATCH):**
 ```
@@ -192,7 +196,7 @@ Content-Type: application/json
   "start_date": "2025-05-05",               // Opcional
   "due_date": "2025-05-15",                 // Opcional
   "project_id": 1,                          // Opcional
-  "order": 1,                               // Opcional
+  "order": 12.5,                            // Opcional (decimal)
   "timer": 3600,                            // Opcional - Tempo em segundos (exemplo: 1 hora)
   "users": [4, 5],                          // Opcional - IDs dos usuários
   "occupations": [2, 3]                     // Opcional - IDs das ocupações
@@ -329,7 +333,7 @@ curl -X POST \
     "start_date": "2025-05-05",
     "due_date": "2025-05-15",
     "project_id": 1,
-    "order": 1,
+    "order": 10.0,
     "timer": 0,
     "users": [4, 5],
     "occupations": [2, 3]
@@ -361,7 +365,8 @@ curl -X PATCH \
     "description": "Descrição atualizada",
     "priority": "alta",
     "status": "em_andamento",
-    "timer": 1800
+    "timer": 1800,
+    "order": 15.5
   }' \
   http://localhost:3333/task/1
 ```

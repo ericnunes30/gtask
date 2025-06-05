@@ -96,7 +96,7 @@ const taskService = {
   createTask: async (taskData: CreateTaskRequest) => {
     console.log('[taskService.ts] createTask iniciado com taskData:', taskData);
     // Usar diretamente os nomes de campos que o backend espera
-    const apiTaskData: any = { ...taskData };
+    const apiTaskData: any = { ...taskData }; // inclui 'order' se fornecido
 
     // Converter startDate para start_date (se existir)
     if (taskData.startDate !== undefined) {
@@ -158,7 +158,7 @@ const taskService = {
     }
 
     // Criar uma cópia do objeto de dados para não modificar o original
-    const apiTaskData: any = { ...taskData };
+    const apiTaskData: any = { ...taskData }; // mantém 'order' caso enviado
 
 
 

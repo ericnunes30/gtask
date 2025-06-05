@@ -6,6 +6,7 @@ import { PlusCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
 import { KanbanTask } from '@/components/kanban/kanbanTypes';
+import { sortTasks } from '@/components/kanban/kanbanUtils';
 import {
   Dialog,
   DialogContent,
@@ -74,7 +75,7 @@ const Tasks = () => {
     setError(null);
     try {
       const allTasksData = await taskService.getTasks(); // Não aplicar filtro de membro aqui
-      setRawTasks(allTasksData);
+      setRawTasks(sortTasks(allTasksData, 'status'));
       // O filtro de membro será aplicado em filteredTasks
       if (showFeedback) toast.success("Tarefas recarregadas!");
     } catch (err) {
@@ -183,15 +184,15 @@ const Tasks = () => {
         console.log(`[Tasks.tsx] TESTE: Original newOrder: ${newOrder}, Enviando order arredondado: ${updateData.order}`);
       }
       console.log('[Tasks.tsx] Updating task on API with data:', updateData);
-      await taskService.updateTask(Number(task.id), updateData);
-      console.log('[Tasks.tsx] Task updated on API. Fetching all tasks...');
-      // O KanbanBoard já pode mostrar um toast "movida". Se precisar de outro, adicione aqui.
-      // toast.success(`Tarefa "${task.title}" atualizada.`);
-      await fetchAllTasks(false); // Recarregar silenciosamente para garantir consistência
+      const updated = await taskService.updateTask(Number(task.id), updateData);
+      console.log('[Tasks.tsx] Task updated on API. Updating local state...');
+      setRawTasks(prev => {
+        const replaced = prev.map(t => (t.id === updated.id ? updated : t));
+        return sortTasks(replaced, 'status');
+      });
       if (tasksListRef.current) {
         await tasksListRef.current.fetchTasks();
       }
-      console.log('[Tasks.tsx] All tasks fetched after update.');
     } catch (error) {
       console.error('Erro ao atualizar tarefa via Kanban:', error);
       toast.error(`Falha ao atualizar tarefa "${task.title}".`);
@@ -222,7 +223,7 @@ const Tasks = () => {
       // Atualizar rawTasks localmente
       setRawTasks(prevRawTasks => {
         console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): Atualizando rawTasks.`);
-        return [...prevRawTasks, newTask];
+        return sortTasks([...prevRawTasks, newTask], 'status');
       });
 
       if (tasksListRef.current && activeTab === 'list') {
