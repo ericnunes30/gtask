@@ -161,7 +161,7 @@ const Tasks = () => {
     fetchProjectsAndRelatedData();
   }, [projectId, rawTasks, error]); // Depender de rawTasks para atualizar projectsWithTasks
 
-  const handleKanbanTaskStatusChange = async (
+   const handleKanbanTaskStatusChange = async (
     task: KanbanTask,
     newStatus: TaskStatus, // TaskStatus de @/lib/api
     newOrder?: number
@@ -170,8 +170,15 @@ const Tasks = () => {
     console.log('[Tasks.tsx] handleKanbanTaskStatusChange called with - Details:', { taskId: task.id, typeofTaskId: typeof task.id, currentStatus: task.status, currentOrder: task.order, newStatus, newOrder });
     try {
       const updateData: UpdateTaskRequest = { status: newStatus };
+      if (task.due_date !== undefined) {
+        updateData.due_date = task.due_date;
+      }
       if (newOrder !== undefined) {
         // TESTE: Enviar order como inteiro arredondado
+// Adicionar due_date se presente no objeto da tarefa recebido do KanbanBoard
+      if (task.due_date !== undefined) {
+        updateData.due_date = task.due_date;
+      }
         updateData.order = Math.round(newOrder);
         console.log(`[Tasks.tsx] TESTE: Original newOrder: ${newOrder}, Enviando order arredondado: ${updateData.order}`);
       }
@@ -181,6 +188,9 @@ const Tasks = () => {
       // O KanbanBoard já pode mostrar um toast "movida". Se precisar de outro, adicione aqui.
       // toast.success(`Tarefa "${task.title}" atualizada.`);
       await fetchAllTasks(false); // Recarregar silenciosamente para garantir consistência
+      if (tasksListRef.current) {
+        await tasksListRef.current.fetchTasks();
+      }
       console.log('[Tasks.tsx] All tasks fetched after update.');
     } catch (error) {
       console.error('Erro ao atualizar tarefa via Kanban:', error);
@@ -192,6 +202,9 @@ const Tasks = () => {
 
   const handleKanbanGenericTaskUpdate = async () => {
     await fetchAllTasks(true); // Recarregar com feedback visual
+    if (tasksListRef.current) {
+      await tasksListRef.current.fetchTasks();
+    }
   };
 
   const handleTaskFormSuccess = useCallback(async (taskData: any) => {
