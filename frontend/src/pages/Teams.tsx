@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
 import { PlusCircle, MoreHorizontal, Users, Calendar, Briefcase, AlertCircle, UserPlus, Pencil, Trash2 } from 'lucide-react';
 import {

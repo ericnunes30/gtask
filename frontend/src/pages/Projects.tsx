@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
 import {
   Select,

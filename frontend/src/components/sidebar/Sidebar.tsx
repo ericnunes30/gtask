@@ -78,17 +78,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             </>
           )}
           {/* Item de Calendário removido conforme solicitado */}
+          <SidebarItem
+            icon={Settings}
+            label="Configurações"
+            href="/settings"
+            collapsed={collapsed}
+            active={isActive('/settings')}
+          />
         </div>
       </nav>
-
       <div className="p-2 border-t border-sidebar-border mt-auto">
-        <SidebarItem
-          icon={Settings}
-          label="Configurações"
-          href="/settings"
-          collapsed={collapsed}
-          active={isActive('/settings')}
-        />
+        {/* Espaço reservado para o rodapé do menu lateral */}
       </div>
     </aside>
   );

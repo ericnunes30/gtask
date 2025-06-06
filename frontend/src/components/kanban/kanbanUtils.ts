@@ -161,7 +161,8 @@ export const generateKanbanColumns = (
       // task.due_date é string | undefined (formato YYYY-MM-DD)
       if (task.due_date) { 
         try {
-          const dueDateObj = new Date(task.due_date);
+          // Adicionar 'T00:00:00' para evitar problemas de fuso horário ao converter para Date
+          const dueDateObj = new Date(task.due_date + 'T00:00:00'); 
           if (isNaN(dueDateObj.getTime())) {
             // Data inválida, pode ir para uma coluna 'sem data' ou 'futuras'
             // console.warn(`Task ${task.id} has invalid dueDate '${task.due_date}'.`);

@@ -114,7 +114,7 @@ interface KanbanBoardProps {
 
   // ADICIONE as seguintes props:
   onTaskStatusChange?: (task: KanbanTask, newStatus: TaskStatus, newOrder?: number) => Promise<void>;
-  onTasksUpdated?: () => Promise<void>;
+  onGenericTaskUpdate?: () => Promise<void>;
   // As props abaixo serão removidas pois seus valores virão através do objeto `filters`
   // ou são controladas pelo componente pai que fornecerá viewMode, boardMode e filters.
   // teams?: any[];
@@ -509,7 +509,7 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     // project, // project prop pode não ser mais necessária se rawTasks e filters cobrem tudo
     // onTasksUpdated, // Removido
     onTaskStatusChange, // ADICIONE
-    onTasksUpdated // ADICIONE (Renomeado de onGenericTaskUpdate)
+    onGenericTaskUpdate // ADICIONE
   } = props;
 
   // Consumir o hook useProcessedKanbanData
@@ -705,62 +705,26 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       // Variável para guardar o status que será enviado para a prop.
       // Inicialmente, é o status atual da tarefa.
       let statusForPropCallback: TaskStatus = taskToMove.status;
-      let updateData: Partial<UpdateTaskRequest> = {};
 
 
       if (sourceColumnId !== destinationColumnId) { // Movendo para outra coluna
         if (viewMode === 'status') {
           const potentialNewStatus = columnToStatusMap[destinationColumnId];
-          console.log('[KanbanBoard.tsx] handleDragEnd: Moving to different column (status mode). Potential new status:', potentialNewStatus, 'Current status:', taskToMove.status);
+          console.log('[KanbanBoard.tsx] handleDragEnd: Moving to different column. Potential new status:', potentialNewStatus, 'Current status:', taskToMove.status);
           if (potentialNewStatus && potentialNewStatus !== taskToMove.status) {
             newApiStatus = potentialNewStatus; // Este é o novo status para a API
             statusForPropCallback = newApiStatus; // Atualiza o status para o callback
           } else if (!potentialNewStatus) {
             console.warn(`Status não mapeado para a coluna de destino: ${destinationColumnId}`);
           }
-        } else if (viewMode === 'date') {
-          console.log('[KanbanBoard.tsx] handleDragEnd: Moving to different column (date mode). Destination column:', destinationColumnId);
-          let newDueDate: string | undefined = undefined;
-          const today = new Date();
-          const yyyy = today.getFullYear();
-          const mm = String(today.getMonth() + 1).padStart(2, '0');
-          const dd = String(today.getDate()).padStart(2, '0');
-          const formattedToday = `${yyyy}-${mm}-${dd}`;
-
-          if (destinationColumnId === 'today') {
-            newDueDate = formattedToday;
-          } else if (destinationColumnId === 'tomorrow') {
-            const tomorrow = new Date(today);
-            tomorrow.setDate(today.getDate() + 1);
-            const टुमॉरोYYYY = tomorrow.getFullYear();
-            const टुमॉरोMM = String(tomorrow.getMonth() + 1).padStart(2, '0');
-            const टुमॉरोDD = String(tomorrow.getDate()).padStart(2, '0');
-            newDueDate = `${टुमॉरोYYYY}-${टुमॉरोMM}-${टुमॉरोDD}`;
-          } else if (destinationColumnId === 'overdue') {
-            const yesterday = new Date(today);
-            yesterday.setDate(today.getDate() - 1);
-            const येस्टरडेYYYY = yesterday.getFullYear();
-            const येस्टरडेMM = String(yesterday.getMonth() + 1).padStart(2, '0');
-            const येस्टरडेDD = String(yesterday.getDate()).padStart(2, '0');
-            newDueDate = `${येस्टरडेYYYY}-${येस्टरडेMM}-${येस्टरडेDD}`;
-          } else if (destinationColumnId === 'future') {
-            const tenDaysFromNow = new Date(today);
-            tenDaysFromNow.setDate(today.getDate() + 10); // Alterado de 7 para 10
-            const फ्यूचरYYYY = tenDaysFromNow.getFullYear();
-            const फ्यूचरMM = String(tenDaysFromNow.getMonth() + 1).padStart(2, '0');
-            const फ्यूचरDD = String(tenDaysFromNow.getDate()).padStart(2, '0');
-            newDueDate = `${फ्यूचरYYYY}-${फ्यूचरMM}-${फ्यूचरDD}`;
-          }
-
-          if (newDueDate) {
-            console.log('[KanbanBoard.tsx] handleDragEnd: New Due Date calculated:', newDueDate);
-            updateData.due_date = newDueDate;
-            // Não alteramos o status da tarefa ao mover entre colunas de data
-            // Apenas a data de vencimento é atualizada.
-            // O status visual (ex: cor do card) pode ser alterado pela UI com base na nova data.
-          } else {
-            console.log('[KanbanBoard.tsx] handleDragEnd: No new due date calculated for column:', destinationColumnId);
-          }
+        } else { // viewMode === 'date' - A mudança de data não afeta o status diretamente aqui,
+                 // mas a prop onTaskStatusChange em ProjectView não lida com mudança de data.
+                 // A lógica de dueDate em handleDragEnd que chamava updateTask foi removida.
+                 // Se a mudança de data via drag-and-drop for um requisito,
+                 // onTaskStatusChange precisaria ser expandida ou uma nova prop criada.
+                 // Por ora, focamos na mudança de status.
+                 // Se uma tarefa for arrastada para uma coluna de data, o status não muda pelo drag-and-drop.
+                 // A API updateData.dueDate foi removida daqui.
         }
       }
 
@@ -823,126 +787,66 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       // Verifica se houve mudança de status ou de ordem para chamar o callback
       const statusChanged = newApiStatus !== undefined && newApiStatus !== taskToMove.status;
       const orderChanged = roundedNewOrder !== undefined && roundedNewOrder !== taskToMove.order;
-      const dueDateChanged = updateData.due_date !== undefined && updateData.due_date !== taskToMove.due_date;
-
-      console.log('[KanbanBoard.tsx] handleDragEnd: Status changed?', statusChanged, 'Order changed?', orderChanged, 'Due date changed?', dueDateChanged);
+      console.log('[KanbanBoard.tsx] handleDragEnd: Status changed?', statusChanged, 'Order changed?', orderChanged);
 
         const taskToMoveIdStr = String(taskToMove.id);
-        const finalDestStatus = newApiStatus || taskToMove.status;
+        const finalDestStatus = newApiStatus || taskToMove.status; 
         console.log('[KanbanBoard.tsx] handleDragEnd: Final destination status for timer logic:', finalDestStatus);
 
-        // Lógica de atualização do timer (mantida como estava, mas agora considera o updateData para dueDate)
+        // Etapa 1: Lidar com o timer da tarefa que está sendo movida, se ela estava rodando e VAI PARAR.
+        // Isso deve acontecer ANTES de onTaskStatusChange, que pode recarregar os dados e resetar currentTimerValues.
         if (timerRunningTaskId === taskToMoveIdStr && finalDestStatus !== 'em_andamento') {
-          console.log('[KanbanBoard.tsx] handleDragEnd: Timer - Stopping timer for moved task.', { taskToMoveIdStr, currentTimerValue: currentTimerValues[taskToMoveIdStr] });
-          const currentTimeToSave = currentTimerValues[taskToMoveIdStr];
-          setTimerRunningTaskId(null);
+          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 1 - Stopping timer for moved task.', { taskToMoveIdStr, currentTimerValue: currentTimerValues[taskToMoveIdStr] });
+          const currentTimeToSave = currentTimerValues[taskToMoveIdStr]; 
+          setTimerRunningTaskId(null); // Para o timer localmente
           if (currentTimeToSave !== undefined) {
-            updateData.timer = currentTimeToSave; // Adiciona ao updateData se ainda não estiver lá
-            // Não chama handleTimerUpdate aqui diretamente, pois a atualização principal abaixo cuidará disso.
+            // Salva o timer na API. Isso chamará onGenericTaskUpdate, que recarrega as tarefas.
+            await handleTimerUpdate(taskToMoveIdStr, currentTimeToSave);
           }
         }
 
-        // Se houve mudança de status, ordem OU data de vencimento, precisamos atualizar a tarefa.
-        if (statusChanged || orderChanged || dueDateChanged) {
-          if (viewMode === 'status' && onTaskStatusChange && (statusChanged || orderChanged)) {
-            console.log('[KanbanBoard.tsx] handleDragEnd: Calling onTaskStatusChange for status/order update.', { taskId: taskToMove.id, finalDestStatus, roundedNewOrder });
-            // onTaskStatusChange é responsável por chamar taskService.updateTask com status e ordem.
-            // Se houver dueDate em updateData, ele será ignorado por esta chamada.
+        // Etapa 2: Se houve mudança de status ou ordem, notificar o componente pai.
+        // Isso também pode recarregar as tarefas.
+        if (statusChanged || orderChanged) {
+          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 2 - Calling onTaskStatusChange.', { taskId: taskToMove.id, finalDestStatus, roundedNewOrder });
+          if (onTaskStatusChange) {
             await onTaskStatusChange(taskToMove, finalDestStatus, roundedNewOrder);
-            toast.success(`Tarefa "${taskToMove.title}" atualizada (status/ordem).`);
-          } else if (viewMode === 'date' && dueDateChanged) {
-            // Se estamos no modo de data e a data de vencimento mudou,
-            // precisamos chamar taskService.updateTask diretamente com updateData.
-            // Se a ordem também mudou, precisamos incluir isso.
-            if (orderChanged && roundedNewOrder !== undefined) {
-              updateData.order = roundedNewOrder;
-            }
-            if (taskToMove && Object.keys(updateData).length > 0) {
-              console.log('[KanbanBoard.tsx] handleDragEnd: Calling taskService.updateTask for due_date/order update.', { taskId: Number(taskToMove.id), updateData });
-              try {
-                const updateResult = await taskService.updateTask(Number(taskToMove.id), updateData);
-                console.log('[KanbanBoard.tsx] handleDragEnd: Task update result for due_date:', updateResult);
-                toast.success(`Data de vencimento da tarefa "${taskToMove.title}" atualizada.`);
-                if (typeof onTasksUpdated === 'function') {
-                  await onTasksUpdated();
-                }
-              } catch (error) {
-                console.error('Erro ao atualizar data de vencimento da tarefa:', error);
-                toast.error('Erro ao atualizar data de vencimento da tarefa.');
-                 if (typeof onTasksUpdated === 'function') { // Recarregar mesmo em erro para consistência
-                  await onTasksUpdated();
-                }
-              }
-            }
-          } else if (orderChanged && !statusChanged && !dueDateChanged) {
-            // Se apenas a ordem mudou (ex: dentro da mesma coluna de status ou data)
-            // e não há onTaskStatusChange (ou não é modo status), ou não há mudança de data.
-            // Esta situação pode precisar de um tratamento mais específico se onTaskStatusChange não for chamado
-            // e a ordem precise ser salva.
-            // No entanto, a lógica de onTaskStatusChange já cobre a mudança de ordem.
-            // E a lógica de dueDateChanged acima também cobre mudança de ordem.
-            // Se for modo status e só ordem mudou, onTaskStatusChange será chamado.
-            // Se for modo data e só ordem mudou, e não dueDateChanged, precisamos de uma chamada.
-            if (viewMode === 'date' && taskToMove && roundedNewOrder !== undefined) {
-                 console.log('[KanbanBoard.tsx] handleDragEnd: Only order changed in date view. Calling taskService.updateTask for order update.', { taskId: Number(taskToMove.id), order: roundedNewOrder });
-                try {
-                    await taskService.updateTask(Number(taskToMove.id), { order: roundedNewOrder });
-                    toast.success(`Ordem da tarefa "${taskToMove.title}" atualizada.`);
-                    if (typeof onTasksUpdated === 'function') {
-                        await onTasksUpdated();
-                    }
-                } catch (error) {
-                    console.error('Erro ao atualizar ordem da tarefa em modo data:', error);
-                    toast.error('Erro ao atualizar ordem da tarefa.');
-                     if (typeof onTasksUpdated === 'function') {
-                        await onTasksUpdated();
-                    }
-                }
-            } else if (viewMode === 'status' && !onTaskStatusChange) {
-                // Caso raro: modo status, só ordem mudou, mas não há onTaskStatusChange.
-                // Isso implicaria que o KanbanBoard está sendo usado de forma que não pode atualizar status/ordem.
-                console.warn('[KanbanBoard.tsx] handleDragEnd: Only order changed in status view, but no onTaskStatusChange handler.');
-            }
-
-          } else {
-             console.log('[KanbanBoard.tsx] handleDragEnd: No status, order, or due date change significant enough to trigger specific update. Current updateData:', updateData);
-             // Se updateData tiver algo (ex: timer), e nenhuma das condições acima foi atendida,
-             // ainda podemos precisar fazer uma atualização genérica se, por exemplo, só o timer mudou.
-             // Mas o timer já é salvo separadamente em handleTimerUpdate.
-             // Se onTaskStatusChange não foi chamado, e não houve mudança de data,
-             // e não houve apenas mudança de ordem no modo data, então talvez nada precise ser feito.
-             // Ou, se updateData tiver timer, e o timer era a ÚNICA mudança,
-             // isso já deveria ter sido tratado pelo handleTimerUpdate.
-             // A questão é se o timer precisa ser agrupado com a mudança de data.
-             // A lógica atual do timer já salva o timer via handleTimerUpdate ANTES desta seção.
-             // Se updateData.timer foi definido acima, ele será incluído na chamada de taskService.updateTask
-             // se uma das condições de (statusChanged || orderChanged || dueDateChanged) for verdadeira.
+            // O toast de "movida" pode ser mostrado aqui ou dentro de onTaskStatusChange no pai.
+            // Por ora, mantemos aqui para feedback imediato do drag.
+            toast.success(`Tarefa "${taskToMove.title}" movida.`);
           }
         } else {
-          console.log('[KanbanBoard.tsx] handleDragEnd: No status, order, or due date change detected. No call to onTaskStatusChange or taskService.updateTask for due_date.');
+          console.log('[KanbanBoard.tsx] handleDragEnd: No status or order change detected. No call to onTaskStatusChange.');
         }
 
-        // Lógica do timer para iniciar/parar (após atualizações de status/data/ordem)
+        // Etapa 3: Lidar com o início do timer para a tarefa movida, ou parar um timer de OUTRA tarefa.
         if (finalDestStatus === 'em_andamento') {
-          console.log('[KanbanBoard.tsx] handleDragEnd: Timer - Task moved to "em_andamento".');
+          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 3 - Task moved to "em_andamento".');
+          // Se a tarefa movida VAI PARA "em_andamento"
+          // Se a tarefa movida VAI PARA "em_andamento"
           if (timerRunningTaskId && timerRunningTaskId !== taskToMoveIdStr) {
-            console.log('[KanbanBoard.tsx] handleDragEnd: Timer - Another timer was running. Stopping it.', { oldRunningTaskId: timerRunningTaskId, value: currentTimerValues[timerRunningTaskId] });
+            console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 3 - Another timer was running. Stopping it.', { oldRunningTaskId: timerRunningTaskId, value: currentTimerValues[timerRunningTaskId] });
+            // Outra tarefa (NÃO a que foi movida) estava com o timer rodando. Parar e salvar.
             const otherTaskTimerValue = currentTimerValues[timerRunningTaskId];
-            const oldRunningTaskId = timerRunningTaskId;
+            const oldRunningTaskId = timerRunningTaskId; // Capturar antes de setTimerRunningTaskId(null) ou setTimerRunningTaskId(taskToMoveIdStr)
+            // Não chamamos setTimerRunningTaskId(null) aqui ainda, pois a próxima linha pode definir para taskToMoveIdStr.
+            // Apenas salvamos o tempo da tarefa anterior.
             if (otherTaskTimerValue !== undefined) {
-              // Salva o timer da tarefa anterior, mas não aguarda aqui para não bloquear a UI.
-              // handleTimerUpdate fará o onTasksUpdated.
-              handleTimerUpdate(oldRunningTaskId, otherTaskTimerValue);
+              await handleTimerUpdate(oldRunningTaskId, otherTaskTimerValue);
             }
           }
-          console.log('[KanbanBoard.tsx] handleDragEnd: Timer - Setting timerRunningTaskId to:', taskToMoveIdStr);
-          setTimerRunningTaskId(taskToMoveIdStr); // Inicia o timer para a tarefa movida
+          // Iniciar timer para a tarefa movida (ou garantir que continue se já era ela e já estava em "em_andamento")
+          // Se timerRunningTaskId já era taskToMoveIdStr, esta chamada não muda nada, o que é bom.
+          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 3 - Setting timerRunningTaskId to:', taskToMoveIdStr);
+          setTimerRunningTaskId(taskToMoveIdStr);
         }
-        // Se a tarefa foi movida PARA FORA de 'em_andamento', o timer já foi parado e salvo na seção anterior (timerRunningTaskId === taskToMoveIdStr && finalDestStatus !== 'em_andamento')
+        // Não precisamos de um 'else' aqui para parar o timer da tarefa movida se ela NÃO VAI PARA 'em_andamento',
+        // pois isso já foi tratado na Etapa 1.
 
     } catch (err) {
       console.error("Erro ao processar drag-and-drop no KanbanBoard:", err);
       toast.error('Erro ao mover tarefa.');
+      // A prop onTaskStatusChange em ProjectView lida com o tratamento de erro da API.
     } finally {
       setActiveId(null);
       console.log('[KanbanBoard.tsx] handleDragEnd FINALLY - activeId set to null.');
@@ -964,8 +868,8 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
   };
 
   const handleTaskUpdated = async () => {
-    if (onTasksUpdated) { // Alterado de onTasksUpdated
-      await onTasksUpdated(); // Alterado de onTasksUpdated
+    if (onGenericTaskUpdate) { // Alterado de onTasksUpdated
+      await onGenericTaskUpdate(); // Alterado de onTasksUpdated
     }
     // O hook useProcessedKanbanData reagirá à mudança em rawTasks e reprocessará os dados.
     // A lógica de timer e atualização de estado local que estava aqui foi simplificada
@@ -986,14 +890,14 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     try {
       await taskService.updateTask(Number(taskIdStr), { timer: timerValue });
       toast.success('Tempo da tarefa atualizado.');
-      if (onTasksUpdated) {
-        await onTasksUpdated();
+      if (onGenericTaskUpdate) {
+        await onGenericTaskUpdate();
       }
     } catch (err) {
       toast.error('Erro ao atualizar timer da tarefa.');
       // Recarregar para buscar o estado consistente da API mesmo em caso de erro na atualização do timer
-      if (onTasksUpdated) {
-        await onTasksUpdated();
+      if (onGenericTaskUpdate) {
+        await onGenericTaskUpdate();
       }
     }
   };
@@ -1056,8 +960,8 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
 
       handleCloseKanbanDialog(); // Usa a função centralizada para fechar e resetar
       toast.success('Tarefa criada com sucesso!');
-      if (onTasksUpdated) {
-        await onTasksUpdated();
+      if (onGenericTaskUpdate) {
+        await onGenericTaskUpdate();
       }
     } catch (error) {
       console.error('[KanbanBoard.tsx] ERRO CAPTURADO em handleTaskFormSuccess:', error);

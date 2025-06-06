@@ -7,7 +7,7 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   const toggleSidebar = () => {
@@ -26,5 +26,3 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     </div>
   );
 };
-
-export default AppLayout;
