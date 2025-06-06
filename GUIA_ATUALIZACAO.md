@@ -76,7 +76,7 @@ git checkout main
 git add .
 
 # Faça o commit das alterações
-git commit -m "Novo script para preparação de ambiente docker do Codex"
+git commit -m "[Correção de Bugs] ambiente docker do Codex"
 
 # Faça o push forçado (use com cuidado!)
 git push --force-with-lease origin main
