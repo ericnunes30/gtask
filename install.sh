@@ -32,8 +32,8 @@ sudo apt install -y postgresql postgresql-contrib
 
 # Configurar PostgreSQL
 echo "⚙️ Configurando PostgreSQL..."
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
+# Comandos systemctl removidos para compatibilidade com ambientes sem systemd
+echo "PostgreSQL instalado. Serviço será iniciado automaticamente quando necessário."
 
 # Criar banco de dados
 echo "🗄️ Criando banco de dados..."
