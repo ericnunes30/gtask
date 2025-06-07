@@ -203,3 +203,44 @@ export const generateKanbanColumns = (
 
   return { columns, tasksMap, columnOrder };
 };
+
+/**
+ * Calcula o valor decimal 'order' para uma tarefa com base em sua nova posição na coluna.
+ * A lógica garante que o valor seja único e decimal, permitindo inserções entre tarefas.
+ */
+export const calculateNewOrderForColumn = (
+  tasksInColumn: KanbanTask[],
+  overId: string | null,
+  activeId: string
+): number => {
+  // Se não houver tarefas na coluna, o primeiro item tem ordem 0.5
+  if (tasksInColumn.length === 0) {
+    return 0.5;
+  }
+
+  // Encontrar os índices das tarefas envolvidas
+  const activeIndex = tasksInColumn.findIndex(task => String(task.id) === activeId);
+  const overIndex = overId ? tasksInColumn.findIndex(task => String(task.id) === overId) : -1;
+
+  // Se a tarefa estiver sendo movida para o final da lista
+  if (overIndex === -1 || overIndex === tasksInColumn.length - 1) {
+    const lastTask = tasksInColumn[tasksInColumn.length - 1];
+    return (lastTask.order || 0) + 0.5;
+  }
+
+  // Se a tarefa estiver sendo movida para o início da lista
+  if (overIndex === 0) {
+    const firstTask = tasksInColumn[0];
+    return (firstTask.order || 0) / 2;
+  }
+
+  // Se a tarefa estiver sendo movida entre duas tarefas
+  const overTask = tasksInColumn[overIndex];
+  const prevTask = tasksInColumn[overIndex - 1];
+
+  // Calcular a média entre as ordens das tarefas adjacentes
+  const prevOrder = prevTask.order || 0;
+  const overOrder = overTask.order || 0;
+
+  return (prevOrder + overOrder) / 2;
+};

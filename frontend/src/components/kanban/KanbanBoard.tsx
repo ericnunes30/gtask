@@ -53,6 +53,7 @@ import { TaskFormRef } from '@/components/forms/TaskForm'; // Importar TaskFormR
 import { TaskTimer } from '@/components/tasks/TaskTimer';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
+import { calculateNewOrderForColumn } from './kanbanUtils';
 
 // Map para prioridades dos badges
 const priorityMap = {
@@ -728,58 +729,18 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
         }
       }
 
-      // Lógica refatorada para calcular a nova ordem (permanece a mesma)
+      // Lógica refatorada para calcular a nova ordem usando a função utilitária
       const tasksInDestColumnFiltered = (processedColumns[destinationColumnId]?.taskIds || [])
         .filter(id => id !== activeIdStr)
         .map(id => processedTasksMap[id])
         .filter(Boolean) as KanbanTask[];
-      
+
       tasksInDestColumnFiltered.sort((a, b) => (a.order || 0) - (b.order || 0));
       console.log('[KanbanBoard.tsx] handleDragEnd: Tasks in destination column (for order calc):', tasksInDestColumnFiltered.map(t => ({id: t.id, order: t.order})));
 
-      let insertAtIndex = tasksInDestColumnFiltered.length;
-
-      // Se 'over' é uma tarefa (não uma coluna) e não é a tarefa ativa, calcula o índice de inserção
-      if (processedTasksMap[overIdStr] && overIdStr !== activeIdStr) {
-        const overTaskActualIndex = tasksInDestColumnFiltered.findIndex(t => String(t.id) === overIdStr);
-        console.log('[KanbanBoard.tsx] handleDragEnd: "over" is a task. Index of "over" task in dest column:', overTaskActualIndex);
-        if (overTaskActualIndex !== -1) {
-          // Se a tarefa ativa está sendo arrastada para baixo sobre outra tarefa,
-          // o índice de inserção deve ser após a tarefa 'over'.
-          // Se está sendo arrastada para cima, o índice é o da tarefa 'over'.
-          // A lógica atual de dnd-kit geralmente coloca antes se não houver distinção.
-          // Para ser mais preciso, pode-se verificar a posição do cursor em relação ao item 'over'.
-          // Por simplicidade, a lógica atual de insertAtIndex é mantida.
-          insertAtIndex = overTaskActualIndex;
-        }
-      } else if (processedColumns[overIdStr]) { // Se 'over' é uma coluna, insere no final
-        console.log('[KanbanBoard.tsx] handleDragEnd: "over" is a column. Inserting at end.');
-        insertAtIndex = tasksInDestColumnFiltered.length;
-      }
-      console.log('[KanbanBoard.tsx] handleDragEnd: Calculated insertAtIndex:', insertAtIndex);
-      
-      if (insertAtIndex === 0) {
-        if (tasksInDestColumnFiltered.length > 0) {
-          newOrderCalculated = (tasksInDestColumnFiltered[0].order || 1) / 2;
-          console.log('[KanbanBoard.tsx] handleDragEnd: New order (insert at 0):', newOrderCalculated, 'based on first task order:', tasksInDestColumnFiltered[0].order);
-        } else {
-          newOrderCalculated = 10;
-          console.log('[KanbanBoard.tsx] handleDragEnd: New order (insert at 0, empty column):', newOrderCalculated);
-        }
-      } else if (insertAtIndex >= tasksInDestColumnFiltered.length) {
-        if (tasksInDestColumnFiltered.length > 0) {
-          newOrderCalculated = (tasksInDestColumnFiltered[tasksInDestColumnFiltered.length - 1].order || 0) + 10;
-          console.log('[KanbanBoard.tsx] handleDragEnd: New order (insert at end):', newOrderCalculated, 'based on last task order:', tasksInDestColumnFiltered[tasksInDestColumnFiltered.length - 1].order);
-        } else {
-          newOrderCalculated = 10; // Deveria ser coberto pelo caso de insertAtIndex === 0 e coluna vazia
-          console.log('[KanbanBoard.tsx] handleDragEnd: New order (insert at end, empty column - fallback):', newOrderCalculated);
-        }
-      } else {
-        const prevTaskOrder = tasksInDestColumnFiltered[insertAtIndex - 1].order || 0;
-        const nextTaskOrder = tasksInDestColumnFiltered[insertAtIndex].order || 0;
-        newOrderCalculated = (prevTaskOrder + nextTaskOrder) / 2;
-        console.log('[KanbanBoard.tsx] handleDragEnd: New order (insert between):', newOrderCalculated, 'based on prev/next orders:', prevTaskOrder, nextTaskOrder);
-      }
+      // Usar a função utilitária para calcular a nova ordem
+      newOrderCalculated = calculateNewOrderForColumn(tasksInDestColumnFiltered, overIdStr, activeIdStr);
+      console.log('[KanbanBoard.tsx] handleDragEnd: New order calculated using util function:', newOrderCalculated);
       
       const roundedNewOrder = newOrderCalculated !== undefined ? parseFloat(newOrderCalculated.toFixed(5)) : undefined;
       console.log('[KanbanBoard.tsx] handleDragEnd: Rounded new order:', roundedNewOrder);
@@ -932,7 +893,7 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       setTimerRunningTaskId(taskIdStr);
       // O useEffect de timerRunningTaskId pegará o valor de task.timer do processedTasksMap atualizado
       // para inicializar currentTimerValues[taskIdStr] se necessário.
-    } else if (previousTimerRunningId === taskIdStr && newStatus !== 'em_andamento') {
+    } else if (previousTimerRunningId === taskIdStr && previousTimerRunningId !== null) {
       // O timer desta tarefa (taskIdStr) estava rodando (previousTimerRunningId === taskIdStr)
       // e o status mudou para algo que não é 'em_andamento'
       // (ou o usuário pausou o timer manualmente, o que também pode mudar o status para a_fazer)

@@ -172,8 +172,8 @@ const Tasks = () => {
       const updateData: UpdateTaskRequest = { status: newStatus };
       if (newOrder !== undefined) {
         // TESTE: Enviar order como inteiro arredondado
-        updateData.order = Math.round(newOrder);
-        console.log(`[Tasks.tsx] TESTE: Original newOrder: ${newOrder}, Enviando order arredondado: ${updateData.order}`);
+        updateData.order = newOrder;
+        console.log(`[Tasks.tsx] TESTE: Original newOrder: ${newOrder}, Enviando order: ${updateData.order}`);
       }
       console.log('[Tasks.tsx] Updating task on API with data:', updateData);
       await taskService.updateTask(Number(task.id), updateData);
