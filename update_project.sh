@@ -35,10 +35,21 @@ log "Arquivos marcados como skip-worktree:"
 git ls-files -v | grep ^S >> $LOG_FILE
 
 # Atualizar o código
+log "Verificando alterações locais"
+git status --porcelain
+
+log "Salvando alterações locais (stash), se houver"
+# -u inclui arquivos não rastreados, -m permite uma mensagem para o stash
+git stash push -u -m "Autostash by update_project.sh"
+
 log "Atualizando código com git pull"
 # Usar --no-edit para evitar que o editor seja aberto para mensagens de merge
 git pull --no-edit origin main
 check_error "Falha no git pull"
+
+log "Restaurando alterações locais (stash pop), se houver"
+# Tenta aplicar o stash. Se falhar (conflito), o usuário precisará resolver manualmente.
+git stash pop || log "AVISO: Falha ao aplicar o stash. Pode haver conflitos para resolver manualmente."
 
 # Atualizar o frontend
 log "Atualizando frontend"
