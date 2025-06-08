@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
-import { userService, teamService, roleService, User, Occupation, Role, CreateUserRequest, UpdateUserRequest } from "@/lib/api";
+import { teamService, roleService, User, Occupation, Role, CreateUserRequest, UpdateUserRequest } from "@/lib/api";
+import { useGetUsers, useCreateUser, useDeleteUser } from '@/services/backend/users'
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -77,6 +78,10 @@ const Users = () => {
   const [refreshing, setRefreshing] = useState(false); // Estado para controlar a atualização
   const [error, setError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  const { data: usersQueryData } = useGetUsers();
+  const { mutateAsync: mutateUser } = useCreateUser();
+  const { mutate: deleteUserMutate } = useDeleteUser();
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   // Formulário de novo usuário
@@ -132,34 +137,7 @@ const Users = () => {
       console.log('%c Roles carregadas:', 'background: #9b59b6; color: white; padding: 2px 5px; border-radius: 3px;', rolesData);
       setRoles(rolesData);
 
-      // Carregar usuários
-      const usersData = await userService.getUsers();
-      console.log('%c Usuários carregados da API:', 'background: #e74c3c; color: white; padding: 2px 5px; border-radius: 3px;', usersData);
-
-      // Processar os dados dos usuários para garantir compatibilidade
-      const processedUsers = usersData.map(user => {
-        // Garantir que temos occupation_id mesmo se vier como occupationId
-        if (user.occupationId && !user.occupation_id) {
-          user.occupation_id = user.occupationId;
-        }
-
-        // Garantir que temos created_at mesmo se vier como createdAt
-        if (user.createdAt && !user.created_at) {
-          user.created_at = user.createdAt;
-        }
-
-        // Garantir que temos updated_at mesmo se vier como updatedAt
-        if (user.updatedAt && !user.updated_at) {
-          user.updated_at = user.updatedAt;
-        }
-
-        return user;
-      });
-
-      console.log('Usuários processados:', processedUsers);
-      setUsers(processedUsers);
-
-      return { users: processedUsers, occupations: occupationsData, roles: rolesData };
+      return { users: [], occupations: occupationsData, roles: rolesData };
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       setError('Não foi possível carregar os dados. Tente novamente mais tarde.');
@@ -175,6 +153,24 @@ const Users = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (usersQueryData) {
+      const processed = usersQueryData.map(user => {
+        if (user.occupationId && !user.occupation_id) {
+          user.occupation_id = user.occupationId;
+        }
+        if (user.createdAt && !user.created_at) {
+          user.created_at = user.createdAt;
+        }
+        if (user.updatedAt && !user.updated_at) {
+          user.updated_at = user.updatedAt;
+        }
+        return user;
+      });
+      setUsers(processed);
+    }
+  }, [usersQueryData]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -235,9 +231,7 @@ const Users = () => {
         userData.roles = newUser.roles;
       }
 
-      // Enviar para a API
-      const createdUser = await userService.createUser(userData);
-      console.log('Usuário criado:', createdUser);
+      const { data: createdUser } = await mutateUser({ data: userData });
 
       // Resetar o formulário
       setNewUser({
@@ -256,9 +250,6 @@ const Users = () => {
         description: `${createdUser.name} foi adicionado com sucesso.`,
       });
 
-      // Recarregar a lista de usuários para garantir dados atualizados
-      // Usamos false para não mostrar o indicador de carregamento completo
-      await fetchData(false);
     } catch (err) {
       console.error('Erro ao criar usuário:', err);
       toast({
@@ -375,10 +366,7 @@ const Users = () => {
         userData.roles = newUser.roles;
       }
 
-      // Enviar para a API
-      const updatedUser = await userService.updateUser(editingUser.id, userData);
-      console.log('Usuário atualizado:', updatedUser);
-      console.log('Resposta completa da API:', updatedUser);
+      const { data: updatedUser } = await mutateUser({ id: editingUser.id, data: userData });
 
       // Resetar o formulário
       setNewUser({
@@ -397,9 +385,6 @@ const Users = () => {
         description: `${updatedUser.name} foi atualizado com sucesso.`,
       });
 
-      // Recarregar a lista de usuários para garantir dados atualizados
-      // Usamos false para não mostrar o indicador de carregamento completo
-      await fetchData(false);
     } catch (err) {
       console.error('Erro ao atualizar usuário:', err);
       toast({
@@ -441,8 +426,7 @@ const Users = () => {
     if (!userToDelete) return;
 
     try {
-      // Chamar a API para excluir o usuário
-      await userService.deleteUser(userToDelete.id);
+      await deleteUserMutate(userToDelete.id);
 
       // Guardar o nome do usuário antes de limpar o estado
       const deletedUserName = userToDelete.name;
@@ -456,9 +440,6 @@ const Users = () => {
         description: `${deletedUserName} foi removido com sucesso.`,
       });
 
-      // Recarregar a lista de usuários para garantir dados atualizados
-      // Usamos false para não mostrar o indicador de carregamento completo
-      await fetchData(false);
     } catch (err) {
       console.error('Erro ao excluir usuário:', err);
       toast({

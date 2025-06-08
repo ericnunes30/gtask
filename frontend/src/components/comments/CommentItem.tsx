@@ -6,7 +6,8 @@ import { Heart, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Comment as ApiComment, User as ApiUser } from '@/lib/api'; // Importar a interface Comment e User
-import commentService from '@/lib/api/comments'; // Importar o serviço
+import commentService from '@/lib/api/comments'
+import { useCreateComment, useDeleteComment } from '@/services/backend/comments'
 import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
 import { toast } from "sonner";
 
@@ -22,6 +23,8 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
   const [isLiked, setIsLiked] = useState(false); // Começa false (sem checkIfLiked)
   const [likesCount, setLikesCount] = useState(comment.likesCount || 0);
   const [isLiking, setIsLiking] = useState(false);
+  const { mutateAsync: createComment } = useCreateComment();
+  const { mutateAsync: deleteCommentMutation } = useDeleteComment();
 
   const handleLikeToggle = async () => {
     if (isLiking) return;
@@ -97,7 +100,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
         parentId: isReply ? comment.parentId : comment.id // Se for resposta, usa o parentId do pai, senão o id do comentário atual
       };
 
-      const newReply = await commentService.createComment(commentData);
+      const newReply = await createComment({ data: commentData }).then(res => res.data);
 
       // Enriquecer a resposta com dados do usuário
       const replyWithUser: ApiComment = {
