@@ -32,8 +32,10 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
-import { teamService, roleService, User, Occupation, Role, CreateUserRequest, UpdateUserRequest } from "@/lib/api";
+import { User, Occupation, Role, CreateUserRequest, UpdateUserRequest } from "@/lib/api";
 import { useGetUsers, useCreateUser, useDeleteUser } from '@/services/backend/users'
+import { useGetTeams } from '@/services/backend/teams'
+import { useGetRoles } from '@/services/backend/roles'
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -86,8 +88,24 @@ const Users = () => {
     error: usersError,
     refetch,
   } = useGetUsers();
-  const error = dataError || (usersIsError ? 'Não foi possível carregar os usuários.' : null);
-  const loading = usersLoading || dataLoading;
+  const {
+    data: teamsQueryData,
+    isLoading: teamsLoading,
+    isError: teamsIsError,
+    refetch: refetchTeams,
+  } = useGetTeams();
+  const {
+    data: rolesQueryData,
+    isLoading: rolesLoading,
+    isError: rolesIsError,
+    refetch: refetchRoles,
+  } = useGetRoles();
+  const error =
+    dataError ||
+    (usersIsError || teamsIsError || rolesIsError
+      ? 'Não foi possível carregar os dados.'
+      : null);
+  const loading = usersLoading || teamsLoading || rolesLoading || dataLoading;
   const { mutateAsync: mutateUser } = useCreateUser();
   const { mutate: deleteUserMutate } = useDeleteUser();
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -124,25 +142,14 @@ const Users = () => {
     setDataError(null);
 
     try {
-      // Carregar ocupações (equipes) usando o serviço de equipes
-      const occupationsData = await teamService.getTeams();
-      console.log('%c Equipes carregadas:', 'background: #3498db; color: white; padding: 2px 5px; border-radius: 3px;', occupationsData);
-      console.log('Total de equipes:', occupationsData.length);
-
-      // Mostrar detalhes de cada equipe para depuração
-      occupationsData.forEach((team, index) => {
-        console.log(`Equipe ${index + 1}:`, {
-          id: team.id,
-          name: team.name,
-          description: team.description
-        });
-      });
+      const [teamsRes, rolesRes] = await Promise.all([
+        refetchTeams(),
+        refetchRoles(),
+      ]);
+      const occupationsData = teamsRes.data || [];
+      const rolesData = rolesRes.data || [];
 
       setOccupations(occupationsData);
-
-      // Carregar roles (funções/permissões)
-      const rolesData = await roleService.getRoles();
-      console.log('%c Roles carregadas:', 'background: #9b59b6; color: white; padding: 2px 5px; border-radius: 3px;', rolesData);
       setRoles(rolesData);
 
       return { users: [], occupations: occupationsData, roles: rolesData };
@@ -161,6 +168,18 @@ const Users = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (teamsQueryData) {
+      setOccupations(teamsQueryData);
+    }
+  }, [teamsQueryData]);
+
+  useEffect(() => {
+    if (rolesQueryData) {
+      setRoles(rolesQueryData);
+    }
+  }, [rolesQueryData]);
 
   useEffect(() => {
     if (usersQueryData) {
