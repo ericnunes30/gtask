@@ -43,6 +43,8 @@ import {
   useCreateTeam,
   useUpdateTeam,
   useDeleteTeam,
+  useAddUserToTeam,
+  useRemoveUserFromTeam,
 } from '@/services/backend/teams';
 
 const Teams = () => {
@@ -75,6 +77,8 @@ const Teams = () => {
   const { mutateAsync: createTeamMutate } = useCreateTeam();
   const { mutateAsync: updateTeamMutate } = useUpdateTeam();
   const { mutateAsync: deleteTeamMutate } = useDeleteTeam();
+  const { mutateAsync: addUserToTeamMutate } = useAddUserToTeam();
+  const { mutateAsync: removeUserFromTeamMutate } = useRemoveUserFromTeam();
   const { data: usersQueryData = [] } = useGetUsers();
 
   const error = dataError || (teamsIsError ? 'Não foi possível carregar as equipes.' : null);
@@ -165,11 +169,10 @@ const Teams = () => {
 
       // Tentar adicionar um usuário a uma equipe via API
       try {
-        // Usar o serviço de equipes para adicionar usuário
-
-        const result = await teamService.addUserToTeam(occupationId, {
-          user_id: userId,
-          occupation_id: occupationId
+        // Usar hook de mutação para adicionar usuário
+        await addUserToTeamMutate({
+          teamId: occupationId,
+          data: { user_id: userId, occupation_id: occupationId },
         });
 
 
@@ -274,8 +277,8 @@ const Teams = () => {
     try {
       // Tentar remover um usuário de uma equipe via API
       try {
-        // Usar o serviço de equipes para remover usuário
-        await teamService.removeUserFromTeam(teamId, userId);
+        // Usar hook de mutação para remover usuário
+        await removeUserFromTeamMutate({ teamId, userId });
 
         // Atualizar a lista de usuários da equipe
         setTeamUsers(prev => ({
