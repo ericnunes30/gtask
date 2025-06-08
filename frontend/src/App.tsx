@@ -3,7 +3,7 @@ import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 // Dashboard (Index) removido conforme solicitado
 import Login from "./pages/Login";
@@ -18,8 +18,6 @@ import Settings from "./pages/Settings";
 import Users from "./pages/Users";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
-
-const queryClient = new QueryClient();
 
 // Componente para envolver as rotas com o AuthProvider
 const AppRoutes = () => {
@@ -80,17 +78,15 @@ const AppRoutes = () => {
 const App = () => {
   return (
     <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AuthProvider>
-              <AppRoutes />
-            </AuthProvider>
-          </BrowserRouter>
-        </TooltipProvider>
-      </QueryClientProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
     </React.StrictMode>
   );
 };
