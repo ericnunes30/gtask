@@ -19,8 +19,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { projectService, Project, ProjectPriority } from '@/lib/api';
 import { convertApiProjectToFrontend } from '@/lib/api/projects';
-import { taskService, teamService, User, Team } from '@/lib/api';
+import { taskService, User, Team } from '@/lib/api';
+import { useGetProjects } from '@/services/backend/projects';
 import { useGetUsers } from '@/services/backend/users';
+import { useGetTeams } from '@/services/backend/teams';
 import { ProjectForm } from '@/components/forms/ProjectForm';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,6 +46,8 @@ const ProjectView = () => {
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { data: usersQueryData = [] } = useGetUsers();
+  const { data: projectsQueryData = [] } = useGetProjects();
+  const { data: teamsQueryData = [] } = useGetTeams();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const tasksListRef = React.useRef<{ fetchTasks: () => Promise<void> }>(null);
   const { user } = useAuth();
@@ -117,8 +121,10 @@ const ProjectView = () => {
         // Converter projectId para número
         const id = parseInt(projectId);
 
-        // Carregar projeto da API
-        const projectData = await projectService.getProject(id);
+        // Tentar obter o projeto a partir do cache do React Query
+        const projectData =
+          projectsQueryData.find(p => p.id === id) ||
+          (await projectService.getProject(id));
         // Garantir que os dados do projeto estejam no formato correto
         const convertedProject = convertApiProjectToFrontend(projectData);
         setProject(convertedProject);
@@ -161,11 +167,9 @@ const ProjectView = () => {
           setProjectTeams(teamsArray as Team[]);
         }
 
-        // Carregar todos os usuários e equipes para referência
-        const [usersData, teamsData] = await Promise.all([
-          Promise.resolve(usersQueryData),
-          teamService.getTeams()
-        ]);
+        // Carregar todos os usuários e equipes para referência usando os hooks
+        const usersData = usersQueryData;
+        const teamsData = teamsQueryData;
 
         setAllUsers(usersData);
         setAllTeams(teamsData);
@@ -177,7 +181,7 @@ const ProjectView = () => {
     };
 
     fetchProjectData();
-  }, [projectId]);
+  }, [projectId, projectsQueryData, teamsQueryData, usersQueryData]);
 
   // Efeito para atualizar os componentes KanbanBoard e TasksList quando o projectId mudar
   // ou quando os dados do projeto são carregados

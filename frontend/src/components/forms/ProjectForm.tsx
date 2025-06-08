@@ -45,6 +45,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { projectService, Project, ProjectPriority } from '@/lib/api';
 import { useGetUsers } from '@/services/backend/users';
+import { useGetTeams } from '@/services/backend/teams';
 
 import { useCreateProject } from '@/services/backend/projects';
 
@@ -83,6 +84,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
   const navigate = useNavigate();
   const { mutate, isPending } = useCreateProject();
   const { data: usersQueryData = [] } = useGetUsers();
+  const { data: teamsQueryData = [] } = useGetTeams();
   const loading = isPending;
   const [error, setError] = useState<string | null>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -141,13 +143,9 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
     // Carregar usuários e ocupações da API
     const loadUsersAndOccupations = async () => {
       try {
-        const { default: teamService } = await import('@/lib/api/teams');
-
-        // Carregar usuários e equipes (ocupações)
-        const [usersData, teamsData] = await Promise.all([
-          Promise.resolve(usersQueryData),
-          teamService.getTeams()
-        ]);
+        // Carregar usuários e equipes (ocupações) a partir dos hooks
+        const usersData = usersQueryData;
+        const teamsData = teamsQueryData;
 
         setAllUsers(usersData);
         setOccupations(teamsData);
@@ -199,7 +197,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
 
     fetchProjectData();
     loadUsersAndOccupations();
-  }, [projectId, form, initialData?.occupations]);
+  }, [projectId, form, initialData?.occupations, teamsQueryData, usersQueryData]);
 
   // Função para filtrar usuários com base nas ocupações selecionadas
   const filterUsersByOccupations = (occupationIds: number[], users = allUsers) => {

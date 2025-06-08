@@ -37,7 +37,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Task, TaskStatus, teamService } from '@/lib/api';
+import { Task, TaskStatus } from '@/lib/api';
+import { useGetTeams } from '@/services/backend/teams';
 import { useGetProjects } from '@/services/backend/projects';
 import { useGetUsers } from '@/services/backend/users';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -103,6 +104,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
   const { mutate: updateTaskMutation, isPending: isUpdatePending } = useUpdateTask();
   const { data: projectsQueryData = [] } = useGetProjects();
   const { data: usersQueryData = [] } = useGetUsers();
+  const { data: teamsQueryData = [] } = useGetTeams();
   const isPending = isCreatePending || isUpdatePending;
 
   // Inicializa o formulário com zod resolver
@@ -368,7 +370,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                 // Se ainda não encontrou equipes, verificar se a tarefa tem equipes associadas
                 if (initialData.occupations && Array.isArray(initialData.occupations) && initialData.occupations.length > 0) {
                   // Buscar todas as equipes para poder filtrar
-                  const allTeamsData = await teamService.getTeams();
+                  const allTeamsData = teamsQueryData;
 
                   // Extrair IDs das equipes da tarefa
                   const taskOccupationIds = initialData.occupations.map(occ =>
@@ -444,20 +446,20 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                 setTeams(projectTeamsList);
               } else {
                 // Se não encontrou equipes no projeto, carregar todas as equipes
-                const teamsData = await teamService.getTeams();
+                const teamsData = teamsQueryData;
                 setTeams(teamsData);
               }
             }
           } catch (error) {
             // Em caso de erro, carregar todas as equipes
-            const teamsData = await teamService.getTeams();
+            const teamsData = teamsQueryData;
             setTeams(teamsData);
           }
         }
         // Se não temos projeto nem equipes específicas
         else {
           // Carregar todas as equipes
-          const teamsData = await teamService.getTeams();
+          const teamsData = teamsQueryData;
           setTeams(teamsData);
         }
 
@@ -478,7 +480,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
     };
 
     fetchData();
-  }, [defaultProjectId, defaultStatus, initialData?.id, projectsQueryData, usersQueryData]);
+  }, [defaultProjectId, defaultStatus, initialData?.id, projectsQueryData, usersQueryData, teamsQueryData]);
 
   // Efeito para filtrar usuários quando as equipes selecionadas mudarem
   useEffect(() => {

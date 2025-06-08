@@ -57,8 +57,9 @@ import {
 import { TaskForm } from '@/components/forms/TaskForm';
 import { format, isPast, isBefore, formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Task, TaskPriority, TaskStatus, teamService, Comment as ApiComment, User as ApiUser } from '@/lib/api'; // Importando Comment, User e TaskStatus da API
+import { Task, TaskPriority, TaskStatus, Comment as ApiComment, User as ApiUser } from '@/lib/api'; // Importando Comment, User e TaskStatus da API
 import { useGetUsers } from '@/services/backend/users'
+import { useGetTeams } from '@/services/backend/teams'
 import { convertApiTaskToFrontend, UpdateTaskRequest } from '@/lib/api/tasks';
 import { useGetTask, useUpdateTask, useDeleteTask } from '@/services/backend/tasks';
 import { useCreateComment } from '@/services/backend/comments';
@@ -130,6 +131,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const { mutateAsync: deleteTaskMutation } = useDeleteTask();
   const { mutateAsync: createComment } = useCreateComment();
   const { data: usersData = [] } = useGetUsers()
+  const { data: teamsQueryData = [] } = useGetTeams()
 
   // Estados para curtidas foram movidos para CommentItem.tsx
 
@@ -310,16 +312,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setUsers(usersData)
 
       // Carregar equipes (occupações)
-      try {
-        const teamsData = await teamService.getTeams();
-
-        // Verificar se as equipes têm usuários
-        teamsData.forEach(team => {
-        });
-
-        setTeams(teamsData);
-      } catch (teamsErr) {
-      }
+      const teamsData = teamsQueryData;
+      setTeams(teamsData);
 
       // Carregar projetos
 
