@@ -44,7 +44,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { projectService, Project, ProjectPriority } from '@/lib/api';
-import { CreateProjectRequest, UpdateProjectRequest } from '@/lib/api/projects';
+
+import { useCreateProject } from '@/services/backend/projects';
 
 // Schema de validação para o formulário
 const projectFormSchema = z.object({
@@ -79,7 +80,8 @@ interface ProjectFormProps {
 
 export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: ProjectFormProps) {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const { mutate, isPending } = useCreateProject();
+  const loading = isPending;
   const [error, setError] = useState<string | null>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
@@ -302,10 +304,8 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
     return teamNames.join(', ');
   };
 
-  const onSubmit = async (values: ProjectFormValues) => {
-    setLoading(true);
+  const onSubmit = (values: ProjectFormValues) => {
     setError(null);
-
 
     try {
       // Verificar se usuários foram selecionados
@@ -336,28 +336,33 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
 
       // Verificar o formato das datas
 
-      if (projectId) {
-        // Atualizar projeto existente
-        await projectService.updateProject(projectId, projectData);
-        toast.success(`Projeto "${values.title}" atualizado com sucesso.`);
-      } else {
-        // Criar novo projeto
-        await projectService.createProject(projectData);
-        toast.success(`Projeto "${values.title}" criado com sucesso.`);
-      }
+      mutate(
+        { id: projectId, data: projectData },
+        {
+          onSuccess: () => {
+            toast.success(
+              `Projeto "${values.title}" ${projectId ? 'atualizado' : 'criado'} com sucesso.`
+            )
 
-      // Chamar callback de sucesso ou redirecionar
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        navigate('/projects');
-      }
+            if (onSuccess) {
+              onSuccess()
+            } else {
+              navigate('/projects')
+            }
+          },
+          onError: (error) => {
+            console.error('Erro ao salvar projeto:', error)
+            setError('Ocorreu um erro ao salvar o projeto. Tente novamente.')
+            toast.error(
+              'Erro ao salvar projeto. Verifique os dados e tente novamente.'
+            )
+          },
+        }
+      )
     } catch (error) {
-      console.error('Erro ao salvar projeto:', error);
-      setError('Ocorreu um erro ao salvar o projeto. Tente novamente.');
-      toast.error('Erro ao salvar projeto. Verifique os dados e tente novamente.');
-    } finally {
-      setLoading(false);
+      console.error('Erro ao preparar dados do projeto:', error)
+      setError('Ocorreu um erro ao preparar o projeto.')
+      toast.error('Erro ao preparar projeto. Verifique os dados.')
     }
   };
 
