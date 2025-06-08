@@ -37,6 +37,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { teamService, userService, Team, Occupation, TeamUser, User } from '@/lib/api';
+import {
+  useGetTeams,
+  useCreateTeam,
+  useUpdateTeam,
+  useDeleteTeam,
+} from '@/services/backend/teams';
 
 const Teams = () => {
   const navigate = useNavigate();
@@ -50,24 +56,38 @@ const Teams = () => {
   const [teamUsers, setTeamUsers] = useState<Record<number, TeamUser[]>>({});
   const [selectedOccupation, setSelectedOccupation] = useState<string>('');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
 
+  const {
+    data: teamsQueryData,
+    isLoading: teamsLoading,
+    isError: teamsIsError,
+    error: teamsError,
+    refetch: refetchTeams,
+  } = useGetTeams();
+
+  const { mutateAsync: createTeamMutate } = useCreateTeam();
+  const { mutateAsync: updateTeamMutate } = useUpdateTeam();
+  const { mutateAsync: deleteTeamMutate } = useDeleteTeam();
+
+  const error = dataError || (teamsIsError ? 'Não foi possível carregar as equipes.' : null);
+  const loading = teamsLoading || dataLoading;
+
   // Carregar equipes e ocupações
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
-      setError(null);
+      setDataLoading(true);
+      setDataError(null);
 
       try {
-        // Carregar ocupações (usando o serviço de equipes)
-        const occupationsData = await teamService.getTeams();
-        console.log('Ocupações carregadas:', occupationsData);
-        setOccupations(occupationsData);
+        const teamsData = teamsQueryData || [];
+        setTeams(teamsData);
+        setOccupations(teamsData);
 
         // Carregar usuários
         try {
@@ -86,129 +106,30 @@ const Teams = () => {
           setUsers(mockUsers);
         }
 
-        // Tentar carregar equipes da API
-        try {
-          const teamsData = await teamService.getTeams();
-          console.log('Equipes carregadas da API:', teamsData);
-          setTeams(teamsData);
-        } catch (err) {
-          console.error('Erro ao carregar equipes da API:', err);
-          // Dados simulados de equipes como fallback
-          const mockTeams: Team[] = [
-            {
-              id: 1,
-              name: 'Equipe de Desenvolvimento',
-              description: 'Responsável pelo desenvolvimento de software',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            },
-            {
-              id: 2,
-              name: 'Equipe de Design',
-              description: 'Responsável pelo design de interfaces',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          ];
-
-          console.log('Usando equipes simuladas:', mockTeams);
-          setTeams(mockTeams);
-        }
-
-        // Tentar carregar usuários de cada equipe da API
+        // Carregar usuários de cada equipe
         const teamUsersMap: Record<number, TeamUser[]> = {};
-        const teamsToProcess = teams.length > 0 ? teams : (await teamService.getTeams()).length > 0 ? await teamService.getTeams() : [];
-
-        for (const team of teamsToProcess) {
+        for (const team of teamsData) {
           try {
             const teamUsersData = await teamService.getTeamUsers(team.id);
-            console.log(`Usuários da equipe ${team.id} carregados da API:`, teamUsersData);
             teamUsersMap[team.id] = teamUsersData;
           } catch (err) {
             console.error(`Erro ao carregar usuários da equipe ${team.id} da API:`, err);
-            // Dados simulados de usuários de equipe como fallback
-            if (team.id === 1) {
-              teamUsersMap[team.id] = [
-                {
-                  id: 1,
-                  team_id: 1,
-                  user_id: 1,
-                  occupation_id: occupationsData[0]?.id || 1,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  user: users.find(u => u.id === 1) || {
-                    id: 1,
-                    name: 'João Silva',
-                    email: 'joao@example.com'
-                  },
-                  occupation: occupationsData[0] || {
-                    id: 1,
-                    name: 'Desenvolvedor',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  }
-                },
-                {
-                  id: 2,
-                  team_id: 1,
-                  user_id: 2,
-                  occupation_id: occupationsData[1]?.id || 2,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  user: users.find(u => u.id === 2) || {
-                    id: 2,
-                    name: 'Maria Oliveira',
-                    email: 'maria@example.com'
-                  },
-                  occupation: occupationsData[1] || {
-                    id: 2,
-                    name: 'Designer',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  }
-                }
-              ];
-            } else if (team.id === 2) {
-              teamUsersMap[team.id] = [
-                {
-                  id: 3,
-                  team_id: 2,
-                  user_id: 3,
-                  occupation_id: occupationsData[1]?.id || 2,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  user: users.find(u => u.id === 3) || {
-                    id: 3,
-                    name: 'Pedro Santos',
-                    email: 'pedro@example.com'
-                  },
-                  occupation: occupationsData[1] || {
-                    id: 2,
-                    name: 'Designer',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  }
-                }
-              ];
-            } else {
-              teamUsersMap[team.id] = [];
-            }
-            console.log(`Usando usuários simulados para a equipe ${team.id}:`, teamUsersMap[team.id]);
+            teamUsersMap[team.id] = [];
           }
         }
-
-        console.log('Mapa de usuários de equipes:', teamUsersMap);
         setTeamUsers(teamUsersMap);
       } catch (err) {
         console.error('Erro ao carregar dados:', err);
-        setError('Não foi possível carregar as equipes. Tente novamente mais tarde.');
+        setDataError('Não foi possível carregar as equipes. Tente novamente mais tarde.');
       } finally {
-        setLoading(false);
+        setDataLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
+    if (teamsQueryData) {
+      fetchData();
+    }
+  }, [teamsQueryData]);
 
   // Função para adicionar uma nova equipe
   const handleAddTeam = async () => {
@@ -218,50 +139,19 @@ const Teams = () => {
     }
 
     try {
-      // Tentar criar uma nova equipe via API
-      try {
-        const newTeam = await teamService.createTeam({
-          name: teamName
-        });
+      const newTeam = await createTeamMutate({ name: teamName });
 
-        console.log('Nova equipe criada via API:', newTeam);
-
-        // Adicionar nova equipe à lista
-        setTeams(prevTeams => [...prevTeams, newTeam]);
+      if (newTeam) {
         setTeamUsers(prev => ({ ...prev, [newTeam.id]: [] }));
-
-        // Resetar o formulário
-        setTeamName('');
-        setIsDialogOpen(false);
-
-        toast.success('Equipe criada com sucesso!');
-      } catch (apiErr) {
-        console.error('Erro ao criar equipe via API:', apiErr);
-
-        // Fallback: simular a criação de uma nova equipe
-        const newTeam: Team = {
-          id: Date.now(), // Usar timestamp como ID único
-          name: teamName,
-          description: "",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        console.log('Nova equipe criada (simulada):', newTeam);
-
-        // Adicionar nova equipe à lista
-        setTeams(prevTeams => [...prevTeams, newTeam]);
-        setTeamUsers(prev => ({ ...prev, [newTeam.id]: [] }));
-
-        // Resetar o formulário
-        setTeamName('');
-        setIsDialogOpen(false);
-
-        toast.success('Equipe criada com sucesso! (modo offline)');
       }
+
+      setTeamName('');
+      setIsDialogOpen(false);
+
+      toast.success('Equipe criada com sucesso!');
     } catch (err) {
       console.error('Erro ao criar equipe:', err);
-      alert('Não foi possível criar a equipe. Tente novamente.');
+      toast.error('Não foi possível criar a equipe. Tente novamente.');
     }
   };
 
@@ -469,11 +359,7 @@ const Teams = () => {
     if (!teamToDelete) return;
 
     try {
-      // Chamar a API para excluir a equipe
-      await teamService.deleteTeam(teamToDelete.id);
-
-      // Remover a equipe da lista local
-      setTeams(prevTeams => prevTeams.filter(team => team.id !== teamToDelete.id));
+      await deleteTeamMutate(teamToDelete.id);
 
       // Fechar o diálogo e limpar a equipe selecionada
       setIsDeleteDialogOpen(false);
@@ -500,21 +386,8 @@ const Teams = () => {
         novo_nome: teamName
       });
 
-      // Tentar atualizar a equipe via API
       try {
-        // Usar o serviço de equipes para atualizar a equipe
-        const updatedTeam = await teamService.updateTeam(editingTeam.id, {
-          name: teamName
-        });
-
-        console.log('Equipe atualizada via API:', updatedTeam);
-
-        // Atualizar a equipe na lista
-        setTeams(prevTeams =>
-          prevTeams.map(team =>
-            team.id === editingTeam.id ? { ...team, name: teamName } : team
-          )
-        );
+        await updateTeamMutate({ id: editingTeam.id, data: { name: teamName } });
 
         // Resetar o formulário
         setTeamName('');
@@ -524,20 +397,7 @@ const Teams = () => {
         toast.success('Equipe atualizada com sucesso!');
       } catch (apiErr) {
         console.error('Erro ao atualizar equipe via API:', apiErr);
-
-        // Fallback: simular a atualização da equipe
-        setTeams(prevTeams =>
-          prevTeams.map(team =>
-            team.id === editingTeam.id ? { ...team, name: teamName } : team
-          )
-        );
-
-        // Resetar o formulário
-        setTeamName('');
-        setEditingTeam(null);
-        setIsEditDialogOpen(false);
-
-        toast.success('Equipe atualizada com sucesso! (modo offline)');
+        toast.error('Não foi possível atualizar a equipe. Tente novamente.');
       }
     } catch (err) {
       console.error('Erro ao atualizar equipe:', err);
