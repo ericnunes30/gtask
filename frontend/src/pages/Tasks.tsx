@@ -22,7 +22,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { projectService, Project, Task, TaskStatus, userService, User, TaskPriority } from '@/lib/api';
+import { projectService, Project, Task, TaskStatus, User, TaskPriority } from '@/lib/api';
+import { useGetUsers } from '@/services/backend/users';
+import { useGetProjects } from '@/services/backend/projects';
 import { useGetTasks, useCreateTask, useUpdateTask } from '@/services/backend/tasks';
 import { UpdateTaskRequest } from '@/lib/api/tasks';
 import { toast } from "sonner";
@@ -34,7 +36,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { TaskFormRef } from '@/components/forms/TaskForm';
 
 const Tasks = () => {
-  console.error("!!!!!!!!!!!!!!!!!!!! TASKS.TSX EXECUTANDO - VERSÃO MAIS RECENTE !!!!!!!!!!!!!!!!!!!!!");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [taskFormKey, setTaskFormKey] = useState(0);
   const successCallbackInstanceCounter = useRef(0);
@@ -70,6 +71,8 @@ const Tasks = () => {
 
   const { mutateAsync: createTask } = useCreateTask();
   const { mutateAsync: updateTask } = useUpdateTask();
+  const { data: usersData = [] } = useGetUsers();
+  const { data: projectsData = [] } = useGetProjects();
 
   const {
     data: tasksData = [],
@@ -84,19 +87,10 @@ const Tasks = () => {
 
 
 
-  // useEffect para buscar todos os usuários
+  // Atualizar lista de usuários quando a query for carregada
   useEffect(() => {
-    const fetchAllUsers = async () => {
-      try {
-        const usersData = await userService.getUsers();
-        setAllUsers(usersData);
-      } catch (err) {
-        console.error('Erro ao carregar todos os usuários:', err);
-        toast.error('Falha ao carregar lista de usuários para filtro.');
-      }
-    };
-    fetchAllUsers();
-  }, []); // Executar apenas uma vez na montagem
+    setAllUsers(usersData);
+  }, [usersData]);
 
   // useEffect para buscar projetos e atualizar a lista de projetos com tarefas
   useEffect(() => {
@@ -104,7 +98,7 @@ const Tasks = () => {
       // setLoading(true); // O loading principal é para rawTasks
       setError(null); // Limpar erro específico de projetos
       try {
-        const projectsList = await projectService.getProjects();
+        const projectsList = projectsData;
         setProjects(projectsList);
 
         if (projectId) {
@@ -116,7 +110,6 @@ const Tasks = () => {
               const projectFromApi = await projectService.getProject(projectId);
               setCurrentProject(projectFromApi);
             } catch (err) {
-              console.error('Erro ao carregar projeto específico:', err);
               setError('Projeto não encontrado ou inacessível.');
             }
           }
@@ -145,7 +138,6 @@ const Tasks = () => {
         }
 
       } catch (err) {
-        console.error('Erro ao carregar projetos:', err);
         // Não sobrescrever o erro de carregamento de tarefas, se houver
         if (!error) setError('Não foi possível carregar os projetos.');
       }
@@ -159,24 +151,16 @@ const Tasks = () => {
     newStatus: TaskStatus, // TaskStatus de @/lib/api
     newOrder?: number
   ) => {
-    console.log('[Tasks.tsx] handleKanbanTaskStatusChange called with - Full Task Object:', JSON.parse(JSON.stringify(task)));
-    console.log('[Tasks.tsx] handleKanbanTaskStatusChange called with - Details:', { taskId: task.id, typeofTaskId: typeof task.id, currentStatus: task.status, currentOrder: task.order, newStatus, newOrder });
     try {
       const updateData: UpdateTaskRequest = { status: newStatus };
       if (newOrder !== undefined) {
         // TESTE: Enviar order como inteiro arredondado
         updateData.order = newOrder;
-        console.log(`[Tasks.tsx] TESTE: Original newOrder: ${newOrder}, Enviando order: ${updateData.order}`);
       }
-      console.log('[Tasks.tsx] Updating task on API with data:', updateData);
       await updateTask({ id: Number(task.id), data: updateData });
-      console.log('[Tasks.tsx] Task updated on API.');
       await refetch();
-      console.log('[Tasks.tsx] All tasks fetched after update.');
     } catch (error) {
-      console.error('Erro ao atualizar tarefa via Kanban:', error);
       toast.error(`Falha ao atualizar tarefa "${task.title}".`);
-      console.log('[Tasks.tsx] Error updating task. Refetching tasks...');
       await refetch();
     }
   };
@@ -187,24 +171,16 @@ const Tasks = () => {
 
   const handleTaskFormSuccess = useCallback(async (taskData: any) => {
     const callbackId = successCallbackInstanceCounter.current;
-    console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}) INÍCIO. taskData:`, taskData); // Log inicial modificado
     try {
-      console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): ANTES de chamar createTask.`);
       const newTask = await createTask(taskData); // Salvar a nova tarefa
-      console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): DEPOIS de chamar createTask. Nova tarefa:`, newTask);
       
       setIsDialogOpen(false);
-      console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): setIsDialogOpen(false) chamado.`);
       toast.success('Tarefa criada com sucesso!');
       
       // Atualizar rawTasks localmente
-      setRawTasks(prevRawTasks => {
-        console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): Atualizando rawTasks.`);
-        return [...prevRawTasks, newTask];
-      });
+      setRawTasks(prevRawTasks => [...prevRawTasks, newTask]);
 
       if (tasksListRef.current && activeTab === 'list') {
-        console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): Chamando tasksListRef.current.fetchTasks().`);
         tasksListRef.current.fetchTasks();
       }
 
@@ -212,38 +188,22 @@ const Tasks = () => {
         ? parseInt(taskData.project_id)
         : taskData.project_id;
 
-      console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): Verificando projeto. newProjectId:`, newProjectId);
       if (newProjectId) {
         const projectExists = projectsWithTasks.some(p => {
           const pId = typeof p.id === 'string' ? parseInt(p.id) : p.id;
           return pId === newProjectId;
         });
-        console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): Projeto existe em projectsWithTasks?`, projectExists);
         if (!projectExists) {
           const project = projects.find(p => {
             const pId = typeof p.id === 'string' ? parseInt(p.id) : p.id;
             return pId === newProjectId;
           });
-          console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): Projeto encontrado em projects?`, !!project);
           if (project) {
-            setProjectsWithTasks(prev => {
-              console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): Atualizando projectsWithTasks.`);
-              return [...prev, project];
-            });
+            setProjectsWithTasks(prev => [...prev, project]);
           }
         }
       }
-      console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}) FIM do try block.`);
     } catch (error) {
-      console.error(`[Tasks.tsx] ERRO CAPTURADO em handleTaskFormSuccess (ID: ${callbackId}):`, error);
-      if (error.response) {
-        console.error(`[Tasks.tsx] (ID: ${callbackId}) Erro - Dados:`, error.response.data);
-        console.error(`[Tasks.tsx] (ID: ${callbackId}) Erro - Status:`, error.response.status);
-      } else if (error.request) {
-        console.error(`[Tasks.tsx] (ID: ${callbackId}) Erro - Requisição:`, error.request);
-      } else {
-        console.error(`[Tasks.tsx] (ID: ${callbackId}) Erro - Mensagem:`, error.message);
-      }
       toast.error('Erro ao criar tarefa. Verifique os dados e tente novamente.');
     }
   }, [activeTab, projects, projectsWithTasks, setIsDialogOpen, setRawTasks, setProjectsWithTasks, tasksListRef]);
@@ -334,9 +294,6 @@ const Tasks = () => {
     return tasksToFilter;
   }, [rawTasks, selectedProjectFilter, selectedPriorityFilter, selectedUserId, showCompleted, isUserMember, currentUserIdAuth]);
 
-
-  // Os console.log abaixo foram removidos do JSX para evitar erros de renderização.
-
   return (
     <AppLayout>
       <div className="flex flex-col gap-6">
@@ -392,16 +349,13 @@ const Tasks = () => {
             <Button className="gap-1" disabled={isLoading} onClick={() => {
               const newKey = taskFormKey + 1;
               setTaskFormKey(newKey);
-              // successCallbackInstanceCounter.current += 1; // Movido para onOpenChange do Dialog
-              const currentCallbackId = successCallbackInstanceCounter.current;
-              console.log(`[Tasks.tsx] "Nova Tarefa" BTN CLICK. New taskFormKey: ${newKey}. Callback ID for onSuccess: ${currentCallbackId}. Current handleTaskFormSuccess:`, handleTaskFormSuccess.toString().substring(0, 300) + "..."); // Log da definição da função (truncada para legibilidade)
               setIsDialogOpen(true);
             }}>
               <PlusCircle className="h-4 w-4" />
               Nova Tarefa
             </Button>
           )}
-          {isDialogOpen && (/* {isDialogOpen && console.log(`[Tasks.tsx] CHECK isDialogOpen is TRUE...`)} */ true) && (
+          {isDialogOpen && (
             <Dialog key={`dialog-${taskFormKey}`} open={isDialogOpen} onOpenChange={(open) => {
               // Se estiver fechando o diálogo, podemos incrementar o contador para a próxima vez que handleTaskFormSuccess for definido
               if (!open) {
@@ -418,9 +372,7 @@ const Tasks = () => {
                     Preencha os detalhes da tarefa. Clique em salvar quando terminar.
                   </DialogDescription>
                 </DialogHeader>
-                {/* {console.log(`[Tasks.tsx] RENDERING DIALOG CONTENT...`)} */}
                 <div className="py-4">
-                  {/* {console.log(`[Tasks.tsx] RENDERING TASKFORM...`)} */}
                   <TaskForm
                     key={`taskform-${taskFormKey}`}
                     ref={taskFormRef}
@@ -440,7 +392,6 @@ const Tasks = () => {
                   <Button
                     type="button"
                     onClick={() => {
-                      console.log(`[Tasks.tsx] Botão Salvar do modal clicado. Acionando submit via ref. taskFormKey: ${taskFormKey}`);
                       taskFormRef.current?.triggerSubmit();
                     }}
                   >

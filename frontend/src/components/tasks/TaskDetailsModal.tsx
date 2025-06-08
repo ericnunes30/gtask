@@ -57,7 +57,8 @@ import {
 import { TaskForm } from '@/components/forms/TaskForm';
 import { format, isPast, isBefore, formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Task, TaskPriority, TaskStatus, userService, teamService, projectService, Comment as ApiComment, User as ApiUser } from '@/lib/api'; // Importando Comment, User e TaskStatus da API
+import { Task, TaskPriority, TaskStatus, teamService, Comment as ApiComment, User as ApiUser } from '@/lib/api'; // Importando Comment, User e TaskStatus da API
+import { useGetUsers } from '@/services/backend/users'
 import { convertApiTaskToFrontend, UpdateTaskRequest } from '@/lib/api/tasks';
 import { useGetTask, useUpdateTask, useDeleteTask } from '@/services/backend/tasks';
 import { useCreateComment } from '@/services/backend/comments';
@@ -117,7 +118,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [history, setHistory] = useState<TaskHistoryItem[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
   const [activityTab, setActivityTab] = useState<'all' | 'comments' | 'history'>('all');
   const [mentionedUsers, setMentionedUsers] = useState<number[]>([]);
   const [showMentionsList, setShowMentionsList] = useState(false);
@@ -129,6 +129,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const { mutateAsync: updateTask } = useUpdateTask();
   const { mutateAsync: deleteTaskMutation } = useDeleteTask();
   const { mutateAsync: createComment } = useCreateComment();
+  const { data: usersData = [] } = useGetUsers()
 
   // Estados para curtidas foram movidos para CommentItem.tsx
 
@@ -306,11 +307,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setTask(completeTaskData);
 
       // Carregar usuários para exibição de comentários e menções
-      try {
-        const usersData = await userService.getUsers();
-        setUsers(usersData);
-      } catch (userErr) {
-      }
+      setUsers(usersData)
 
       // Carregar equipes (occupações)
       try {
@@ -325,25 +322,17 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       }
 
       // Carregar projetos
-      try {
-        const projectsData = await projectService.getProjects();
-        setProjects(projectsData);
-      } catch (projectsErr) {
-      }
 
       // Comentários agora são carregados com a tarefa em taskData.comments (ou completeTaskData.comments)
       // Garantir que completeTaskData (após conversão) ainda tenha os comentários
       // e que eles sejam do tipo ApiComment[]
       if (completeTaskData.comments && Array.isArray(completeTaskData.comments)) {
         setComments(completeTaskData.comments as ApiComment[]);
-        console.log('TaskDetailsModal: Comentários carregados da tarefa:', completeTaskData.comments);
       } else if (taskData.comments && Array.isArray(taskData.comments)) {
         // Fallback para taskData se completeTaskData não os tiver (improvável se a conversão for correta)
         setComments(taskData.comments as ApiComment[]);
-        console.log('TaskDetailsModal: Comentários carregados da taskData (fallback):', taskData.comments);
       } else {
         setComments([]);
-        console.log('TaskDetailsModal: Nenhum comentário encontrado nos dados da tarefa.');
       }
       // A lógica de inicialização de curtidas foi movida para CommentItem.tsx
 
@@ -633,25 +622,18 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
     // Função para adicionar um novo comentário (agora chama a API)
   const handleAddComment = async () => {
-    // Log inicial para verificar se a função é chamada
-    console.log('[handleAddComment] Função chamada.');
-    console.log('[handleAddComment] Estado atual - comment:', `"${comment}"`, 'task ID:', task?.id, 'isSubmittingComment:', isSubmittingComment);
 
     // Verificar condições da guarda
     if (!comment.trim()) {
-      console.log('[handleAddComment] Bloqueado: Comentário vazio.');
       return;
     }
     if (!task) {
-      console.log('[handleAddComment] Bloqueado: Tarefa não carregada.');
       return;
     }
     if (isSubmittingComment) {
-      console.log('[handleAddComment] Bloqueado: Submissão anterior em progresso.');
       return;
     }
 
-    console.log('[handleAddComment] Guardas passaram. Iniciando submissão.');
     setIsSubmittingComment(true);
     try {
       const commentData = {
@@ -660,10 +642,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         // parentId: null, // Para comentários de nível superior. Adicionar lógica se for resposta.
         // mentioned_users: mentionedUsers, // Se a API suportar envio de menções na criação
       };
-      console.log('[handleAddComment] Preparando dados para API:', commentData);
-      console.log('[handleAddComment] Chamando createComment...');
       const { data: newCommentFromApi } = await createComment({ data: commentData });
-      console.log('[handleAddComment] Chamada API bem-sucedida. Resposta BRUTA:', newCommentFromApi); // Log para inspecionar o objeto recebido
 
       // ENRIQUECER o comentário da API com os dados do usuário local (authUser)
       const commentWithUser = {
@@ -675,7 +654,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           // Adicione aqui outros campos da interface User se necessário/disponível em authUser
         } : undefined
       };
-      console.log('[handleAddComment] Comentário enriquecido com dados do usuário:', commentWithUser);
 
       // Adicionar o novo comentário no início da lista para melhor UX
       // Usando o comentário enriquecido em vez do original da API
@@ -684,11 +662,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setMentionedUsers([]); // Resetar menções após o envio
       toast.success('Comentário adicionado com sucesso!');
     } catch (error) {
-      console.error('[handleAddComment] Erro na chamada API:', error);
       toast.error('Não foi possível adicionar o comentário. Tente novamente.');
     } finally {
       setIsSubmittingComment(false);
-      console.log('[handleAddComment] Submissão finalizada (finally).');
     }
   }; // Fim da função handleAddComment
 

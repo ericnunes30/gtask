@@ -36,7 +36,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { teamService, userService, Team, Occupation, TeamUser, User } from '@/lib/api';
+import { teamService, Team, Occupation, TeamUser, User } from '@/lib/api';
+import { useGetUsers } from '@/services/backend/users';
 import {
   useGetTeams,
   useCreateTeam,
@@ -74,6 +75,7 @@ const Teams = () => {
   const { mutateAsync: createTeamMutate } = useCreateTeam();
   const { mutateAsync: updateTeamMutate } = useUpdateTeam();
   const { mutateAsync: deleteTeamMutate } = useDeleteTeam();
+  const { data: usersQueryData = [] } = useGetUsers();
 
   const error = dataError || (teamsIsError ? 'Não foi possível carregar as equipes.' : null);
   const loading = teamsLoading || dataLoading;
@@ -91,12 +93,9 @@ const Teams = () => {
 
         // Carregar usuários
         try {
-          const usersData = await userService.getUsers();
-          console.log('Usuários carregados:', usersData);
+          const usersData = usersQueryData;
           setUsers(usersData);
         } catch (err) {
-          console.error('Erro ao carregar usuários:', err);
-          // Dados simulados de usuários caso a API falhe
           const mockUsers = [
             { id: 1, name: 'João Silva', email: 'joao@example.com' },
             { id: 2, name: 'Maria Oliveira', email: 'maria@example.com' },
@@ -113,13 +112,11 @@ const Teams = () => {
             const teamUsersData = await teamService.getTeamUsers(team.id);
             teamUsersMap[team.id] = teamUsersData;
           } catch (err) {
-            console.error(`Erro ao carregar usuários da equipe ${team.id} da API:`, err);
             teamUsersMap[team.id] = [];
           }
         }
         setTeamUsers(teamUsersMap);
       } catch (err) {
-        console.error('Erro ao carregar dados:', err);
         setDataError('Não foi possível carregar as equipes. Tente novamente mais tarde.');
       } finally {
         setDataLoading(false);
@@ -150,7 +147,6 @@ const Teams = () => {
 
       toast.success('Equipe criada com sucesso!');
     } catch (err) {
-      console.error('Erro ao criar equipe:', err);
       toast.error('Não foi possível criar a equipe. Tente novamente.');
     }
   };
@@ -170,17 +166,12 @@ const Teams = () => {
       // Tentar adicionar um usuário a uma equipe via API
       try {
         // Usar o serviço de equipes para adicionar usuário
-        console.log('Tentando adicionar usuário à equipe:', {
-          userId,
-          occupationId
-        });
 
         const result = await teamService.addUserToTeam(occupationId, {
           user_id: userId,
           occupation_id: occupationId
         });
 
-        console.log('Usuário adicionado à ocupação (equipe) via API:', result);
 
         // Fallback para o caso de a API de ocupações não retornar o formato esperado
         let teamUserResult = {
@@ -213,9 +204,8 @@ const Teams = () => {
         }));
 
         // Recarregar os usuários para garantir que os dados estão atualizados
-        const updatedUsers = await userService.getUsers();
+        const updatedUsers = usersQueryData;
         setUsers(updatedUsers);
-        console.log('Usuários recarregados após adição:', updatedUsers);
 
         // Resetar o formulário
         setSelectedUserId('');
@@ -224,7 +214,6 @@ const Teams = () => {
 
         toast.success('Usuário adicionado à equipe com sucesso!');
       } catch (apiErr) {
-        console.error('Erro ao adicionar usuário à equipe via API:', apiErr);
 
         // Fallback: simular a adição de um usuário a uma equipe
         const user = users.find(u => u.id === userId);
@@ -250,7 +239,6 @@ const Teams = () => {
           }
         };
 
-        console.log('Usuário adicionado à equipe (simulado):', result);
 
         // Atualizar a lista de usuários da equipe
         setTeamUsers(prev => ({
@@ -260,11 +248,9 @@ const Teams = () => {
 
         // Tentar recarregar os usuários mesmo no modo offline
         try {
-          const updatedUsers = await userService.getUsers();
+          const updatedUsers = usersQueryData;
           setUsers(updatedUsers);
-          console.log('Usuários recarregados após adição (fallback):', updatedUsers);
         } catch (err) {
-          console.error('Erro ao recarregar usuários após adição (fallback):', err);
         }
 
         // Resetar o formulário
@@ -275,7 +261,6 @@ const Teams = () => {
         toast.success('Usuário adicionado à equipe com sucesso! (modo offline)');
       }
     } catch (err) {
-      console.error('Erro ao adicionar usuário à equipe:', err);
       alert('Não foi possível adicionar o usuário à equipe. Tente novamente.');
     }
   };
@@ -290,9 +275,7 @@ const Teams = () => {
       // Tentar remover um usuário de uma equipe via API
       try {
         // Usar o serviço de equipes para remover usuário
-        console.log(`Tentando remover usuário ${userId} da equipe ${teamId}`);
         await teamService.removeUserFromTeam(teamId, userId);
-        console.log(`Usuário ${userId} removido da equipe ${teamId} via API`);
 
         // Atualizar a lista de usuários da equipe
         setTeamUsers(prev => ({
@@ -301,16 +284,12 @@ const Teams = () => {
         }));
 
         // Recarregar os usuários para garantir que os dados estão atualizados
-        const updatedUsers = await userService.getUsers();
+        const updatedUsers = usersQueryData;
         setUsers(updatedUsers);
-        console.log('Usuários recarregados após remoção:', updatedUsers);
 
         toast.success('Usuário removido da equipe com sucesso!');
       } catch (apiErr) {
-        console.error(`Erro ao remover usuário ${userId} da equipe ${teamId} via API:`, apiErr);
-
         // Fallback: simular a remoção de um usuário de uma equipe
-        console.log(`Removendo usuário ${userId} da equipe ${teamId} (simulado)`);
 
         // Atualizar a lista de usuários da equipe
         setTeamUsers(prev => ({
@@ -320,17 +299,14 @@ const Teams = () => {
 
         // Tentar recarregar os usuários mesmo no modo offline
         try {
-          const updatedUsers = await userService.getUsers();
+          const updatedUsers = usersQueryData;
           setUsers(updatedUsers);
-          console.log('Usuários recarregados após remoção (fallback):', updatedUsers);
         } catch (err) {
-          console.error('Erro ao recarregar usuários após remoção (fallback):', err);
         }
 
         toast.success('Usuário removido da equipe com sucesso! (modo offline)');
       }
     } catch (err) {
-      console.error('Erro ao remover usuário da equipe:', err);
       alert('Não foi possível remover o usuário da equipe. Tente novamente.');
     }
   };
@@ -367,7 +343,6 @@ const Teams = () => {
 
       toast.success(`Equipe ${teamToDelete.name} removida com sucesso!`);
     } catch (err) {
-      console.error('Erro ao excluir equipe:', err);
       toast.error('Não foi possível excluir a equipe. Tente novamente.');
     }
   };
@@ -380,7 +355,6 @@ const Teams = () => {
     }
 
     try {
-      console.log('%c Iniciando atualização de equipe:', 'background: #e74c3c; color: white; padding: 2px 5px; border-radius: 3px;', {
         id: editingTeam.id,
         nome_atual: editingTeam.name,
         novo_nome: teamName
@@ -396,11 +370,9 @@ const Teams = () => {
 
         toast.success('Equipe atualizada com sucesso!');
       } catch (apiErr) {
-        console.error('Erro ao atualizar equipe via API:', apiErr);
         toast.error('Não foi possível atualizar a equipe. Tente novamente.');
       }
     } catch (err) {
-      console.error('Erro ao atualizar equipe:', err);
       alert('Não foi possível atualizar a equipe. Tente novamente.');
     }
   };
@@ -568,7 +540,6 @@ const Teams = () => {
                               size="sm"
                               onClick={() => {
                                 setSelectedTeamId(team.id);
-                                console.log(`Equipe pré-selecionada: ${team.id} - ${team.name}`);
                               }}
                               className="gap-1.5"
                             >

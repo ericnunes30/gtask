@@ -44,6 +44,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { projectService, Project, ProjectPriority } from '@/lib/api';
+import { useGetUsers } from '@/services/backend/users';
 
 import { useCreateProject } from '@/services/backend/projects';
 
@@ -81,6 +82,7 @@ interface ProjectFormProps {
 export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: ProjectFormProps) {
   const navigate = useNavigate();
   const { mutate, isPending } = useCreateProject();
+  const { data: usersQueryData = [] } = useGetUsers();
   const loading = isPending;
   const [error, setError] = useState<string | null>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -131,7 +133,6 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
             occupations: occupationIds,
           });
         } catch (err) {
-          console.error('Erro ao carregar dados do projeto:', err);
           setError('Não foi possível carregar os dados do projeto.');
         }
       }
@@ -140,13 +141,11 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
     // Carregar usuários e ocupações da API
     const loadUsersAndOccupations = async () => {
       try {
-        // Importar os serviços necessários
-        const { default: userService } = await import('@/lib/api/users');
         const { default: teamService } = await import('@/lib/api/teams');
 
         // Carregar usuários e equipes (ocupações)
         const [usersData, teamsData] = await Promise.all([
-          userService.getUsers(),
+          Promise.resolve(usersQueryData),
           teamService.getTeams()
         ]);
 
@@ -194,7 +193,6 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
           setFilteredUsers(usersData);
         }
       } catch (error) {
-        console.error('Erro ao carregar usuários e ocupações:', error);
         setError('Erro ao carregar usuários e ocupações. Tente novamente.');
       }
     };
@@ -350,8 +348,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
               navigate('/projects')
             }
           },
-          onError: (error) => {
-            console.error('Erro ao salvar projeto:', error)
+          onError: () => {
             setError('Ocorreu um erro ao salvar o projeto. Tente novamente.')
             toast.error(
               'Erro ao salvar projeto. Verifique os dados e tente novamente.'
@@ -360,7 +357,6 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
         }
       )
     } catch (error) {
-      console.error('Erro ao preparar dados do projeto:', error)
       setError('Ocorreu um erro ao preparar o projeto.')
       toast.error('Erro ao preparar projeto. Verifique os dados.')
     }
