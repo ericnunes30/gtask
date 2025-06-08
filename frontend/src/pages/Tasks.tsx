@@ -22,7 +22,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { projectService, Project, taskService, Task, TaskStatus, userService, User, TaskPriority } from '@/lib/api';
+import { projectService, Project, Task, TaskStatus, userService, User, TaskPriority } from '@/lib/api';
+import { useGetTasks, useCreateTask, useUpdateTask } from '@/services/backend/tasks';
 import { UpdateTaskRequest } from '@/lib/api/tasks';
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,7 +41,6 @@ const Tasks = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsWithTasks, setProjectsWithTasks] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("kanban");
   const [rawTasks, setRawTasks] = useState<Task[]>([]);
@@ -68,28 +68,21 @@ const Tasks = () => {
   const projectIdParam = searchParams.get('projectId');
   const projectId = projectIdParam ? parseInt(projectIdParam) : undefined;
 
-  const fetchAllTasks = useCallback(async (showFeedback = false) => {
-    if (showFeedback) toast.info("Recarregando tarefas...");
-    setLoading(true);
-    setError(null);
-    try {
-      const allTasksData = await taskService.getTasks(); // Não aplicar filtro de membro aqui
-      setRawTasks(allTasksData);
-      // O filtro de membro será aplicado em filteredTasks
-      if (showFeedback) toast.success("Tarefas recarregadas!");
-    } catch (err) {
-      console.error('Erro ao carregar todas as tarefas:', err);
-      setError('Não foi possível carregar as tarefas. Tente novamente mais tarde.');
-      setRawTasks([]);
-      if (showFeedback) toast.error("Falha ao recarregar tarefas.");
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, setError, setRawTasks]); // Removido currentUserIdAuth e isUserMember das dependências
+  const { mutateAsync: createTask } = useCreateTask();
+  const { mutateAsync: updateTask } = useUpdateTask();
+
+  const {
+    data: tasksData = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useGetTasks();
 
   useEffect(() => {
-    fetchAllTasks(false); // Chamar sem feedback na carga inicial
-  }, [fetchAllTasks]); // Depender da função memoizada
+    setRawTasks(tasksData);
+  }, [tasksData]);
+
+
 
   // useEffect para buscar todos os usuários
   useEffect(() => {
@@ -176,31 +169,29 @@ const Tasks = () => {
         console.log(`[Tasks.tsx] TESTE: Original newOrder: ${newOrder}, Enviando order: ${updateData.order}`);
       }
       console.log('[Tasks.tsx] Updating task on API with data:', updateData);
-      await taskService.updateTask(Number(task.id), updateData);
-      console.log('[Tasks.tsx] Task updated on API. Fetching all tasks...');
-      // O KanbanBoard já pode mostrar um toast "movida". Se precisar de outro, adicione aqui.
-      // toast.success(`Tarefa "${task.title}" atualizada.`);
-      await fetchAllTasks(false); // Recarregar silenciosamente para garantir consistência
+      await updateTask({ id: Number(task.id), data: updateData });
+      console.log('[Tasks.tsx] Task updated on API.');
+      await refetch();
       console.log('[Tasks.tsx] All tasks fetched after update.');
     } catch (error) {
       console.error('Erro ao atualizar tarefa via Kanban:', error);
       toast.error(`Falha ao atualizar tarefa "${task.title}".`);
-      console.log('[Tasks.tsx] Error updating task. Fetching all tasks with feedback...');
-      await fetchAllTasks(true); // Recarregar com feedback em caso de erro
+      console.log('[Tasks.tsx] Error updating task. Refetching tasks...');
+      await refetch();
     }
   };
 
   const handleKanbanGenericTaskUpdate = async () => {
-    await fetchAllTasks(true); // Recarregar com feedback visual
+    await refetch();
   };
 
   const handleTaskFormSuccess = useCallback(async (taskData: any) => {
     const callbackId = successCallbackInstanceCounter.current;
     console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}) INÍCIO. taskData:`, taskData); // Log inicial modificado
     try {
-      console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): ANTES de chamar taskService.createTask.`);
-      const newTask = await taskService.createTask(taskData); // Salvar a nova tarefa
-      console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): DEPOIS de chamar taskService.createTask. Nova tarefa:`, newTask);
+      console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): ANTES de chamar createTask.`);
+      const newTask = await createTask(taskData); // Salvar a nova tarefa
+      console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): DEPOIS de chamar createTask. Nova tarefa:`, newTask);
       
       setIsDialogOpen(false);
       console.log(`[Tasks.tsx] handleTaskFormSuccess (ID: ${callbackId}): setIsDialogOpen(false) chamado.`);
@@ -349,15 +340,15 @@ const Tasks = () => {
   return (
     <AppLayout>
       <div className="flex flex-col gap-6">
-        {error && (
+        {(error || isError) && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{error || 'Falha ao carregar tarefas.'}</AlertDescription>
           </Alert>
         )}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            {loading && !filteredTasks.length ? ( // Ajustado para considerar filteredTasks no loading inicial
+            {isLoading && !filteredTasks.length ? ( // Ajustado para considerar filteredTasks no loading inicial
               <div className="flex flex-col">
                 <Skeleton className="h-10 w-64 mb-2" />
                 <Skeleton className="h-5 w-48" />
@@ -398,7 +389,7 @@ const Tasks = () => {
             )}
           </div>
           {permissions.canCreateTasks && !permissions.isMember && (
-            <Button className="gap-1" disabled={loading} onClick={() => {
+            <Button className="gap-1" disabled={isLoading} onClick={() => {
               const newKey = taskFormKey + 1;
               setTaskFormKey(newKey);
               // successCallbackInstanceCounter.current += 1; // Movido para onOpenChange do Dialog
@@ -537,7 +528,7 @@ const Tasks = () => {
           </div>
           <TabsContent value="kanban" className="mt-6">
             <div className="min-h-[500px]">
-              {loading && !filteredTasks.length ? (
+              {isLoading && !filteredTasks.length ? (
                 <Skeleton className="w-full h-[500px]" />
               ) : (
                 <KanbanBoard
@@ -567,7 +558,7 @@ const Tasks = () => {
                 viewMode={viewMode}
                 forceUserFilter={isUserMember} // Mantendo a lógica de forçar filtro de usuário para membros
                 showCompleted={showCompleted}
-                onTasksUpdated={fetchAllTasks} // Callback para atualizar a lista principal
+                onTasksUpdated={() => refetch()} // Callback para atualizar a lista principal
               />
             </div>
           </TabsContent>

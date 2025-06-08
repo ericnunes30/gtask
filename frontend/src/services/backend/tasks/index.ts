@@ -7,18 +7,19 @@ import taskService, {
 export const useGetTasks = () =>
   useQuery({ queryKey: ['tasks'], queryFn: taskService.getTasks })
 
-interface MutateTaskArgs {
-  id?: number
-  data: CreateTaskRequest | UpdateTaskRequest
-}
-
 export const useCreateTask = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: MutateTaskArgs) =>
-      id
-        ? taskService.updateTask(id, data as UpdateTaskRequest)
-        : taskService.createTask(data as CreateTaskRequest),
+    mutationFn: (data: CreateTaskRequest) => taskService.createTask(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}
+
+export const useUpdateTask = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateTaskRequest }) =>
+      taskService.updateTask(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   })
 }
