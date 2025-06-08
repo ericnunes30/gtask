@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useCallback, useImperativeHandle, forwardRef, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -130,7 +130,6 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   const [tasks, setTasks] = useState<Task[]>([]); // Lista de tarefas
   const [projects, setProjects] = useState<Record<number, string>>({}); // Mapa de ID de projeto para nome
   const [users, setUsers] = useState<Record<number, string>>({}); // Mapa de ID de usuário para nome
-  const [loading, setLoading] = useState(true); // Estado de carregamento
   const [error, setError] = useState<string | null>(null); // Estado de erro
 
   // Importar hooks de autenticação e permissões
@@ -143,39 +142,35 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // Controla o diálogo de confirmação de exclusão
   const [timerRunningTaskId, setTimerRunningTaskId] = useState<string | null>(null); // ID da tarefa com timer em execução
 
-  const { data: allTasks = [], refetch: refetchTasks } = useGetTasks();
+  const {
+    data: allTasks = [],
+    isLoading: allTasksLoading,
+    refetch: refetchTasks,
+  } = useGetTasks();
   const projectIdNumber =
     projectId !== undefined && projectId !== null
       ? typeof projectId === 'string'
         ? parseInt(projectId, 10)
         : projectId
       : 0;
-  const { data: projectTasks = [], refetch: refetchProjectTasks } = useGetTasksByProject(
-    projectIdNumber,
-    Boolean(projectId)
-  );
+  const {
+    data: projectTasks = [],
+    isLoading: projectTasksLoading,
+    refetch: refetchProjectTasks,
+  } = useGetTasksByProject(projectIdNumber, Boolean(projectId));
   const { mutateAsync: updateTask } = useUpdateTask();
   const { mutateAsync: deleteTaskMutation } = useDeleteTask();
+
+  const loading = projectId ? projectTasksLoading : allTasksLoading;
 
   // --- Funções de Fetch e Manipulação de Dados ---
 
   // Função para buscar tarefas da API
   const fetchTasks = useCallback(async () => {
-    setLoading(true);
     setError(null);
 
-
     try {
-      let tasksList: Task[];
-
-      // Busca tarefas por projeto ou todas as tarefas usando React Query
-      if (projectId) {
-        const { data } = await refetchProjectTasks();
-        tasksList = data ?? [];
-      } else {
-        const { data } = await refetchTasks();
-        tasksList = data ?? [];
-      }
+      const tasksList: Task[] = projectId ? projectTasks : allTasks;
 
       // Filtra tarefas por equipe selecionada
       let filteredTasks = tasksList;
@@ -336,10 +331,9 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       setError(`Não foi possível carregar as tarefas: ${err.message || 'Erro desconhecido'}. Tente novamente mais tarde.`);
       setTasks([]); // Limpa tarefas em caso de erro
     } finally {
-      setLoading(false);
       console.log("Fetch tasks finished.");
     }
-  }, [projectId, selectedTeamId, selectedUserId, viewMode, priorityFilter, forceUserFilter, user?.id, permissions.isMember]); // Dependências do useCallback
+  }, [projectId, selectedTeamId, selectedUserId, viewMode, priorityFilter, forceUserFilter, user?.id, permissions.isMember, allTasks, projectTasks]); // Dependências do useCallback
 
   // Expõe fetchTasks para o componente pai via ref
   useImperativeHandle(ref, () => ({
@@ -358,26 +352,9 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
     }
   }));
 
-  // Efeito para buscar tarefas na montagem inicial e quando as dependências mudarem
   useEffect(() => {
-    console.log('TasksList: Modo de visualização =', viewMode);
-    // Adicionar um pequeno delay antes de carregar as tarefas
-    setTimeout(() => {
-      fetchTasks();
-    }, 300); // 300ms de delay
-  }, [fetchTasks]); // fetchTasks já inclui viewMode como dependência
-
-  // Efeito para forçar a atualização das tarefas quando a página é carregada
-  useEffect(() => {
-    console.log('TasksList: Forçando atualização das tarefas na montagem do componente');
-
-    // Pequeno delay para garantir que o estado foi atualizado
-    const timer = setTimeout(() => {
-      fetchTasks();
-    }, 300); // 300ms de delay
-
-    return () => clearTimeout(timer);
-  }, []);
+    fetchTasks();
+  }, [fetchTasks]);
 
   // Efeito adicional para forçar a renderização quando o modo de visualização mudar
   // Removido pois fetchTasks já tem viewMode como dependência e re-executa

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, Users, AlertCircle, Edit, Eye } from 'lucide-react';
@@ -15,45 +15,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from 'react-router-dom';
-import { projectService, Project } from '@/lib/api';
+import { Project } from '@/lib/api';
+import { useGetProjects } from '@/services/backend/projects';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const ProjectsList = () => {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: projects = [], isLoading, error } = useGetProjects();
 
   // Hooks de autenticação e permissões
   const { user } = useAuth();
   const permissions = usePermissions();
 
-  useEffect(() => {
-    const fetchRecentProjects = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        // Buscar todos os projetos e pegar os 4 mais recentes
-        const allProjects = await projectService.getProjects();
-
-        // Ordenar por data de criação (mais recentes primeiro) e pegar os primeiros 4
-        const recentProjects = [...allProjects]
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 4);
-
-        setProjects(recentProjects);
-      } catch (err) {
-        console.error('Erro ao carregar projetos recentes:', err);
-        setError('Não foi possível carregar os projetos recentes.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchRecentProjects();
-  }, []);
+  const recentProjects = useMemo(() => {
+    return [...projects]
+      .sort((a, b) =>
+        new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime(),
+      )
+      .slice(0, 4);
+  }, [projects]);
 
   // Função para calcular o progresso do projeto com base nas tarefas concluídas
   const calculateProgress = (project: Project) => {
@@ -128,8 +109,8 @@ export const ProjectsList = () => {
                 </div>
               </div>
             ))
-          ) : projects.length > 0 ? (
-            projects.map((project) => {
+          ) : recentProjects.length > 0 ? (
+            recentProjects.map((project) => {
               // Calculamos o progresso individualmente para cada projeto
               const progress = calculateProgress(project);
 

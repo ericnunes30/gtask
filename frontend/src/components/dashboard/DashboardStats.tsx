@@ -1,93 +1,69 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BriefcaseIcon, CheckIcon, ListTodoIcon, ClockIcon } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
-import { projectService } from '@/lib/api';
+import { useGetProjects } from '@/services/backend/projects';
 import { useGetTasks } from '@/services/backend/tasks';
 
 export const DashboardStats = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({
-    activeProjects: 0,
-    newProjects: 0,
-    pendingTasks: 0,
-    urgentTasks: 0,
-    completedTasks: 0,
-    todayCompletedTasks: 0,
-    totalHours: 0,
-    todayHours: 0
-  });
-
+  const { data: projects = [], isLoading: projectsLoading } = useGetProjects();
   const { data: tasks = [], isLoading: tasksLoading } = useGetTasks();
 
-  useEffect(() => {
-    if (tasksLoading) return;
-    const fetchStats = async () => {
-      setIsLoading(true);
+  const stats = useMemo(() => {
+    if (projectsLoading || tasksLoading) {
+      return {
+        activeProjects: 0,
+        newProjects: 0,
+        pendingTasks: 0,
+        urgentTasks: 0,
+        completedTasks: 0,
+        todayCompletedTasks: 0,
+        totalHours: 0,
+        todayHours: 0,
+      };
+    }
 
-      try {
-        // Buscar projetos
-        const projects = await projectService.getProjects();
+    const activeProjects = projects.filter(project => project.status).length;
 
-        // Contar projetos ativos
-        const activeProjects = projects.filter(project => project.status).length;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const newProjects = projects.filter(project =>
+      project.created_at ? new Date(project.created_at) > thirtyDaysAgo : false
+    ).length;
 
-        // Contar projetos novos (criados nos últimos 30 dias)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const newProjects = projects.filter(
-          project => new Date(project.created_at) > thirtyDaysAgo
-        ).length;
+    const pendingTasks = tasks.filter(
+      task => task.status === 'a_fazer' || task.status === 'pendente'
+    ).length;
 
-        // Tarefas já estão disponíveis via hook
-        const tasksData = tasks;
+    const urgentTasks = tasks.filter(
+      task => task.priority === 'alta' || task.priority === 'urgente'
+    ).length;
 
-        // Contar tarefas pendentes
-        const pendingTasks = tasksData.filter(
-          task => task.status === 'a_fazer' || task.status === 'pendente'
-        ).length;
+    const completedTasks = tasks.filter(task => task.status === 'concluido').length;
 
-        // Contar tarefas urgentes
-        const urgentTasks = tasksData.filter(
-          task => task.priority === 'alta' || task.priority === 'urgente'
-        ).length;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayCompletedTasks = tasks.filter(task =>
+      task.status === 'concluido' && task.updated_at && new Date(task.updated_at) > today
+    ).length;
 
-        // Contar tarefas concluídas
-        const completedTasks = tasksData.filter(
-          task => task.status === 'concluido'
-        ).length;
+    const totalHours = tasks.length * 3;
+    const todayHours = Math.floor(Math.random() * 10);
 
-        // Contar tarefas concluídas hoje
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayCompletedTasks = tasksData.filter(
-          task => task.status === 'concluido' && new Date(task.updated_at) > today
-        ).length;
-
-        // Simular horas trabalhadas (não temos essa informação na API)
-        const totalHours = tasksData.length * 3; // Estimativa de 3 horas por tarefa
-        const todayHours = Math.floor(Math.random() * 10); // Valor aleatório para demonstração
-
-        setStats({
-          activeProjects,
-          newProjects,
-          pendingTasks,
-          urgentTasks,
-          completedTasks,
-          todayCompletedTasks,
-          totalHours,
-          todayHours
-        });
-      } catch (error) {
-        console.error('Erro ao buscar estatísticas:', error);
-      } finally {
-        setIsLoading(false);
-      }
+    return {
+      activeProjects,
+      newProjects,
+      pendingTasks,
+      urgentTasks,
+      completedTasks,
+      todayCompletedTasks,
+      totalHours,
+      todayHours,
     };
+  }, [projects, tasks, projectsLoading, tasksLoading]);
 
-    fetchStats();
-  }, [tasksLoading, tasks]);
+  const isLoading = projectsLoading || tasksLoading;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
