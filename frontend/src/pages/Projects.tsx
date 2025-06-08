@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +38,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { projectService, Project, ProjectPriority, taskService, teamService, userService } from '@/lib/api';
+import { useGetProjects } from '@/services/backend/projects';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -56,13 +57,10 @@ const Projects = () => {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedProject, setSelectedProject] = useState<UIProject | null>(null);
   const [isViewProjectOpen, setIsViewProjectOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [projectTasks, setProjectTasks] = useState<Record<number, number>>({});
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<UIProject | null>(null);
@@ -71,172 +69,8 @@ const Projects = () => {
   const { user } = useAuth();
   const permissions = usePermissions();
 
-  // Função para carregar projetos da API
-  const fetchProjects = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Carregar projetos da API
-      let projectsData = await projectService.getProjects();
-
-      // Se o usuário for um membro, filtrar para mostrar apenas projetos em que ele participa
-      if (permissions.isMember) {
-        // Tentar obter o ID do usuário do contexto de autenticação primeiro
-        let userId = user?.id;
-
-        // Se não tiver o ID do usuário no contexto, tentar obter do localStorage
-        if (!userId) {
-          const userData = localStorage.getItem('user');
-          if (userData) {
-            try {
-              const parsedUser = JSON.parse(userData);
-              userId = parsedUser.id;
-            } catch (e) {
-              console.error('Erro ao obter ID do usuário do localStorage:', e);
-            }
-          }
-        }
-
-        if (userId) {
-          console.log('Projects: Usuário é membro, filtrando projetos por usuário:', userId);
-          console.log('Projects: Total de projetos antes da filtragem:', projectsData.length);
-
-          // Filtrar projetos onde o usuário é membro
-          projectsData = projectsData.filter(project => {
-            // Verificar se o projeto tem usuários e se o usuário atual está na lista
-            if (!project.users || !Array.isArray(project.users) || project.users.length === 0) {
-              console.log(`Projects: Projeto ${project.id} (${project.title}) não tem usuários, excluindo`);
-              return false;
-            }
-
-            // Verificar se o usuário está na lista de usuários do projeto
-            const userInProject = project.users.some(projectUser =>
-              (typeof projectUser === 'number' && projectUser === userId) ||
-              (typeof projectUser === 'object' && projectUser !== null && projectUser.id === userId)
-            );
-
-            if (userInProject) {
-              console.log(`Projects: Usuário ${userId} encontrado no projeto ${project.id} (${project.title}), incluindo`);
-            } else {
-              console.log(`Projects: Usuário ${userId} não encontrado no projeto ${project.id} (${project.title}), excluindo`);
-            }
-
-            return userInProject;
-          });
-
-          console.log('Projects: Total de projetos após filtragem:', projectsData.length);
-          console.log('Projects: IDs dos projetos filtrados:', projectsData.map(p => p.id));
-        } else {
-          console.error('Projects: Não foi possível obter o ID do usuário para filtrar projetos');
-        }
-      }
-
-      // Limpar o estado de tarefas antes de carregar novos dados
-      setProjectTasksData({});
-
-      // Inicializar contagem de tarefas
-      const taskCounts: Record<number, number> = {};
-
-      console.log(`Processando ${projectsData.length} projetos com suas tarefas aninhadas`);
-
-      // Processar as tarefas que já vêm junto com os projetos
-      projectsData.forEach(project => {
-        if (project.id) {
-          // Verificar se o projeto tem tarefas
-          const projectTasks = project.tasks || [];
-
-          console.log(`Projeto ${project.id} (${project.title}) tem ${projectTasks.length} tarefas aninhadas`);
-
-          // Criar uma cópia profunda das tarefas para evitar compartilhamento de referência
-          const tasksCopy = JSON.parse(JSON.stringify(projectTasks));
-
-          // Verificar se cada tarefa tem um ID de projeto válido
-          tasksCopy.forEach(task => {
-            if (!task.project_id && !task.projectId) {
-              task.project_id = project.id;
-            }
-          });
-
-          // Atualizar o cache de tarefas com uma cópia dos dados
-          setProjectTasksData(prev => {
-            const newData = { ...prev };
-            newData[project.id] = tasksCopy;
-
-            console.log(`Estado atualizado para o projeto ${project.id} (${project.title}): ${tasksCopy.length} tarefas`);
-
-            return newData;
-          });
-
-          // Atualizar a contagem de tarefas (mantido para compatibilidade)
-          taskCounts[project.id] = projectTasks.length;
-
-          // Log detalhado das tarefas
-          if (projectTasks.length > 0) {
-            console.log(`Detalhes das tarefas do projeto ${project.id} (${project.title}):`,
-              projectTasks.map(t => ({
-                id: t.id,
-                title: t.title,
-                status: t.status,
-                projectId: t.projectId
-              }))
-            );
-          }
-        }
-      });
-
-      // Atualizar o estado com os projetos carregados
-      setProjects(projectsData);
-
-      // Atualizar o estado de contagem de tarefas (mantido para compatibilidade)
-      setProjectTasks(taskCounts);
-
-      // Carregar equipes e usuários da API
-      try {
-        const teamsData = await teamService.getTeams();
-        setTeams(teamsData);
-
-        const usersData = await userService.getUsers();
-        setUsers(usersData);
-      } catch (err) {
-        console.error('Erro ao carregar equipes ou usuários:', err);
-
-        // Fallback para dados do localStorage
-        const storedTeams = localStorage.getItem('teams');
-        if (storedTeams) {
-          setTeams(JSON.parse(storedTeams));
-        }
-
-        const storedUsers = localStorage.getItem('users');
-        if (storedUsers) {
-          setUsers(JSON.parse(storedUsers));
-        }
-      }
-    } catch (err) {
-      console.error('Erro ao carregar projetos:', err);
-      setError('Não foi possível carregar os projetos. Tente novamente mais tarde.');
-
-      // Fallback para dados do localStorage se a API falhar
-      const storedProjects = localStorage.getItem('projects');
-      if (storedProjects) {
-        setProjects(JSON.parse(storedProjects));
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Efeito para carregar projetos quando o componente é montado ou quando o usuário mudar
-  useEffect(() => {
-    console.log('Componente Projects montado ou usuário alterado, carregando projetos...');
-    console.log('Informações do usuário:', {
-      id: user?.id,
-      name: user?.name,
-      isMember: permissions.isMember,
-      userRole: permissions.userRole
-    });
-    fetchProjects();
-  }, [user?.id, permissions.isMember]); // Recarregar quando o ID do usuário ou as permissões mudarem
+  const { data, isLoading, isError } = useGetProjects();
+  const projects = data ?? [];
 
   // Efeito para verificar o estado das tarefas após o carregamento
   useEffect(() => {
@@ -315,14 +149,12 @@ const Projects = () => {
   const handleAddProject = async () => {
     // Fechar o diálogo e recarregar os projetos
     setIsDialogOpen(false);
-    await fetchProjects();
   };
 
   const handleEditProject = async () => {
     // Fechar o diálogo de edição e recarregar os projetos
     setIsEditDialogOpen(false);
     setSelectedProject(null);
-    await fetchProjects();
   };
 
   const editProject = (project: UIProject) => {
@@ -359,7 +191,6 @@ const Projects = () => {
       toast.success('Projeto removido com sucesso!');
       setIsDeleteDialogOpen(false);
       setProjectToDelete(null);
-      await fetchProjects();
     } catch (error) {
       console.error('Erro ao remover projeto:', error);
       toast.error('Erro ao remover projeto. Tente novamente.');
@@ -698,10 +529,10 @@ const Projects = () => {
           </div>
         </div>
 
-        {error && (
+        {isError && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>Erro ao carregar projetos.</AlertDescription>
           </Alert>
         )}
 
