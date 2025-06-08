@@ -39,6 +39,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Task, TaskStatus, projectService, userService, teamService } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useCreateTask, useUpdateTask } from '@/services/backend/tasks';
 
 import { debounce } from 'lodash'; // Importar a função debounce
 
@@ -103,6 +104,9 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const permissions = usePermissions();
+  const { mutate: createTaskMutation, isPending: isCreatePending } = useCreateTask();
+  const { mutate: updateTaskMutation, isPending: isUpdatePending } = useUpdateTask();
+  const isPending = isCreatePending || isUpdatePending;
 
   // Inicializa o formulário com zod resolver
   const form = useForm<TaskFormValues>({
@@ -562,7 +566,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
     }
   };
 
-  const onSubmit = async (values: TaskFormValues) => {
+  const onSubmit = (values: TaskFormValues) => {
     console.log(`[TaskForm.tsx] onSubmit from instance ID: ${formInstanceId}. Modo Edição: ${isEditMode}, Formulário sujo: ${form.formState.isDirty}`);
     console.log('[TaskForm.tsx] Valores recebidos no onSubmit:', values);
 
@@ -571,55 +575,64 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
       console.log('[TaskForm.tsx] Nenhuma alteração detectada no modo de edição.');
       return;
     }
-    setLoading(true);
-    console.log('[TaskForm.tsx] setLoading(true)');
-    try {
-      // Converter datas para string no formato ISO
-      const formattedValues = {
-        ...values,
-        start_date: values.start_date ? values.start_date.toISOString() : undefined,
-        due_date: values.due_date ? values.due_date.toISOString() : undefined,
-        users: values.user_ids,
-        occupations: values.occupation_ids
+
+    // Converter datas para string no formato ISO
+    const formattedValues = {
+      ...values,
+      start_date: values.start_date ? values.start_date.toISOString() : undefined,
+      due_date: values.due_date ? values.due_date.toISOString() : undefined,
+      users: values.user_ids,
+      occupations: values.occupation_ids
+    };
+
+    // Se o usuário for um membro e estiver em modo de edição, permitir apenas atualizar status e comentário
+    let apiValues;
+
+    if (permissions.isMember && isEditMode) {
+      apiValues = {
+        status: formattedValues.status,
+        description: formattedValues.description
       };
+    } else {
+      apiValues = {
+        title: formattedValues.title,
+        description: formattedValues.description,
+        status: formattedValues.status,
+        priority: formattedValues.priority,
+        start_date: formattedValues.start_date,
+        due_date: formattedValues.due_date,
+        project_id: formattedValues.project_id,
+        users: formattedValues.users,
+        occupations: formattedValues.occupations,
+        order: values.order
+      };
+    }
 
-      // Se o usuário for um membro e estiver em modo de edição, permitir apenas atualizar status e comentário
-      let apiValues;
+    console.log('[TaskForm.tsx] apiValues preparados para onSuccess:', apiValues);
 
-      if (permissions.isMember && isEditMode) {
-        // Obter os valores originais da tarefa
-        apiValues = {
-          status: formattedValues.status,
-          description: formattedValues.description
-        };
-
-      } else {
-        // Remover campos que não são aceitos pela API
-        apiValues = {
-          title: formattedValues.title,
-          description: formattedValues.description,
-          status: formattedValues.status,
-          priority: formattedValues.priority,
-          start_date: formattedValues.start_date,
-          due_date: formattedValues.due_date,
-          project_id: formattedValues.project_id,
-          users: formattedValues.users,
-          occupations: formattedValues.occupations,
-          order: values.order // Preservar a ordem da tarefa
-        };
-      }
-
-      console.log('[TaskForm.tsx] apiValues preparados para onSuccess:', apiValues);
-      console.log(`[TaskForm.tsx] Verificando a função onSuccess (prop) ANTES da chamada. Instance ID Prop: ${formInstanceId}. onSuccess definition:`, onSuccess.toString().substring(0, 300) + "...");
-      await onSuccess(apiValues); // Adicionado await
-      console.log('[TaskForm.tsx] onSuccess (prop) chamada e concluída.');
-
-    } catch (error) {
-      console.error("[TaskForm.tsx] Erro DENTRO do onSubmit OU na chamada de onSuccess (prop):", error);
-      toast.error("Erro ao processar formulário. Tente novamente.");
-    } finally {
-      setLoading(false);
-      console.log('[TaskForm.tsx] setLoading(false) executado no finally do onSubmit.');
+    if (isEditMode && initialData?.id) {
+      updateTaskMutation(
+        { id: initialData.id, data: apiValues },
+        {
+          onSuccess: (data) => {
+            onSuccess(data);
+          },
+          onError: (error) => {
+            console.error('[TaskForm.tsx] Erro ao atualizar tarefa:', error);
+            toast.error('Erro ao processar formulário. Tente novamente.');
+          },
+        }
+      );
+    } else {
+      createTaskMutation(apiValues, {
+        onSuccess: (data) => {
+          onSuccess(data);
+        },
+        onError: (error) => {
+          console.error('[TaskForm.tsx] Erro ao criar tarefa:', error);
+          toast.error('Erro ao processar formulário. Tente novamente.');
+        },
+      });
     }
   };
 
@@ -691,7 +704,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={loading}
+                  disabled={loading || isPending}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -723,7 +736,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
-                  disabled={loading}
+                  disabled={loading || isPending}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -759,7 +772,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                           "w-full pl-3 text-left font-normal",
                           !field.value && "text-muted-foreground"
                         )}
-                        disabled={loading || (permissions.isMember && isEditMode)}
+                        disabled={loading || isPending || (permissions.isMember && isEditMode)}
                       >
                         {field.value ? (
                           format(field.value, "PPP", { locale: ptBR })
@@ -776,7 +789,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                       selected={field.value}
                       onSelect={field.onChange}
                       initialFocus
-                      disabled={loading}
+                      disabled={loading || isPending}
                     />
                   </PopoverContent>
                 </Popover>
@@ -805,7 +818,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                           "w-full pl-3 text-left font-normal",
                           !field.value && "text-muted-foreground"
                         )}
-                        disabled={loading || (permissions.isMember && isEditMode)}
+                        disabled={loading || isPending || (permissions.isMember && isEditMode)}
                       >
                         {field.value ? (
                           format(field.value, "PPP", { locale: ptBR })
@@ -822,7 +835,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                       selected={field.value}
                       onSelect={field.onChange}
                       initialFocus
-                      disabled={loading}
+                      disabled={loading || isPending}
                     />
                   </PopoverContent>
                 </Popover>
@@ -913,7 +926,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                               // Filtrar usuários com base nas equipes selecionadas
                               filterUsersByTeams(newTeams);
                             }}
-                            disabled={loading || (permissions.isMember && isEditMode)}
+                            disabled={loading || isPending || (permissions.isMember && isEditMode)}
                           />
                           <label className="text-sm font-medium leading-none">
                             {team.name}
@@ -976,7 +989,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                                 : currentUsers.filter(id => id !== user.id);
                               form.setValue('user_ids', newUsers);
                             }}
-                            disabled={loading || (permissions.isMember && isEditMode)}
+                            disabled={loading || isPending || (permissions.isMember && isEditMode)}
                           />
                           <label className="flex items-center gap-2 w-full overflow-hidden">
                             <Avatar className="h-6 w-6 flex-shrink-0">
@@ -1031,7 +1044,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
               variant="outline"
               className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
               onClick={() => onSuccess({})}
-              disabled={loading}
+              disabled={loading || isPending}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Remover
