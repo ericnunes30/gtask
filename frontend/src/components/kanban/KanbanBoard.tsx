@@ -34,8 +34,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { taskService, Task as ApiTask, TaskStatus } from '@/lib/api';
+import { taskService, TaskStatus } from '@/lib/api';
 import { UpdateTaskRequest } from '@/lib/api/tasks';
+import { useCreateTask, useUpdateTask } from '@/services/backend/tasks';
 import TaskDetailsModal from "@/components/tasks/TaskDetailsModal";
 import useProcessedKanbanData from '@/hooks/useProcessedKanbanData';
 import {
@@ -548,6 +549,9 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
   const createTaskFormRef = useRef<TaskFormRef>(null); // Ref para o TaskForm de criação
   const [currentTimerValues, setCurrentTimerValues] = useState<Record<string, number>>({});
 
+  const { mutateAsync: updateTask } = useUpdateTask();
+  const { mutateAsync: createTask } = useCreateTask();
+
   // Log para depuração do estado do modal do KanbanBoard
   console.log(`[KanbanBoard.tsx] Renderizando. isCreateEditDialogOpen: ${isCreateEditDialogOpen}, createTaskFormInstanceId: ${createTaskFormInstanceId}`);
 
@@ -761,23 +765,21 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
           const currentTimeToSave = currentTimerValues[taskToMoveIdStr]; 
           setTimerRunningTaskId(null); // Para o timer localmente
           if (currentTimeToSave !== undefined) {
-            // Salva o timer na API. Isso chamará onGenericTaskUpdate, que recarrega as tarefas.
+            // Salva o timer na API
             await handleTimerUpdate(taskToMoveIdStr, currentTimeToSave);
           }
         }
 
-        // Etapa 2: Se houve mudança de status ou ordem, notificar o componente pai.
-        // Isso também pode recarregar as tarefas.
+        // Etapa 2: Se houve mudança de status ou ordem, atualizar via React Query
         if (statusChanged || orderChanged) {
-          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 2 - Calling onTaskStatusChange.', { taskId: taskToMove.id, finalDestStatus, roundedNewOrder });
-          if (onTaskStatusChange) {
-            await onTaskStatusChange(taskToMove, finalDestStatus, roundedNewOrder);
-            // O toast de "movida" pode ser mostrado aqui ou dentro de onTaskStatusChange no pai.
-            // Por ora, mantemos aqui para feedback imediato do drag.
-            toast.success(`Tarefa "${taskToMove.title}" movida.`);
+          const updateData: UpdateTaskRequest = { status: finalDestStatus };
+          if (roundedNewOrder !== undefined) {
+            updateData.order = roundedNewOrder;
           }
+          await updateTask({ id: Number(taskToMove.id), data: updateData });
+          toast.success(`Tarefa "${taskToMove.title}" movida.`);
         } else {
-          console.log('[KanbanBoard.tsx] handleDragEnd: No status or order change detected. No call to onTaskStatusChange.');
+          console.log('[KanbanBoard.tsx] handleDragEnd: No status or order change detected.');
         }
 
         // Etapa 3: Lidar com o início do timer para a tarefa movida, ou parar um timer de OUTRA tarefa.
@@ -849,17 +851,10 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     setCurrentTimerValues(prev => ({ ...prev, [taskIdStr]: timerValue }));
 
     try {
-      await taskService.updateTask(Number(taskIdStr), { timer: timerValue });
+      await updateTask({ id: Number(taskIdStr), data: { timer: timerValue } });
       toast.success('Tempo da tarefa atualizado.');
-      if (onGenericTaskUpdate) {
-        await onGenericTaskUpdate();
-      }
     } catch (err) {
       toast.error('Erro ao atualizar timer da tarefa.');
-      // Recarregar para buscar o estado consistente da API mesmo em caso de erro na atualização do timer
-      if (onGenericTaskUpdate) {
-        await onGenericTaskUpdate();
-      }
     }
   };
 
@@ -909,21 +904,14 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     // Se newStatus é 'em_andamento' e timerRunningTaskId é null ou diferente, a lógica acima cobre.
   };
 
-  const handleTaskFormSuccess = async (taskData: any) => { // Aceitar taskData
+  const handleTaskFormSuccess = async (taskData: any) => {
     console.log('[KanbanBoard.tsx] handleTaskFormSuccess INÍCIO. taskData:', taskData);
     try {
-      console.log('[KanbanBoard.tsx] handleTaskFormSuccess: ANTES de chamar taskService.createTask.');
-      // Adicionar a lógica para criar a tarefa na API
-      // Certifique-se de que taskData está no formato esperado por createTask
-      // (pode ser necessário ajustar os nomes dos campos se TaskForm envia algo diferente do que createTask espera)
-      const newTask = await taskService.createTask(taskData);
-      console.log('[KanbanBoard.tsx] handleTaskFormSuccess: DEPOIS de chamar taskService.createTask. Nova tarefa:', newTask);
+      const newTask = await createTask(taskData);
+      console.log('[KanbanBoard.tsx] handleTaskFormSuccess: tarefa criada:', newTask);
 
-      handleCloseKanbanDialog(); // Usa a função centralizada para fechar e resetar
+      handleCloseKanbanDialog();
       toast.success('Tarefa criada com sucesso!');
-      if (onGenericTaskUpdate) {
-        await onGenericTaskUpdate();
-      }
     } catch (error) {
       console.error('[KanbanBoard.tsx] ERRO CAPTURADO em handleTaskFormSuccess:', error);
       toast.error('Erro ao criar tarefa no Kanban. Verifique os dados e tente novamente.');
