@@ -37,7 +37,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { projectService, Project, ProjectPriority, taskService, teamService, userService } from '@/lib/api';
+import { projectService, Project, ProjectPriority, teamService, userService, taskService } from '@/lib/api';
+import { useGetTasksByProject } from '@/services/backend/tasks';
+import { useQueryClient } from '@tanstack/react-query';
 import { useGetProjects } from '@/services/backend/projects';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -68,6 +70,7 @@ const Projects = () => {
   const [projectTasksData, setProjectTasksData] = useState<Record<number, any[]>>({});
   const { user } = useAuth();
   const permissions = usePermissions();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useGetProjects();
   const projects = data ?? [];
@@ -351,7 +354,10 @@ const Projects = () => {
 
     try {
       console.log(`Carregando tarefas para o projeto ${projectId}`);
-      const tasks = await taskService.getTasksByProject(projectId);
+      const { data: tasks = [] } = await queryClient.fetchQuery(
+        ['projectTasks', projectId],
+        () => taskService.getTasksByProject(projectId)
+      );
 
       // Verificar se as tarefas foram carregadas corretamente
       if (!tasks || !Array.isArray(tasks)) {

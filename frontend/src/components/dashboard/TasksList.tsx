@@ -37,8 +37,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"; // Biblioteca para formatação de datas
 import { ptBR } from "date-fns/locale"; // Localização PT-BR para date-fns
 import { cn } from "@/lib/utils"; // Utilitário para classes condicionais (comum com Shadcn/ui)
-import { taskService, Task, TaskPriority, TaskStatus, userService } from '@/lib/api'; // Serviços e tipos da API (assumindo que existem)
-import { UpdateTaskRequest } from '@/lib/api/tasks'; // Interface para atualização de tarefas
+import { Task, TaskPriority, TaskStatus, userService } from '@/lib/api';
+import { UpdateTaskRequest } from '@/lib/api/tasks';
+import { useGetTasks, useGetTasksByProject, useUpdateTask, useDeleteTask } from '@/services/backend/tasks';
 import { toast } from "sonner"; // Biblioteca para notificações (toast)
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -142,6 +143,20 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // Controla o diálogo de confirmação de exclusão
   const [timerRunningTaskId, setTimerRunningTaskId] = useState<string | null>(null); // ID da tarefa com timer em execução
 
+  const { data: allTasks = [], refetch: refetchTasks } = useGetTasks();
+  const projectIdNumber =
+    projectId !== undefined && projectId !== null
+      ? typeof projectId === 'string'
+        ? parseInt(projectId, 10)
+        : projectId
+      : 0;
+  const { data: projectTasks = [], refetch: refetchProjectTasks } = useGetTasksByProject(
+    projectIdNumber,
+    Boolean(projectId)
+  );
+  const { mutateAsync: updateTask } = useUpdateTask();
+  const { mutateAsync: deleteTaskMutation } = useDeleteTask();
+
   // --- Funções de Fetch e Manipulação de Dados ---
 
   // Função para buscar tarefas da API
@@ -153,15 +168,13 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
     try {
       let tasksList: Task[];
 
-      // Busca tarefas por projeto ou todas as tarefas
+      // Busca tarefas por projeto ou todas as tarefas usando React Query
       if (projectId) {
-        const projectIdNumber = typeof projectId === 'string' ? parseInt(projectId, 10) : projectId;
-        if (isNaN(projectIdNumber)) {
-             throw new Error("ID do Projeto inválido.");
-        }
-        tasksList = await taskService.getTasksByProject(projectIdNumber);
+        const { data } = await refetchProjectTasks();
+        tasksList = data ?? [];
       } else {
-        tasksList = await taskService.getTasks();
+        const { data } = await refetchTasks();
+        tasksList = data ?? [];
       }
 
       // Filtra tarefas por equipe selecionada
@@ -474,7 +487,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
 
     try {
       const updateData = { status: newStatus };
-      await taskService.updateTask(taskId, updateData);
+      await updateTask({ id: taskId, data: updateData });
       toast.success(`Status da tarefa atualizado para ${getStatusLabel(newStatus)}`);
 
       // Notificar o componente pai sobre a atualização das tarefas
@@ -507,7 +520,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
 
     try {
       const updateData = { priority: newPriority };
-      await taskService.updateTask(taskId, updateData);
+      await updateTask({ id: taskId, data: updateData });
       toast.success(`Prioridade da tarefa atualizada para ${getPriorityLabel(newPriority)}`);
 
       // Notificar o componente pai sobre a atualização das tarefas
@@ -543,7 +556,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
     try {
       // Usar o formato que o backend espera (dueDate em vez de due_date)
       const updateData = { dueDate: newDueDateISO };
-      await taskService.updateTask(taskId, updateData);
+      await updateTask({ id: taskId, data: updateData });
       toast.success('Data de vencimento atualizada com sucesso!');
 
       // Notificar o componente pai sobre a atualização das tarefas
@@ -591,7 +604,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
 
 
     try {
-      await taskService.updateTask(taskId, { users: newUsersIds });
+      await updateTask({ id: taskId, data: { users: newUsersIds } });
       toast.success('Usuário atribuído com sucesso!');
 
       // Notificar o componente pai sobre a atualização das tarefas
@@ -628,7 +641,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
     toast.info(`Removendo usuário ${userName}...`);
 
     try {
-      await taskService.updateTask(taskId, { users: newUsersIds });
+      await updateTask({ id: taskId, data: { users: newUsersIds } });
       toast.success('Usuário removido com sucesso!');
 
       // Notificar o componente pai sobre a atualização das tarefas
@@ -689,7 +702,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
 
 
     try {
-      await taskService.deleteTask(taskIdToDelete);
+      await deleteTaskMutation(taskIdToDelete);
       toast.success('Tarefa excluída com sucesso!');
       setSelectedTaskId(null);
 
@@ -1121,9 +1134,8 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                           // Mostrar toast de informação
                           toast.info('Atualizando tempo da tarefa...');
 
-                          taskService.updateTask(task.id, updateData)
-                            .then(response => {
-                              console.log('TasksList: Resposta da API após atualizar timer:', response);
+                          updateTask({ id: task.id, data: updateData })
+                            .then(() => {
                               toast.success('Tempo da tarefa atualizado com sucesso!');
                             })
                             .catch(err => {

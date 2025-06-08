@@ -7,6 +7,19 @@ import taskService, {
 export const useGetTasks = () =>
   useQuery({ queryKey: ['tasks'], queryFn: taskService.getTasks })
 
+export const useGetTask = (taskId: number) =>
+  useQuery({
+    queryKey: ['task', taskId],
+    queryFn: () => taskService.getTask(taskId),
+  })
+
+export const useGetTasksByProject = (projectId: number, enabled = true) =>
+  useQuery({
+    queryKey: ['projectTasks', projectId],
+    queryFn: () => taskService.getTasksByProject(projectId),
+    enabled,
+  })
+
 export const useCreateTask = () => {
   const queryClient = useQueryClient()
   return useMutation({
