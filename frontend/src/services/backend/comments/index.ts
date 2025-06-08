@@ -42,3 +42,25 @@ export const useDeleteComment = () => {
     },
   })
 }
+
+export const useLikeComment = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => commentService.likeComment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments'] })
+      queryClient.invalidateQueries({ queryKey: ['taskComments'] })
+    },
+  })
+}
+
+export const useUnlikeComment = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => commentService.unlikeComment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments'] })
+      queryClient.invalidateQueries({ queryKey: ['taskComments'] })
+    },
+  })
+}

@@ -6,8 +6,7 @@ import { Heart, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Comment as ApiComment, User as ApiUser } from '@/lib/api'; // Importar a interface Comment e User
-import commentService from '@/lib/api/comments'
-import { useCreateComment, useDeleteComment } from '@/services/backend/comments'
+import { useCreateComment, useDeleteComment, useLikeComment, useUnlikeComment } from '@/services/backend/comments'
 import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
 import { toast } from "sonner";
 
@@ -25,6 +24,8 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
   const [isLiking, setIsLiking] = useState(false);
   const { mutateAsync: createComment } = useCreateComment();
   const { mutateAsync: deleteCommentMutation } = useDeleteComment();
+  const { mutateAsync: likeComment } = useLikeComment();
+  const { mutateAsync: unlikeComment } = useUnlikeComment();
 
   const handleLikeToggle = async () => {
     if (isLiking) return;
@@ -32,11 +33,11 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
     setIsLiking(true);
     try {
       if (isLiked) {
-        await commentService.unlikeComment(comment.id);
+        await unlikeComment(comment.id);
         setLikesCount(prev => Math.max(0, prev - 1));
         setIsLiked(false);
       } else {
-        await commentService.likeComment(comment.id);
+        await likeComment(comment.id);
         setLikesCount(prev => prev + 1);
         setIsLiked(true);
       }

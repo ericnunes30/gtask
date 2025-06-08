@@ -34,7 +34,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { taskService, TaskStatus } from '@/lib/api';
+import { TaskStatus } from '@/lib/api';
 import { UpdateTaskRequest } from '@/lib/api/tasks';
 import { useCreateTask, useUpdateTask } from '@/services/backend/tasks';
 import TaskDetailsModal from "@/components/tasks/TaskDetailsModal";
@@ -184,7 +184,7 @@ const TaskCard = ({
       }
 
       // Atualizar o status da tarefa na API
-      await taskService.updateTask(task.id, { status: apiStatus });
+      await updateTask({ id: task.id, data: { status: apiStatus } });
 
       // Mostrar toast de confirmação
       toast.success(`Status da tarefa atualizado para ${status}`);
@@ -312,8 +312,8 @@ const TaskCard = ({
                 // Mostrar toast de informação
                 toast.info('Atualizando tempo da tarefa...');
 
-                taskService.updateTask(task.id, updateData)
-                  .then(response => {
+                updateTask({ id: task.id, data: updateData })
+                  .then(() => {
                     toast.success('Tempo da tarefa atualizado com sucesso!');
 
                     // Atualizar o estado local da tarefa com o valor retornado da API

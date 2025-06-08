@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BriefcaseIcon, CheckIcon, ListTodoIcon, ClockIcon } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
-import { projectService, taskService } from '@/lib/api';
+import { projectService } from '@/lib/api';
+import { useGetTasks } from '@/services/backend/tasks';
 
 export const DashboardStats = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -18,7 +19,10 @@ export const DashboardStats = () => {
     todayHours: 0
   });
 
+  const { data: tasks = [], isLoading: tasksLoading } = useGetTasks();
+
   useEffect(() => {
+    if (tasksLoading) return;
     const fetchStats = async () => {
       setIsLoading(true);
 
@@ -36,33 +40,33 @@ export const DashboardStats = () => {
           project => new Date(project.created_at) > thirtyDaysAgo
         ).length;
 
-        // Buscar tarefas
-        const tasks = await taskService.getTasks();
+        // Tarefas já estão disponíveis via hook
+        const tasksData = tasks;
 
         // Contar tarefas pendentes
-        const pendingTasks = tasks.filter(
+        const pendingTasks = tasksData.filter(
           task => task.status === 'a_fazer' || task.status === 'pendente'
         ).length;
 
         // Contar tarefas urgentes
-        const urgentTasks = tasks.filter(
+        const urgentTasks = tasksData.filter(
           task => task.priority === 'alta' || task.priority === 'urgente'
         ).length;
 
         // Contar tarefas concluídas
-        const completedTasks = tasks.filter(
+        const completedTasks = tasksData.filter(
           task => task.status === 'concluido'
         ).length;
 
         // Contar tarefas concluídas hoje
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const todayCompletedTasks = tasks.filter(
+        const todayCompletedTasks = tasksData.filter(
           task => task.status === 'concluido' && new Date(task.updated_at) > today
         ).length;
 
         // Simular horas trabalhadas (não temos essa informação na API)
-        const totalHours = tasks.length * 3; // Estimativa de 3 horas por tarefa
+        const totalHours = tasksData.length * 3; // Estimativa de 3 horas por tarefa
         const todayHours = Math.floor(Math.random() * 10); // Valor aleatório para demonstração
 
         setStats({
@@ -83,7 +87,7 @@ export const DashboardStats = () => {
     };
 
     fetchStats();
-  }, []);
+  }, [tasksLoading, tasks]);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

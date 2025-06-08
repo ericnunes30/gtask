@@ -58,8 +58,9 @@ import { TaskForm } from '@/components/forms/TaskForm';
 import { format, isPast, isBefore, formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Task, TaskPriority, TaskStatus, userService, teamService, projectService, Comment as ApiComment, User as ApiUser } from '@/lib/api'; // Importando Comment, User e TaskStatus da API
-import commentService from '@/lib/api/comments'; // Importando commentService
-import taskService, { convertApiTaskToFrontend, UpdateTaskRequest } from '@/lib/api/tasks';
+import { convertApiTaskToFrontend, UpdateTaskRequest } from '@/lib/api/tasks';
+import { useGetTask, useUpdateTask, useDeleteTask } from '@/services/backend/tasks';
+import { useCreateComment } from '@/services/backend/comments';
 import { TaskTimer } from '@/components/tasks/TaskTimer';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -124,6 +125,10 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const { user: authUser } = useAuth(); // Renomeado para authUser para evitar conflito com 'user' em 'newComment.user'
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const permissions = usePermissions();
+  const { data: fetchedTask, refetch: refetchTask } = useGetTask(taskId);
+  const { mutateAsync: updateTask } = useUpdateTask();
+  const { mutateAsync: deleteTaskMutation } = useDeleteTask();
+  const { mutateAsync: createComment } = useCreateComment();
 
   // Estados para curtidas foram movidos para CommentItem.tsx
 
@@ -272,7 +277,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
 
       // Carregar detalhes da tarefa
-      const taskData = await taskService.getTask(taskId);
+      const { data: taskData } = await refetchTask();
+      if (!taskData) throw new Error('Tarefa não encontrada');
 
       // Converter os nomes dos campos da API para o formato usado no frontend
       const completeTaskData = convertApiTaskToFrontend(taskData);
@@ -511,7 +517,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       // Logs detalhados para depuração
 
       // Enviar a requisição para a API
-      const updatedTask = await taskService.updateTask(taskId, taskData);
+      const updatedTask = await updateTask({ id: taskId, data: taskData });
 
       // Converter os nomes dos campos da API para o formato usado no frontend
       const preservedTask = {
@@ -564,7 +570,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         throw new Error(`ID de tarefa inválido: ${task.id}`);
       }
 
-      await taskService.deleteTask(taskId);
+      await deleteTaskMutation(taskId);
       setIsDeleteDialogOpen(false);
       onClose();
       toast.success('Tarefa excluída com sucesso!');
@@ -593,7 +599,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
 
       // Enviar a requisição para a API
-      const updatedTask = await taskService.updateTask(taskId, taskData);
+      const updatedTask = await updateTask({ id: taskId, data: taskData });
 
       // Converter os nomes dos campos da API para o formato usado no frontend
       const preservedTask = {
@@ -655,8 +661,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         // mentioned_users: mentionedUsers, // Se a API suportar envio de menções na criação
       };
       console.log('[handleAddComment] Preparando dados para API:', commentData);
-      console.log('[handleAddComment] Chamando commentService.createComment...');
-      const newCommentFromApi = await commentService.createComment(commentData);
+      console.log('[handleAddComment] Chamando createComment...');
+      const { data: newCommentFromApi } = await createComment({ data: commentData });
       console.log('[handleAddComment] Chamada API bem-sucedida. Resposta BRUTA:', newCommentFromApi); // Log para inspecionar o objeto recebido
 
       // ENRIQUECER o comentário da API com os dados do usuário local (authUser)
@@ -1279,7 +1285,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                 <DropdownMenuItem
                                   onClick={() => {
                                     const newStatus = "pendente";
-                                    taskService.updateTask(task.id, { status: newStatus })
+                                    updateTask({ id: task.id, data: { status: newStatus } })
                                       .then(() => {
                                         setTask(prev => prev ? { ...prev, status: newStatus } : null);
                                         toast.success('Status atualizado para Pendente');
@@ -1296,7 +1302,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                 <DropdownMenuItem
                                   onClick={() => {
                                     const newStatus = "a_fazer";
-                                    taskService.updateTask(task.id, { status: newStatus })
+                                    updateTask({ id: task.id, data: { status: newStatus } })
                                       .then(() => {
                                         setTask(prev => prev ? { ...prev, status: newStatus } : null);
                                         toast.success('Status atualizado para A Fazer');
@@ -1313,7 +1319,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                 <DropdownMenuItem
                                   onClick={() => {
                                     const newStatus = "em_andamento";
-                                    taskService.updateTask(task.id, { status: newStatus })
+                                    updateTask({ id: task.id, data: { status: newStatus } })
                                       .then(() => {
                                         setTask(prev => prev ? { ...prev, status: newStatus } : null);
                                         toast.success('Status atualizado para Em Andamento');
@@ -1330,7 +1336,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                 <DropdownMenuItem
                                   onClick={() => {
                                     const newStatus = "em_revisao";
-                                    taskService.updateTask(task.id, { status: newStatus })
+                                    updateTask({ id: task.id, data: { status: newStatus } })
                                       .then(() => {
                                         setTask(prev => prev ? { ...prev, status: newStatus } : null);
                                         toast.success('Status atualizado para Em Revisão');
@@ -1347,7 +1353,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                 <DropdownMenuItem
                                   onClick={() => {
                                     const newStatus = "concluido";
-                                    taskService.updateTask(task.id, { status: newStatus })
+                                    updateTask({ id: task.id, data: { status: newStatus } })
                                       .then(() => {
                                         setTask(prev => prev ? { ...prev, status: newStatus } : null);
                                         toast.success('Status atualizado para Concluído');
@@ -1614,10 +1620,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                           }
 
                           // Atualizar o status da tarefa na API
-                          taskService.updateTask(task.id, {
-                            status: apiStatus,
+                          updateTask({
+                            id: task.id,
+                            data: { status: apiStatus },
                           })
-                          .then(response => {
+                          .then(() => {
                             // Não precisamos atualizar o estado local novamente, pois já fizemos isso acima
                           })
                           .catch(err => {
@@ -1642,7 +1649,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                             handleFieldChange('status', apiStatus);
                             if (!isEditMode) {
                               // Se não estiver em modo de edição, salvar a alteração imediatamente
-                              taskService.updateTask(task.id, { status: apiStatus })
+                              updateTask({ id: task.id, data: { status: apiStatus } })
                                 .then(() => {
                                   setTask(prev => prev ? { ...prev, status: apiStatus } : null);
                                 })
@@ -1706,8 +1713,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                             }
 
                             // Depois atualizar no backend
-                            taskService.updateTask(task.id, updateData)
-                              .then((updatedTask) => {
+                            updateTask({ id: task.id, data: updateData })
+                              .then(() => {
                                 toast.success('Tempo da tarefa atualizado com sucesso!');
 
                                 // Não atualizar o estado novamente para evitar recarregar o modal
