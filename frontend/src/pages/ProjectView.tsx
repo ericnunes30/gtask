@@ -19,7 +19,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { projectService, Project, ProjectPriority } from '@/lib/api';
 import { convertApiProjectToFrontend } from '@/lib/api/projects';
-import { taskService, userService, teamService, User, Team } from '@/lib/api';
+import { taskService, teamService, User, Team } from '@/lib/api';
+import { useGetUsers } from '@/services/backend/users';
 import { ProjectForm } from '@/components/forms/ProjectForm';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,6 +43,7 @@ const ProjectView = () => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { data: usersQueryData = [] } = useGetUsers();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const tasksListRef = React.useRef<{ fetchTasks: () => Promise<void> }>(null);
   const { user } = useAuth();
@@ -81,7 +83,6 @@ const ProjectView = () => {
       }
 
     } catch (err) {
-      console.error('Erro ao atualizar tarefas do projeto:', err);
     }
   }, [projectId]); // Removido tasks.length, pois agora setRawTasks é chamado
 
@@ -162,14 +163,13 @@ const ProjectView = () => {
 
         // Carregar todos os usuários e equipes para referência
         const [usersData, teamsData] = await Promise.all([
-          userService.getUsers(),
+          Promise.resolve(usersQueryData),
           teamService.getTeams()
         ]);
 
         setAllUsers(usersData);
         setAllTeams(teamsData);
       } catch (err) {
-        console.error('Erro ao carregar dados do projeto:', err);
         setError('Não foi possível carregar os dados do projeto. Tente novamente mais tarde.');
       } finally {
         setIsLoading(false);
@@ -397,7 +397,6 @@ const ProjectView = () => {
       // Navegar de volta para a lista de projetos
       navigate('/projects');
     } catch (error) {
-      console.error('Erro ao remover projeto:', error);
       toast.error('Erro ao remover projeto. Tente novamente.');
     }
   };

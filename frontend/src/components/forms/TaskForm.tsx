@@ -37,7 +37,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Task, TaskStatus, projectService, userService, teamService } from '@/lib/api';
+import { Task, TaskStatus, teamService } from '@/lib/api';
+import { useGetProjects } from '@/services/backend/projects';
+import { useGetUsers } from '@/services/backend/users';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCreateTask, useUpdateTask } from '@/services/backend/tasks';
 
@@ -82,13 +84,6 @@ export interface TaskFormRef {
 
 export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
   ({ initialData, onSuccess, defaultProjectId, defaultStatus, projectUsers, projectTeams, isEditMode = false, formInstanceId }, ref) => {
-    // Log para depuração de status inicial
-    useEffect(() => {
-      const mountUpdateId = Date.now();
-      console.log(`[TaskForm] MOUNT/UPDATE (ID: ${mountUpdateId}). Instance ID Prop: ${formInstanceId}, isEditMode: ${isEditMode}, defaultStatus: ${defaultStatus}, initialData ID: ${initialData?.id}`);
-      console.log(`[TaskForm] (ID: ${mountUpdateId}) Props na montagem/atualização (detalhe). isEditMode:`, isEditMode, 'initialData:', initialData);
-      console.log(`[TaskForm] (ID: ${mountUpdateId}) Received onSuccess prop definition:`, onSuccess.toString().substring(0, 300) + "...");
-    }, [initialData, defaultStatus, isEditMode, formInstanceId, onSuccess]); // Adicionado onSuccess às dependências para logar se ela mudar
   const statusLabels: Record<TaskStatus, string> = {
     pendente: "Pendente",
     a_fazer: "A Fazer",
@@ -106,6 +101,8 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
   const permissions = usePermissions();
   const { mutate: createTaskMutation, isPending: isCreatePending } = useCreateTask();
   const { mutate: updateTaskMutation, isPending: isUpdatePending } = useUpdateTask();
+  const { data: projectsQueryData = [] } = useGetProjects();
+  const { data: usersQueryData = [] } = useGetUsers();
   const isPending = isCreatePending || isUpdatePending;
 
   // Inicializa o formulário com zod resolver
@@ -160,7 +157,6 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
         };
       }
 
-    console.log('Salvamento automático debounceado acionado:', apiValues); // Log para debug
     // Chamamos a função de sucesso com os dados a serem salvos
     // É importante que onSuccess no componente pai saiba lidar com chamadas parciais (apenas status/description para membros)
     // O componente pai é responsável por lidar com a chamada API real e o feedback de loading/erro para o auto-save.
@@ -287,20 +283,15 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
 
   // Carregar dados necessários para o formulário
   useEffect(() => {
-    console.log('[useEffect fetchData] Dependências:', {
-      defaultProjectId,
-      defaultStatus,
-      initialDataId: initialData?.id,
-    });
     const fetchData = async () => {
       setLoading(true);
       try {
         // Carregar projetos
-        const projectsData = await projectService.getProjects();
+        const projectsData = projectsQueryData;
         setProjects(projectsData);
 
         // Carregar todos os usuários para ter uma lista completa
-        const usersData = await userService.getUsers();
+        const usersData = usersQueryData;
         setAllUsers(usersData || []);
 
         // Inicializar os usuários filtrados com um array vazio
@@ -338,7 +329,6 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
               setFilteredUsers([]);
             }
           } catch (error) {
-            console.error('Erro ao buscar usuários do projeto:', error);
             // Em caso de erro, usar todos os usuários
             setUsers(usersData);
             // Inicializar com array vazio para forçar o usuário a selecionar equipes primeiro
@@ -415,7 +405,6 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
               }
             }
           } catch (error) {
-            console.error('Erro ao buscar equipes do projeto no modo de edição:', error);
             // Em caso de erro, mostrar lista vazia de equipes
             setTeams([]);
           }
@@ -460,7 +449,6 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
               }
             }
           } catch (error) {
-            console.error('Erro ao buscar equipes do projeto:', error);
             // Em caso de erro, carregar todas as equipes
             const teamsData = await teamService.getTeams();
             setTeams(teamsData);
@@ -483,7 +471,6 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
           form.setValue('status', defaultStatus);
         }
       } catch (error) {
-        console.error("Erro ao carregar dados para o formulário:", error);
         toast.error("Erro ao carregar dados. Tente novamente.");
       } finally {
         setLoading(false);
@@ -491,7 +478,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
     };
 
     fetchData();
-  }, [defaultProjectId, defaultStatus, initialData?.id]);
+  }, [defaultProjectId, defaultStatus, initialData?.id, projectsQueryData, usersQueryData]);
 
   // Efeito para filtrar usuários quando as equipes selecionadas mudarem
   useEffect(() => {
@@ -561,18 +548,15 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
 
       return teamNames.join(', ');
     } catch (error) {
-      console.error('Erro ao obter equipes do usuário:', error);
       return 'Sem equipe';
     }
   };
 
   const onSubmit = (values: TaskFormValues) => {
-    console.log(`[TaskForm.tsx] onSubmit from instance ID: ${formInstanceId}. Modo Edição: ${isEditMode}, Formulário sujo: ${form.formState.isDirty}`);
-    console.log('[TaskForm.tsx] Valores recebidos no onSubmit:', values);
+    
 
     if (!form.formState.isDirty && isEditMode) {
       toast.info("Nenhuma alteração foi feita");
-      console.log('[TaskForm.tsx] Nenhuma alteração detectada no modo de edição.');
       return;
     }
 
@@ -608,8 +592,6 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
       };
     }
 
-    console.log('[TaskForm.tsx] apiValues preparados para onSuccess:', apiValues);
-
     if (isEditMode && initialData?.id) {
       updateTaskMutation(
         { id: initialData.id, data: apiValues },
@@ -617,8 +599,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
           onSuccess: (data) => {
             onSuccess(data);
           },
-          onError: (error) => {
-            console.error('[TaskForm.tsx] Erro ao atualizar tarefa:', error);
+          onError: () => {
             toast.error('Erro ao processar formulário. Tente novamente.');
           },
         }
@@ -628,8 +609,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
         onSuccess: (data) => {
           onSuccess(data);
         },
-        onError: (error) => {
-          console.error('[TaskForm.tsx] Erro ao criar tarefa:', error);
+        onError: () => {
           toast.error('Erro ao processar formulário. Tente novamente.');
         },
       });
