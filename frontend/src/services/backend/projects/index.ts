@@ -7,6 +7,13 @@ import projectService, {
 export const useGetProjects = () =>
   useQuery({ queryKey: ['projects'], queryFn: projectService.getProjects })
 
+export const useGetProject = (projectId: number, enabled = true) =>
+  useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => projectService.getProject(projectId),
+    enabled,
+  })
+
 interface MutateProjectArgs {
   id?: number
   data: CreateProjectRequest | UpdateProjectRequest

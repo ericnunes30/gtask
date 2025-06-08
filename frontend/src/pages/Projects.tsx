@@ -38,6 +38,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { projectService, Project, ProjectPriority, teamService, userService, taskService } from '@/lib/api';
+import { useGetProject } from '@/services/backend/projects';
 import { useGetTasksByProject } from '@/services/backend/tasks';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGetProjects } from '@/services/backend/projects';
@@ -71,6 +72,8 @@ const Projects = () => {
   const { user } = useAuth();
   const permissions = usePermissions();
   const queryClient = useQueryClient();
+  const [viewProjectId, setViewProjectId] = useState<number | null>(null);
+  const { data: viewProjectData } = useGetProject(viewProjectId as number, Boolean(viewProjectId));
 
   const { data, isLoading, isError } = useGetProjects();
   const projects = data ?? [];
@@ -200,7 +203,7 @@ const Projects = () => {
     }
   };
 
-  const viewProject = async (project: UIProject) => {
+  const viewProject = (project: UIProject) => {
     try {
       // Verificar se o usuário é um membro e se tem permissão para visualizar este projeto
       if (permissions.isMember) {
@@ -235,61 +238,43 @@ const Projects = () => {
         }
       }
 
-      // Buscar o projeto atualizado da API para garantir que temos os dados mais recentes
-      const updatedProject = await projectService.getProject(project.id);
-
-      // Criar uma cópia do projeto para não modificar o original
-      const projectCopy = { ...updatedProject } as UIProject;
-
-      // Garantir que o status seja uma string para exibição no popup
-      if (typeof projectCopy.status === 'boolean') {
-        // Converter o status booleano para string e armazenar em uma nova propriedade
-        projectCopy.statusText = projectCopy.status ? "Ativo" : "Inativo";
-      }
-
-      // Garantir que a propriedade members esteja definida corretamente
-      if (projectCopy.users && Array.isArray(projectCopy.users)) {
-        // Extrair os IDs dos usuários
-        projectCopy.members = projectCopy.users.map(user =>
-          typeof user === 'object' ? user.id : user
-        );
-
-        console.log(`Projeto ${projectCopy.id} (${projectCopy.title}) tem ${projectCopy.members.length} membros:`, projectCopy.members);
-      } else {
-        projectCopy.members = [];
-        console.log(`Projeto ${projectCopy.id} (${projectCopy.title}) não tem membros`);
-      }
-
-      setSelectedProject(projectCopy);
-
-      // Forçar a atualização das tarefas do projeto para garantir dados atualizados
-      if (project.id) {
-        await refreshProjectTasks(project.id);
-      }
-
-      setIsViewProjectOpen(true);
+      setViewProjectId(project.id);
     } catch (err) {
-      console.error(`Erro ao buscar detalhes do projeto ${project.id}:`, err);
-
-      // Fallback para o projeto original em caso de erro
+      console.error(`Erro ao verificar permissões para o projeto ${project.id}:`, err);
       const projectCopy = { ...project } as UIProject;
-
-      // Garantir que o status seja uma string para exibição no popup
       if (typeof projectCopy.status === 'boolean') {
-        projectCopy.statusText = projectCopy.status ? "Ativo" : "Inativo";
+        projectCopy.statusText = projectCopy.status ? 'Ativo' : 'Inativo';
       }
-
-      // Garantir que a propriedade members esteja definida corretamente
       if (projectCopy.users && Array.isArray(projectCopy.users)) {
         projectCopy.members = projectCopy.users.map(user =>
           typeof user === 'object' ? user.id : user
         );
       }
-
       setSelectedProject(projectCopy);
       setIsViewProjectOpen(true);
     }
   };
+
+  useEffect(() => {
+    if (viewProjectData && viewProjectId !== null) {
+      const projectCopy = { ...viewProjectData } as UIProject;
+      if (typeof projectCopy.status === 'boolean') {
+        projectCopy.statusText = projectCopy.status ? 'Ativo' : 'Inativo';
+      }
+      if (projectCopy.users && Array.isArray(projectCopy.users)) {
+        projectCopy.members = projectCopy.users.map(user =>
+          typeof user === 'object' ? user.id : user
+        );
+      } else {
+        projectCopy.members = [];
+      }
+      setSelectedProject(projectCopy);
+      if (viewProjectId) {
+        refreshProjectTasks(viewProjectId);
+      }
+      setIsViewProjectOpen(true);
+    }
+  }, [viewProjectData]);
 
   const getTeamName = (teamId: number) => {
     const team = teams.find(t => t.id === teamId);
@@ -415,8 +400,11 @@ const Projects = () => {
     }
 
     try {
-      // Buscar o projeto atualizado da API
-      const project = await projectService.getProject(projectId);
+      // Buscar o projeto atualizado da API usando React Query
+      const { data: project } = await queryClient.fetchQuery({
+        queryKey: ['project', projectId],
+        queryFn: () => projectService.getProject(projectId),
+      });
 
       if (!project) {
         console.error(`Projeto ${projectId} não encontrado`);
