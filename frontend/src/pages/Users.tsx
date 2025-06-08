@@ -74,12 +74,20 @@ const Users = () => {
   const [occupations, setOccupations] = useState<Occupation[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false); // Estado para controlar a atualização
-  const [error, setError] = useState<string | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
-  const { data: usersQueryData } = useGetUsers();
+  const {
+    data: usersQueryData,
+    isLoading: usersLoading,
+    isError: usersIsError,
+    error: usersError,
+    refetch,
+  } = useGetUsers();
+  const error = dataError || (usersIsError ? 'Não foi possível carregar os usuários.' : null);
+  const loading = usersLoading || dataLoading;
   const { mutateAsync: mutateUser } = useCreateUser();
   const { mutate: deleteUserMutate } = useDeleteUser();
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -104,16 +112,16 @@ const Users = () => {
   // Função para atualizar manualmente a lista de usuários
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchData(false);
+    await Promise.all([refetch(), fetchData(false)]);
     setRefreshing(false);
   };
 
   // Função para carregar dados (extraída para ser reutilizável)
   const fetchData = async (showLoadingIndicator = true) => {
     if (showLoadingIndicator) {
-      setLoading(true);
+      setDataLoading(true);
     }
-    setError(null);
+    setDataError(null);
 
     try {
       // Carregar ocupações (equipes) usando o serviço de equipes
@@ -140,11 +148,11 @@ const Users = () => {
       return { users: [], occupations: occupationsData, roles: rolesData };
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
-      setError('Não foi possível carregar os dados. Tente novamente mais tarde.');
+      setDataError('Não foi possível carregar os dados. Tente novamente mais tarde.');
       return null;
     } finally {
       if (showLoadingIndicator) {
-        setLoading(false);
+        setDataLoading(false);
       }
     }
   };
