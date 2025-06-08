@@ -43,10 +43,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { projectService, Project, ProjectPriority } from '@/lib/api';
+import { Project, ProjectPriority } from '@/lib/api';
 import { useGetUsers } from '@/services/backend/users';
 
-import { useCreateProject } from '@/services/backend/projects';
+import { useCreateProject, useGetProject } from '@/services/backend/projects';
 
 // Schema de validação para o formulário
 const projectFormSchema = z.object({
@@ -83,6 +83,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
   const navigate = useNavigate();
   const { mutate, isPending } = useCreateProject();
   const { data: usersQueryData = [] } = useGetUsers();
+  const { data: projectData } = useGetProject(projectId as number, Boolean(projectId));
   const loading = isPending;
   const [error, setError] = useState<string | null>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -107,37 +108,6 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
 
   // Carregar dados do projeto se estiver editando
   useEffect(() => {
-    const fetchProjectData = async () => {
-      if (projectId) {
-        try {
-          const project = await projectService.getProject(projectId);
-
-          // Extrair IDs de usuários e ocupações
-          const userIds = Array.isArray(project.users)
-            ? project.users.map(user => typeof user === 'number' ? user : user.id)
-            : [];
-
-          const occupationIds = Array.isArray(project.occupations)
-            ? project.occupations.map(occ => typeof occ === 'number' ? occ : occ.id)
-            : [];
-
-
-          form.reset({
-            title: project.title,
-            description: project.description,
-            priority: project.priority,
-            status: project.status,
-            start_date: project.start_date.split('T')[0],
-            end_date: project.end_date.split('T')[0],
-            users: userIds,
-            occupations: occupationIds,
-          });
-        } catch (err) {
-          setError('Não foi possível carregar os dados do projeto.');
-        }
-      }
-    };
-
     // Carregar usuários e ocupações da API
     const loadUsersAndOccupations = async () => {
       try {
@@ -196,10 +166,31 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
         setError('Erro ao carregar usuários e ocupações. Tente novamente.');
       }
     };
-
-    fetchProjectData();
     loadUsersAndOccupations();
-  }, [projectId, form, initialData?.occupations]);
+  }, [projectId, form, initialData?.occupations, usersQueryData]);
+
+  useEffect(() => {
+    if (projectData) {
+      const userIds = Array.isArray(projectData.users)
+        ? projectData.users.map(user => (typeof user === 'number' ? user : user.id))
+        : [];
+
+      const occupationIds = Array.isArray(projectData.occupations)
+        ? projectData.occupations.map(occ => (typeof occ === 'number' ? occ : occ.id))
+        : [];
+
+      form.reset({
+        title: projectData.title,
+        description: projectData.description,
+        priority: projectData.priority,
+        status: projectData.status,
+        start_date: projectData.start_date.split('T')[0],
+        end_date: projectData.end_date.split('T')[0],
+        users: userIds,
+        occupations: occupationIds,
+      });
+    }
+  }, [projectData, form]);
 
   // Função para filtrar usuários com base nas ocupações selecionadas
   const filterUsersByOccupations = (occupationIds: number[], users = allUsers) => {
