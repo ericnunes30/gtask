@@ -62,7 +62,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Token de autenticação não recebido');
       }
 
-      console.log('Login bem-sucedido, token recebido:', response.token.substring(0, 10) + '...');
 
       // Obtém os dados do usuário após o login
       const currentUser = await authService.getCurrentUser();

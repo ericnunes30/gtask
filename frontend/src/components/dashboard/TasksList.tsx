@@ -198,8 +198,6 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
           try {
             const parsedUser = JSON.parse(userData);
             userIdToFilter = parsedUser.id;
-            console.log('TasksList: Forçando filtragem pelo ID do usuário:', parsedUser.id,
-              permissions.isMember ? '(usuário membro)' : '(forceUserFilter)');
           } catch (e) {
             console.error('Erro ao obter ID do usuário do localStorage:', e);
           }
@@ -207,15 +205,12 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
           // Tentar obter o ID do usuário do contexto de autenticação
           if (user && user.id) {
             userIdToFilter = user.id;
-            console.log('TasksList: Forçando filtragem pelo ID do usuário do contexto:', user.id);
           }
         }
       }
 
       if (userIdToFilter) {
-        console.log('TasksList: Filtrando tarefas pelo usuário ID:', userIdToFilter,
-          permissions.isMember ? '(usuário membro)' : forceUserFilter ? '(forceUserFilter)' : '(selecionado)',
-          'Total de tarefas antes da filtragem:', filteredTasks.length);
+
 
         filteredTasks = filteredTasks.filter(task => {
           if (!task.users || !Array.isArray(task.users) || task.users.length === 0) return false;
@@ -226,21 +221,16 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
             (typeof taskUser === 'object' && taskUser !== null && taskUser.id === userIdToFilter)
           );
         });
-        console.log('TasksList: Total de tarefas após filtragem por usuário:', filteredTasks.length, 'IDs das tarefas:', filteredTasks.map(task => task.id));
       }
 
       // Aplicar filtro de prioridade
       if (priorityFilter) {
-        console.log('Aplicando filtro de prioridade:', priorityFilter);
         filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
-        console.log('Tarefas após filtro de prioridade:', filteredTasks.length);
       }
  
       // Aplicar filtro de tarefas concluídas
       if (!props.showCompleted) {
-        console.log('TasksList: Aplicando filtro para ocultar tarefas concluídas.');
         filteredTasks = filteredTasks.filter(task => task.status !== 'concluido');
-        console.log('TasksList: Tarefas após filtro de concluídas:', filteredTasks.length);
       }
  
        // Ordena tarefas com base no modo de visualização
@@ -264,7 +254,6 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
           return (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99);
         });
       }
-      console.log('Tarefas ordenadas. Total:', filteredTasks.length);
       setTasks(filteredTasks);
 
       // --- Mapeamento de Nomes de Projetos e Usuários ---
@@ -300,7 +289,6 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
 
       // Busca nomes de usuários que não vieram na tarefa (Otimização: fazer isso em paralelo ou com um endpoint que aceite múltiplos IDs)
       if (userIdsToFetch.size > 0) {
-          console.log("Fetching user details for IDs:", Array.from(userIdsToFetch));
           try {
               // Exemplo: Buscando um por um (MELHORAR: buscar em lote se a API permitir)
               for (const userId of userIdsToFetch) {
@@ -321,8 +309,6 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       }
 
 
-      console.log('Mapa de projetos:', projectMap);
-      console.log('Mapa de usuários:', userMap);
       setProjects(projectMap);
       setUsers(userMap);
 
@@ -330,15 +316,12 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       console.error('Erro detalhado ao carregar tarefas:', err);
       setError(`Não foi possível carregar as tarefas: ${err.message || 'Erro desconhecido'}. Tente novamente mais tarde.`);
       setTasks([]); // Limpa tarefas em caso de erro
-    } finally {
-      console.log("Fetch tasks finished.");
     }
   }, [projectId, selectedTeamId, selectedUserId, viewMode, priorityFilter, forceUserFilter, user?.id, permissions.isMember, allTasks, projectTasks]); // Dependências do useCallback
 
   // Expõe fetchTasks para o componente pai via ref
   useImperativeHandle(ref, () => ({
     fetchTasks: () => {
-      console.log('TasksList: Adicionando delay antes de carregar tarefas via ref');
       return new Promise<void>((resolve, reject) => {
         setTimeout(async () => { // Make the callback async
           try {
@@ -685,9 +668,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
 
       // Notificar o componente pai sobre a atualização das tarefas
       if (props.onTasksUpdated) {
-        console.log('TasksList: Chamando onTasksUpdated após atualização de tarefa');
         await props.onTasksUpdated();
-        console.log('TasksList: onTasksUpdated concluído');
       }
       // fetchTasks(); // Desnecessário com optimistic update
     } catch (err) {
@@ -861,11 +842,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                             decodeText(task.title)}
                     >
                         {(() => {
-                            // Log para depuração
                             if (task.title && task.title.includes('autentica')) {
-                                console.log('Título original:', task.title);
-                                console.log('Título decodificado:', decodeText(task.title));
-                                console.log('Códigos Unicode:', Array.from(task.title).map(c => c.charCodeAt(0).toString(16)).join(' '));
 
                                 // Solução direta para qualquer texto que contenha "autentica" e "autoriza"
                                 if (task.title.includes('autentica') && task.title.includes('autoriza')) {
@@ -1072,7 +1049,6 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                         }}
                         onTimerUpdate={(seconds) => {
                           // Atualizar o timer no backend quando o temporizador é pausado
-                          console.log(`TasksList: Atualizando timer para ${seconds} segundos, tipo: ${typeof seconds}`);
 
                           // Garantir que o valor seja um número válido
                           const timerValue = Number(seconds);
@@ -1083,16 +1059,13 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                             return; // Não prosseguir com a atualização
                           }
 
-                          console.log(`TasksList: Valor convertido para número: ${timerValue}, tipo: ${typeof timerValue}`);
 
                           // Obter o valor atual do timer da tarefa (pode ser 0 se não existir)
                           const currentTimer = task.timer || 0;
-                          console.log(`TasksList: Timer atual da tarefa: ${currentTimer}`);
 
                           // Usar o valor recebido do componente TaskTimer
                           // Este valor já representa o tempo total acumulado
                           const newTimerValue = timerValue;
-                          console.log(`TasksList: Novo valor do timer: ${newTimerValue}`);
 
                           // Atualização otimista do estado local
                           const originalTasks = [...tasks];
@@ -1106,7 +1079,6 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                             timer: newTimerValue
                           };
 
-                          console.log('TasksList: Objeto de atualização:', updateData);
 
                           // Mostrar toast de informação
                           toast.info('Atualizando tempo da tarefa...');

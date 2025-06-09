@@ -82,17 +82,14 @@ const Projects = () => {
   useEffect(() => {
     // Só executar quando os projetos estiverem carregados e não estiver mais em loading
     if (!isLoading && projects.length > 0) {
-      console.log('Projetos carregados, verificando estado das tarefas...');
 
       // Verificar o estado atual das tarefas
       const projectTasksKeys = Object.keys(projectTasksData);
-      console.log(`Estado atual de projectTasksData: ${projectTasksKeys.length} projetos com tarefas carregadas`);
 
       if (projectTasksKeys.length > 0) {
         projectTasksKeys.forEach(key => {
           const projectId = Number(key);
           const tasks = projectTasksData[projectId] || [];
-          console.log(`Projeto ${projectId}: ${tasks.length} tarefas carregadas`);
         });
       }
 
@@ -104,19 +101,16 @@ const Projects = () => {
 
       // Se houver projetos sem tarefas, usar as tarefas aninhadas dos projetos
       if (projectsWithoutTasks.length > 0) {
-        console.log(`${projectsWithoutTasks.length} projetos não têm tarefas carregadas:`,
           projectsWithoutTasks.map(p => ({ id: p.id, title: p.title })));
 
         // Processar as tarefas aninhadas para cada projeto sem tarefas
         projectsWithoutTasks.forEach(project => {
           if (project.id) {
-            console.log(`Processando tarefas aninhadas para o projeto ${project.id} (${project.title})...`);
 
             // Verificar se o projeto tem tarefas aninhadas
             const projectTasks = project.tasks || [];
 
             if (projectTasks.length > 0) {
-              console.log(`Projeto ${project.id} (${project.title}) tem ${projectTasks.length} tarefas aninhadas`);
 
               // Criar uma cópia profunda das tarefas para evitar compartilhamento de referência
               const tasksCopy = JSON.parse(JSON.stringify(projectTasks));
@@ -133,13 +127,11 @@ const Projects = () => {
                 const newData = { ...prev };
                 newData[project.id] = tasksCopy;
 
-                console.log(`Estado atualizado para o projeto ${project.id} (${project.title}): ${tasksCopy.length} tarefas`);
 
                 return newData;
               });
             } else {
               // Se o projeto não tiver tarefas aninhadas, tentar carregar as tarefas da API
-              console.log(`Projeto ${project.id} (${project.title}) não tem tarefas aninhadas, tentando carregar da API...`);
 
               // Usar setTimeout para evitar problemas de concorrência
               setTimeout(() => {
@@ -285,8 +277,6 @@ const Projects = () => {
     if (!memberIds || memberIds.length === 0) return [];
 
     // Log para debug
-    console.log('getProjectMembers: memberIds =', memberIds);
-    console.log('getProjectMembers: users =', users);
 
     return users.filter(user => memberIds.includes(user.id));
   };
@@ -303,8 +293,7 @@ const Projects = () => {
 
     // Garantir que estamos retornando uma cópia dos dados para evitar compartilhamento de referência
     const tasks = projectTasksData[projectId] || [];
-    console.log(`getProjectTasks: Projeto ${projectId} tem ${tasks.length} tarefas:`,
-      tasks.map(t => ({ id: t.id, title: t.title, status: t.status })));
+    
 
     return [...tasks];
   };
@@ -319,14 +308,12 @@ const Projects = () => {
 
     const tasks = getProjectTasks(projectId);
     if (!tasks || tasks.length === 0) {
-      console.log(`calculateProjectProgress: Projeto ${projectId} não tem tarefas, progresso = 0%`);
       return 0;
     }
 
     const completedTasks = tasks.filter(task => task.status === 'concluido').length;
     const progress = Math.round((completedTasks / tasks.length) * 100);
 
-    console.log(`calculateProjectProgress: Projeto ${projectId} tem ${tasks.length} tarefas, ${completedTasks} concluídas, progresso = ${progress}%`);
     return progress;
   };
 
@@ -338,7 +325,6 @@ const Projects = () => {
     }
 
     try {
-      console.log(`Carregando tarefas para o projeto ${projectId}`);
       const { data: tasks = [] } = await queryClient.fetchQuery(
         ['projectTasks', projectId],
         () => taskService.getTasksByProject(projectId)
@@ -350,7 +336,6 @@ const Projects = () => {
         return [];
       }
 
-      console.log(`loadProjectTasks: Recebidas ${tasks.length} tarefas para o projeto ${projectId}`);
 
       // Criar uma cópia profunda dos dados para evitar compartilhamento de referência
       const tasksCopy = JSON.parse(JSON.stringify(tasks));
@@ -370,7 +355,6 @@ const Projects = () => {
         newData[projectId] = tasksCopy;
 
         // Log para debug
-        console.log(`loadProjectTasks: Estado atualizado para o projeto ${projectId}: ${tasksCopy.length} tarefas`);
 
         return newData;
       });
@@ -411,12 +395,10 @@ const Projects = () => {
         return [];
       }
 
-      console.log(`Atualizando tarefas do projeto ${projectId} (${project.title})`);
 
       // Verificar se o projeto tem tarefas
       const projectTasks = project.tasks || [];
 
-      console.log(`Projeto ${projectId} (${project.title}) tem ${projectTasks.length} tarefas aninhadas`);
 
       // Criar uma cópia profunda das tarefas para evitar compartilhamento de referência
       const tasksCopy = JSON.parse(JSON.stringify(projectTasks));
@@ -433,7 +415,6 @@ const Projects = () => {
         const newData = { ...prev };
         newData[projectId] = tasksCopy;
 
-        console.log(`Estado atualizado para o projeto ${projectId}: ${tasksCopy.length} tarefas`);
 
         return newData;
       });
@@ -443,7 +424,6 @@ const Projects = () => {
       console.error(`Erro ao atualizar tarefas do projeto ${projectId}:`, err);
 
       // Fallback para a função loadProjectTasks em caso de erro
-      console.log(`Tentando fallback para loadProjectTasks para o projeto ${projectId}`);
       return await loadProjectTasks(projectId);
     }
   };
@@ -597,8 +577,6 @@ const Projects = () => {
               const taskCount = projectTasksList.length;
 
               // Log para debug com informações detalhadas
-              console.log(`Renderizando card do projeto ${project.id} (${project.title}): ${taskCount} tarefas, progresso: ${progress}%`);
-              console.log(`Detalhes das tarefas do projeto ${project.id}:`, projectTasksList.map(t => ({
                 id: t.id,
                 title: t.title,
                 status: t.status,

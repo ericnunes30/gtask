@@ -553,7 +553,6 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
   const { mutateAsync: createTask } = useCreateTask();
 
   // Log para depuração do estado do modal do KanbanBoard
-  console.log(`[KanbanBoard.tsx] Renderizando. isCreateEditDialogOpen: ${isCreateEditDialogOpen}, createTaskFormInstanceId: ${createTaskFormInstanceId}`);
 
   // Função para fechar e resetar o diálogo de criação de tarefa do Kanban
   const handleCloseKanbanDialog = () => {
@@ -644,11 +643,9 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
-    console.log('[KanbanBoard.tsx] handleDragEnd START', { activeId: active.id, overId: over?.id });
 
     if (!over) {
       setActiveId(null);
-      console.log('[KanbanBoard.tsx] handleDragEnd: No "over" target. Exiting.');
       return;
     }
 
@@ -665,15 +662,12 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       // Se for uma coluna, a lógica abaixo de encontrar destinationColumnId tratará.
       // Se não for uma coluna e for a mesma tarefa, não há mudança de coluna ou ordem real.
        setActiveId(null);
-       console.log('[KanbanBoard.tsx] handleDragEnd: Dropped on self (not a column). Exiting.');
       return;
     }
 
     const sourceColumnId = findColumnOfTask(activeIdStr);
-    console.log('[KanbanBoard.tsx] handleDragEnd: Source Column ID:', sourceColumnId);
     if (!sourceColumnId) {
       setActiveId(null);
-      console.log('[KanbanBoard.tsx] handleDragEnd: Source column not found. Exiting.');
       return;
     }
 
@@ -682,26 +676,21 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     // então precisamos encontrar a coluna dessa tarefa.
     if (!(overIdStr in processedColumns)) {
       const columnContainingOverTask = findColumnOfTask(overIdStr);
-      console.log('[KanbanBoard.tsx] handleDragEnd: "over" is a task. Column of "over" task:', columnContainingOverTask);
       if (columnContainingOverTask) {
         destinationColumnId = columnContainingOverTask;
       } else {
         // Se não encontrar a coluna da tarefa 'over', não faz nada ou reverte para a coluna original
         setActiveId(null);
-        console.log('[KanbanBoard.tsx] handleDragEnd: Destination column for "over" task not found. Exiting.');
         return;
       }
     }
-    console.log('[KanbanBoard.tsx] handleDragEnd: Destination Column ID:', destinationColumnId);
     
     const taskToMove = processedTasksMap[activeIdStr];
     if (!taskToMove) {
       toast.error('Tarefa não encontrada para mover.');
       setActiveId(null);
-      console.log('[KanbanBoard.tsx] handleDragEnd: Task to move not found in processedTasksMap. Exiting.');
       return;
     }
-    console.log('[KanbanBoard.tsx] handleDragEnd - Task to move (ID, Status, Order):', { id: taskToMove.id, status: taskToMove.status, order: taskToMove.order });
 
     // Lógica de atualização da API FOI MOVIDA PARA ProjectView
     try {
@@ -715,7 +704,6 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       if (sourceColumnId !== destinationColumnId) { // Movendo para outra coluna
         if (viewMode === 'status') {
           const potentialNewStatus = columnToStatusMap[destinationColumnId];
-          console.log('[KanbanBoard.tsx] handleDragEnd: Moving to different column. Potential new status:', potentialNewStatus, 'Current status:', taskToMove.status);
           if (potentialNewStatus && potentialNewStatus !== taskToMove.status) {
             newApiStatus = potentialNewStatus; // Este é o novo status para a API
             statusForPropCallback = newApiStatus; // Atualiza o status para o callback
@@ -739,29 +727,23 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
         .map(id => processedTasksMap[id])
         .filter(Boolean) as KanbanTask[];
 
-      tasksInDestColumnFiltered.sort((a, b) => (a.order || 0) - (b.order || 0));
-      console.log('[KanbanBoard.tsx] handleDragEnd: Tasks in destination column (for order calc):', tasksInDestColumnFiltered.map(t => ({id: t.id, order: t.order})));
+        tasksInDestColumnFiltered.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-      // Usar a função utilitária para calcular a nova ordem
-      newOrderCalculated = calculateNewOrderForColumn(tasksInDestColumnFiltered, overIdStr, activeIdStr);
-      console.log('[KanbanBoard.tsx] handleDragEnd: New order calculated using util function:', newOrderCalculated);
-      
-      const roundedNewOrder = newOrderCalculated !== undefined ? parseFloat(newOrderCalculated.toFixed(5)) : undefined;
-      console.log('[KanbanBoard.tsx] handleDragEnd: Rounded new order:', roundedNewOrder);
+        // Usar a função utilitária para calcular a nova ordem
+        newOrderCalculated = calculateNewOrderForColumn(tasksInDestColumnFiltered, overIdStr, activeIdStr);
 
-      // Verifica se houve mudança de status ou de ordem para chamar o callback
-      const statusChanged = newApiStatus !== undefined && newApiStatus !== taskToMove.status;
-      const orderChanged = roundedNewOrder !== undefined && roundedNewOrder !== taskToMove.order;
-      console.log('[KanbanBoard.tsx] handleDragEnd: Status changed?', statusChanged, 'Order changed?', orderChanged);
+        const roundedNewOrder = newOrderCalculated !== undefined ? parseFloat(newOrderCalculated.toFixed(5)) : undefined;
+
+        // Verifica se houve mudança de status ou de ordem para chamar o callback
+        const statusChanged = newApiStatus !== undefined && newApiStatus !== taskToMove.status;
+        const orderChanged = roundedNewOrder !== undefined && roundedNewOrder !== taskToMove.order;
 
         const taskToMoveIdStr = String(taskToMove.id);
-        const finalDestStatus = newApiStatus || taskToMove.status; 
-        console.log('[KanbanBoard.tsx] handleDragEnd: Final destination status for timer logic:', finalDestStatus);
+        const finalDestStatus = newApiStatus || taskToMove.status;
 
         // Etapa 1: Lidar com o timer da tarefa que está sendo movida, se ela estava rodando e VAI PARAR.
         // Isso deve acontecer ANTES de onTaskStatusChange, que pode recarregar os dados e resetar currentTimerValues.
         if (timerRunningTaskId === taskToMoveIdStr && finalDestStatus !== 'em_andamento') {
-          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 1 - Stopping timer for moved task.', { taskToMoveIdStr, currentTimerValue: currentTimerValues[taskToMoveIdStr] });
           const currentTimeToSave = currentTimerValues[taskToMoveIdStr]; 
           setTimerRunningTaskId(null); // Para o timer localmente
           if (currentTimeToSave !== undefined) {
@@ -779,16 +761,13 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
           await updateTask({ id: Number(taskToMove.id), data: updateData });
           toast.success(`Tarefa "${taskToMove.title}" movida.`);
         } else {
-          console.log('[KanbanBoard.tsx] handleDragEnd: No status or order change detected.');
         }
 
         // Etapa 3: Lidar com o início do timer para a tarefa movida, ou parar um timer de OUTRA tarefa.
         if (finalDestStatus === 'em_andamento') {
-          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 3 - Task moved to "em_andamento".');
           // Se a tarefa movida VAI PARA "em_andamento"
           // Se a tarefa movida VAI PARA "em_andamento"
           if (timerRunningTaskId && timerRunningTaskId !== taskToMoveIdStr) {
-            console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 3 - Another timer was running. Stopping it.', { oldRunningTaskId: timerRunningTaskId, value: currentTimerValues[timerRunningTaskId] });
             // Outra tarefa (NÃO a que foi movida) estava com o timer rodando. Parar e salvar.
             const otherTaskTimerValue = currentTimerValues[timerRunningTaskId];
             const oldRunningTaskId = timerRunningTaskId; // Capturar antes de setTimerRunningTaskId(null) ou setTimerRunningTaskId(taskToMoveIdStr)
@@ -800,7 +779,6 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
           }
           // Iniciar timer para a tarefa movida (ou garantir que continue se já era ela e já estava em "em_andamento")
           // Se timerRunningTaskId já era taskToMoveIdStr, esta chamada não muda nada, o que é bom.
-          console.log('[KanbanBoard.tsx] handleDragEnd: Timer Step 3 - Setting timerRunningTaskId to:', taskToMoveIdStr);
           setTimerRunningTaskId(taskToMoveIdStr);
         }
         // Não precisamos de um 'else' aqui para parar o timer da tarefa movida se ela NÃO VAI PARA 'em_andamento',
@@ -812,7 +790,6 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       // A prop onTaskStatusChange em ProjectView lida com o tratamento de erro da API.
     } finally {
       setActiveId(null);
-      console.log('[KanbanBoard.tsx] handleDragEnd FINALLY - activeId set to null.');
     }
   };
 
@@ -905,10 +882,8 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
   };
 
   const handleTaskFormSuccess = async (taskData: any) => {
-    console.log('[KanbanBoard.tsx] handleTaskFormSuccess INÍCIO. taskData:', taskData);
     try {
       const newTask = await createTask(taskData);
-      console.log('[KanbanBoard.tsx] handleTaskFormSuccess: tarefa criada:', newTask);
 
       handleCloseKanbanDialog();
       toast.success('Tarefa criada com sucesso!');
@@ -1083,7 +1058,6 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
             <Button
               type="button"
               onClick={() => {
-                console.log(`[KanbanBoard.tsx] Botão Salvar do modal clicado. Acionando submit via ref. InstanceId: ${createTaskFormInstanceId}`);
                 createTaskFormRef.current?.triggerSubmit();
               }}
             >

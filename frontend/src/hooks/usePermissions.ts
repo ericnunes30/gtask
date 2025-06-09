@@ -64,7 +64,6 @@ export const usePermissions = (): Permissions => {
 
   useEffect(() => {
     if (!user || !user.roles || !Array.isArray(user.roles) || user.roles.length === 0) {
-      console.log('[usePermissions] Condição inicial falhou: Usuário ou papéis ausentes/inválidos.', { user });
       // Se não há usuário ou papéis, retorna as permissões padrão (tudo false)
       // Isso pode estar acontecendo se user.roles estiver vazio ou não for um array
       setPermissions({
@@ -90,8 +89,7 @@ export const usePermissions = (): Permissions => {
       return;
     }
 
-    console.log('[usePermissions] Dados do usuário recebidos:', JSON.parse(JSON.stringify(user))); // Log profundo do usuário
-    console.log('[usePermissions] user.roles:', JSON.parse(JSON.stringify(user.roles)));
+    // Dados do usuário devem ser válidos neste ponto
 
     // Obter o papel do usuário
     let roleName: UserRole | null = null;
@@ -105,7 +103,6 @@ export const usePermissions = (): Permissions => {
         roleName = potentialRoleName;
       }
     }
-    console.log('[usePermissions] roleName mapeado:', roleName);
 
     // Definir permissões com base no papel
     const newPermissions: Permissions = {
@@ -197,7 +194,6 @@ export const usePermissions = (): Permissions => {
       newPermissions.canDeleteTasks = false;
     }
 
-    console.log('[usePermissions] Novas permissões calculadas:', JSON.parse(JSON.stringify(newPermissions)));
     setPermissions(newPermissions);
   }, [user]);
 

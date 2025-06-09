@@ -51,8 +51,7 @@ export const ProjectsList = () => {
     // Calcular a porcentagem de progresso
     const progress = Math.round((completedTasks / tasks.length) * 100);
 
-    // Log para debug
-    console.log(`Projeto ${project.id} (${project.title}): ${tasks.length} tarefas, progresso: ${progress}%`);
+
 
     return progress;
   };

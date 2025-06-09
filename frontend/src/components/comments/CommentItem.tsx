@@ -72,7 +72,6 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
 
   // Atualizar localReplies se comment.replies mudar (ex: após recarregar a tarefa)
   useEffect(() => {
-    console.log('CommentItem useEffect - comment.replies:', comment.replies); // Log para depurar
     setLocalReplies(comment.replies || []);
   }, [comment.replies]);
 

@@ -205,23 +205,13 @@ const Users = () => {
   };
 
   const handleTeamChange = (value) => {
-    console.log('%c Equipe selecionada:', 'background: #9b59b6; color: white; padding: 2px 5px; border-radius: 3px;', value);
-
     // Verificar se a ocupação existe na lista
     const occupation = occupations.find(o => o.id.toString() === value);
-    console.log('Ocupação encontrada?', occupation ? 'Sim' : 'Não');
-    if (occupation) {
-      console.log('Detalhes da ocupação selecionada:', occupation);
-    } else {
+    if (!occupation) {
       console.warn('Ocupação não encontrada na lista de ocupações disponíveis');
-      console.log('Lista de ocupações disponíveis:', occupations);
     }
 
-    setNewUser(prev => {
-      const newState = { ...prev, occupation_id: value };
-      console.log('Novo estado do formulário após seleção de equipe:', newState);
-      return newState;
-    });
+    setNewUser(prev => ({ ...prev, occupation_id: value }));
   };
 
   const handleAddUser = async () => {
@@ -289,26 +279,13 @@ const Users = () => {
 
   // Função para iniciar a edição de um usuário
   const handleEditUserStart = (user: User) => {
-    console.log('%c Iniciando edição de usuário:', 'background: #e74c3c; color: white; padding: 2px 5px; border-radius: 3px;', user);
-
     // Verificar se o usuário tem occupation_id
-    console.log('Usuário tem occupation_id?', user.occupation_id ? 'Sim' : 'Não');
     if (user.occupation_id) {
-      console.log('Valor do occupation_id:', user.occupation_id);
-
-      // Verificar se a ocupação existe na lista
       const occupation = occupations.find(o => o.id === user.occupation_id);
-      console.log('Ocupação encontrada?', occupation ? 'Sim' : 'Não');
-      if (occupation) {
-        console.log('Detalhes da ocupação:', occupation);
+      if (!occupation) {
+        console.warn('Ocupação não encontrada para o usuário em edição');
       }
     }
-
-    // Listar todas as ocupações disponíveis
-    console.log('%c Ocupações disponíveis para seleção:', 'background: #2ecc71; color: white; padding: 2px 5px; border-radius: 3px;');
-    occupations.forEach((occupation, index) => {
-      console.log(`${index + 1}. ID: ${occupation.id}, Nome: ${occupation.name}`);
-    });
 
     // Preparar as ocupações do usuário
     let userOccupations: number[] = [];
@@ -350,7 +327,6 @@ const Users = () => {
       roles: userRoles,
     };
 
-    console.log('Dados do formulário de edição:', newUserData);
     setNewUser(newUserData);
     setIsEditDialogOpen(true);
   };
