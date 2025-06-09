@@ -57,8 +57,10 @@ import {
 import { TaskForm } from '@/components/forms/TaskForm';
 import { format, isPast, isBefore, formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Task, TaskPriority, TaskStatus, teamService, Comment as ApiComment, User as ApiUser } from '@/lib/api'; // Importando Comment, User e TaskStatus da API
+import { Task, TaskPriority, TaskStatus, Comment as ApiComment, User as ApiUser } from '@/lib/api'; // Importando Comment, User e TaskStatus da API
 import { useGetUsers } from '@/services/backend/users'
+import { useGetTeams } from '@/services/backend/teams'
+import { useGetProject } from '@/services/backend/projects'
 import { convertApiTaskToFrontend, UpdateTaskRequest } from '@/lib/api/tasks';
 import { useGetTask, useUpdateTask, useDeleteTask } from '@/services/backend/tasks';
 import { useCreateComment } from '@/services/backend/comments';
@@ -130,6 +132,22 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const { mutateAsync: deleteTaskMutation } = useDeleteTask();
   const { mutateAsync: createComment } = useCreateComment();
   const { data: usersData = [] } = useGetUsers()
+  const { data: teamsQueryData = [] } = useGetTeams()
+  const { data: projectDetails } = useGetProject(task?.project?.id ?? 0, Boolean(task?.project?.id))
+
+  useEffect(() => {
+    setTeams(teamsQueryData)
+  }, [teamsQueryData])
+
+  useEffect(() => {
+    if (projectDetails) {
+      setTask(prev => {
+        if (!prev || !prev.project) return prev
+        if (prev.project.id !== projectDetails.id) return prev
+        return { ...prev, project: { ...prev.project, ...projectDetails } }
+      })
+    }
+  }, [projectDetails])
 
   // Estados para curtidas foram movidos para CommentItem.tsx
 
@@ -287,39 +305,28 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
       // Verificar se a tarefa tem um projeto e equipes
       if (completeTaskData.project) {
-
-        // Buscar dados completos do projeto para garantir que temos todas as informações
-        try {
-          const projectData = await projectService.getProject(completeTaskData.project.id);
-
-          // Atualizar o projeto na tarefa com os dados completos
-          completeTaskData.project = {
-            ...completeTaskData.project,
-            ...projectData,
-            // Garantir que temos as equipes do projeto
-            occupations: projectData.occupations || completeTaskData.project.occupations || []
-          };
-
-        } catch (projectErr) {
-        }
+        // dados adicionais do projeto serão preenchidos via React Query
       }
 
       setTask(completeTaskData);
+
+      // Atualizar informações do projeto quando disponíveis via React Query
+      if (projectDetails) {
+        setTask(prev => {
+          if (!prev || !prev.project) return prev;
+          if (prev.project.id !== projectDetails.id) return prev;
+          return {
+            ...prev,
+            project: { ...prev.project, ...projectDetails },
+          };
+        });
+      }
 
       // Carregar usuários para exibição de comentários e menções
       setUsers(usersData)
 
       // Carregar equipes (occupações)
-      try {
-        const teamsData = await teamService.getTeams();
-
-        // Verificar se as equipes têm usuários
-        teamsData.forEach(team => {
-        });
-
-        setTeams(teamsData);
-      } catch (teamsErr) {
-      }
+      setTeams(teamsQueryData);
 
       // Carregar projetos
 

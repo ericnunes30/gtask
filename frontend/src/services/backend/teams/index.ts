@@ -66,3 +66,11 @@ export const useRemoveUserFromTeam = () => {
     },
   })
 }
+
+export const getTeamUsersQueryOptions = (teamId: number) => ({
+  queryKey: ['teamUsers', teamId],
+  queryFn: () => teamService.getTeamUsers(teamId),
+})
+
+export const useGetTeamUsers = (teamId: number, enabled = true) =>
+  useQuery({ ...getTeamUsersQueryOptions(teamId), enabled })

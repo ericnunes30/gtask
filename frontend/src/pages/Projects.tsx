@@ -37,8 +37,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { projectService, Project, ProjectPriority, teamService, userService, taskService } from '@/lib/api';
-import { useGetProject } from '@/services/backend/projects';
+import { Project, ProjectPriority, taskService } from '@/lib/api';
+import { useGetProject, useDeleteProject, getProjectQueryOptions } from '@/services/backend/projects';
 import { useGetTasksByProject } from '@/services/backend/tasks';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGetProjects } from '@/services/backend/projects';
@@ -74,6 +74,7 @@ const Projects = () => {
   const queryClient = useQueryClient();
   const [viewProjectId, setViewProjectId] = useState<number | null>(null);
   const { data: viewProjectData } = useGetProject(viewProjectId as number, Boolean(viewProjectId));
+  const { mutateAsync: deleteProjectMutation } = useDeleteProject();
 
   const { data, isLoading, isError } = useGetProjects();
   const projects = data ?? [];
@@ -193,7 +194,7 @@ const Projects = () => {
     if (!projectToDelete) return;
 
     try {
-      await projectService.deleteProject(projectToDelete.id);
+      await deleteProjectMutation(projectToDelete.id);
       toast.success('Projeto removido com sucesso!');
       setIsDeleteDialogOpen(false);
       setProjectToDelete(null);
@@ -401,10 +402,9 @@ const Projects = () => {
 
     try {
       // Buscar o projeto atualizado da API usando React Query
-      const { data: project } = await queryClient.fetchQuery({
-        queryKey: ['project', projectId],
-        queryFn: () => projectService.getProject(projectId),
-      });
+      const { data: project } = await queryClient.fetchQuery(
+        getProjectQueryOptions(projectId)
+      );
 
       if (!project) {
         console.error(`Projeto ${projectId} não encontrado`);

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useQueries } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
 import { PlusCircle, MoreHorizontal, Users, Calendar, Briefcase, AlertCircle, UserPlus, Pencil, Trash2 } from 'lucide-react';
@@ -36,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { teamService, Team, Occupation, TeamUser, User } from '@/lib/api';
+import { Team, Occupation, TeamUser, User } from '@/lib/api';
 import { useGetUsers } from '@/services/backend/users';
 import {
   useGetTeams,
@@ -45,7 +46,8 @@ import {
   useDeleteTeam,
   useAddUserToTeam,
   useRemoveUserFromTeam,
-} from '@/services/backend/teams';
+  getTeamUsersQueryOptions,
+  } from '@/services/backend/teams';
 
 const Teams = () => {
   const navigate = useNavigate();
@@ -59,8 +61,6 @@ const Teams = () => {
   const [teamUsers, setTeamUsers] = useState<Record<number, TeamUser[]>>({});
   const [selectedOccupation, setSelectedOccupation] = useState<string>('');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [dataLoading, setDataLoading] = useState(true);
-  const [dataError, setDataError] = useState<string | null>(null);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
@@ -81,56 +81,34 @@ const Teams = () => {
   const { mutateAsync: removeUserFromTeamMutate } = useRemoveUserFromTeam();
   const { data: usersQueryData = [] } = useGetUsers();
 
-  const error = dataError || (teamsIsError ? 'Não foi possível carregar as equipes.' : null);
-  const loading = teamsLoading || dataLoading;
+  const teamUsersQueries = useQueries({
+    queries: (teamsQueryData || []).map((team) =>
+      getTeamUsersQueryOptions(team.id)
+    ),
+  })
+
+  const loading = teamsLoading || teamUsersQueries.some(q => q.isLoading)
+  const error = teamsIsError ? 'Não foi possível carregar as equipes.' : null
+
+  useEffect(() => {
+    setTeams(teamsQueryData || [])
+    setOccupations(teamsQueryData || [])
+  }, [teamsQueryData])
+
+  useEffect(() => {
+    setUsers(usersQueryData)
+  }, [usersQueryData])
+
+  useEffect(() => {
+    const map: Record<number, TeamUser[]> = {}
+    teamUsersQueries.forEach((q, idx) => {
+      const team = teamsQueryData?.[idx]
+      if (team) map[team.id] = q.data || []
+    })
+    setTeamUsers(map)
+  }, [teamUsersQueries, teamsQueryData])
 
   // Carregar equipes e ocupações
-  useEffect(() => {
-    const fetchData = async () => {
-      setDataLoading(true);
-      setDataError(null);
-
-      try {
-        const teamsData = teamsQueryData || [];
-        setTeams(teamsData);
-        setOccupations(teamsData);
-
-        // Carregar usuários
-        try {
-          const usersData = usersQueryData;
-          setUsers(usersData);
-        } catch (err) {
-          const mockUsers = [
-            { id: 1, name: 'João Silva', email: 'joao@example.com' },
-            { id: 2, name: 'Maria Oliveira', email: 'maria@example.com' },
-            { id: 3, name: 'Pedro Santos', email: 'pedro@example.com' },
-            { id: 4, name: 'Ana Souza', email: 'ana@example.com' },
-          ];
-          setUsers(mockUsers);
-        }
-
-        // Carregar usuários de cada equipe
-        const teamUsersMap: Record<number, TeamUser[]> = {};
-        for (const team of teamsData) {
-          try {
-            const teamUsersData = await teamService.getTeamUsers(team.id);
-            teamUsersMap[team.id] = teamUsersData;
-          } catch (err) {
-            teamUsersMap[team.id] = [];
-          }
-        }
-        setTeamUsers(teamUsersMap);
-      } catch (err) {
-        setDataError('Não foi possível carregar as equipes. Tente novamente mais tarde.');
-      } finally {
-        setDataLoading(false);
-      }
-    };
-
-    if (teamsQueryData) {
-      fetchData();
-    }
-  }, [teamsQueryData]);
 
   // Função para adicionar uma nova equipe
   const handleAddTeam = async () => {

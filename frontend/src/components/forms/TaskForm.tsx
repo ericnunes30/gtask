@@ -37,8 +37,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Task, TaskStatus, teamService } from '@/lib/api';
-import { useGetProjects } from '@/services/backend/projects';
+import { Task, TaskStatus } from '@/lib/api';
+import { useGetProjects, useGetProject } from '@/services/backend/projects';
+import { useGetTeams } from '@/services/backend/teams';
 import { useGetUsers } from '@/services/backend/users';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCreateTask, useUpdateTask } from '@/services/backend/tasks';
@@ -103,6 +104,15 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
   const { mutate: updateTaskMutation, isPending: isUpdatePending } = useUpdateTask();
   const { data: projectsQueryData = [] } = useGetProjects();
   const { data: usersQueryData = [] } = useGetUsers();
+  const { data: teamsQueryData = [] } = useGetTeams();
+  const { data: defaultProjectData } = useGetProject(
+    defaultProjectId as number,
+    Boolean(defaultProjectId)
+  );
+  const { data: editProjectData } = useGetProject(
+    initialData?.project_id as number,
+    isEditMode && Boolean(initialData?.project_id)
+  );
   const isPending = isCreatePending || isUpdatePending;
 
   // Inicializa o formulário com zod resolver
@@ -290,175 +300,73 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
         const projectsData = projectsQueryData;
         setProjects(projectsData);
 
-        // Carregar todos os usuários para ter uma lista completa
         const usersData = usersQueryData;
         setAllUsers(usersData || []);
-
-        // Inicializar os usuários filtrados com um array vazio
         setFilteredUsers([]);
 
-        // Se estamos dentro de um projeto e temos usuários e equipes do projeto
         if (projectUsers && projectUsers.length > 0) {
-          // Garantir que os usuários tenham todas as propriedades necessárias
-          const formattedUsers = projectUsers.map(user => {
-            // Se o usuário for apenas um ID, buscar os detalhes completos
-            if (typeof user === 'number') {
-              return { id: user, name: `Usuário ${user}` };
-            }
-            return user;
-          });
+          const formattedUsers = projectUsers.map(user =>
+            typeof user === 'number' ? { id: user, name: `Usuário ${user}` } : user
+          );
           setUsers(formattedUsers);
-          setFilteredUsers(formattedUsers); // Inicializar os usuários filtrados
-        } else if (defaultProjectId) {
-          // Se temos um projeto padrão mas não temos usuários, tentar buscar os usuários do projeto
-          try {
-            const projectData = await projectService.getProject(defaultProjectId);
-            if (projectData.users && Array.isArray(projectData.users)) {
-              const projectUsersList = projectData.users.map(user => {
-                if (typeof user === 'number') {
-                  return { id: user, name: `Usuário ${user}` };
-                }
-                return user;
-              });
-              setUsers(projectUsersList);
-              setFilteredUsers(projectUsersList); // Inicializar os usuários filtrados
-            } else {
-              // Se não encontrou usuários no projeto, usar todos os usuários
-              setUsers(usersData);
-              // Inicializar com array vazio para forçar o usuário a selecionar equipes primeiro
-              setFilteredUsers([]);
-            }
-          } catch (error) {
-            // Em caso de erro, usar todos os usuários
+          setFilteredUsers(formattedUsers);
+        } else if (defaultProjectId && defaultProjectData) {
+          if (defaultProjectData.users && Array.isArray(defaultProjectData.users)) {
+            const projectUsersList = defaultProjectData.users.map(user =>
+              typeof user === 'number' ? { id: user, name: `Usuário ${user}` } : user
+            );
+            setUsers(projectUsersList);
+            setFilteredUsers(projectUsersList);
+          } else {
             setUsers(usersData);
-            // Inicializar com array vazio para forçar o usuário a selecionar equipes primeiro
             setFilteredUsers([]);
           }
         } else {
-          // Se não estamos em um projeto específico, usar todos os usuários
           setUsers(usersData);
-
-          // Se não há equipes selecionadas, inicializar com array vazio para forçar o usuário a selecionar equipes primeiro
           setFilteredUsers([]);
         }
 
-        // Se estamos em modo de edição e a tarefa tem um projeto associado
-        if (isEditMode && initialData?.project_id) {
-          try {
-            // Buscar diretamente as equipes do projeto
-            const projectOccupations = await projectService.getProjectOccupations(initialData.project_id);
+        if (isEditMode && initialData?.project_id && editProjectData) {
+          let projectTeamsList: any[] = editProjectData.occupations || [];
 
-            if (projectOccupations && projectOccupations.length > 0) {
-              setTeams(projectOccupations);
-            } else {
-
-              // Se não encontrou equipes, tentar buscar o projeto completo
-              const projectData = await projectService.getProject(initialData.project_id);
-
-              if (projectData.occupations && Array.isArray(projectData.occupations) && projectData.occupations.length > 0) {
-                const projectTeamsList = projectData.occupations.map(team => {
-                  if (typeof team === 'number') {
-                    return { id: team, name: `Equipe ${team}` };
-                  }
-                  return team;
-                });
-
-                setTeams(projectTeamsList);
-              } else {
-                // Se ainda não encontrou equipes, verificar se a tarefa tem equipes associadas
-                if (initialData.occupations && Array.isArray(initialData.occupations) && initialData.occupations.length > 0) {
-                  // Buscar todas as equipes para poder filtrar
-                  const allTeamsData = await teamService.getTeams();
-
-                  // Extrair IDs das equipes da tarefa
-                  const taskOccupationIds = initialData.occupations.map(occ =>
-                    typeof occ === 'number' ? occ : occ.id
-                  );
-
-                  // Filtrar apenas as equipes associadas à tarefa
-                  const taskTeams = allTeamsData.filter(team =>
-                    taskOccupationIds.includes(team.id)
-                  );
-
-                  if (taskTeams.length > 0) {
-                    setTeams(taskTeams);
-                  } else {
-                    // Buscar o projeto para obter suas equipes
-                    const projectData = await projectService.getProject(initialData.project_id);
-                    if (projectData.occupations && Array.isArray(projectData.occupations) && projectData.occupations.length > 0) {
-                      setTeams(projectData.occupations);
-                    } else {
-                      // Se o projeto não tem equipes, mostrar lista vazia
-                      setTeams([]);
-                    }
-                  }
-                } else {
-                  // Buscar o projeto para obter suas equipes
-                  const projectData = await projectService.getProject(initialData.project_id);
-                  if (projectData.occupations && Array.isArray(projectData.occupations) && projectData.occupations.length > 0) {
-                    setTeams(projectData.occupations);
-                  } else {
-                    // Se o projeto não tem equipes, mostrar lista vazia
-                    setTeams([]);
-                  }
-                }
-              }
-            }
-          } catch (error) {
-            // Em caso de erro, mostrar lista vazia de equipes
-            setTeams([]);
+          if (!projectTeamsList.length && initialData.occupations && teamsQueryData.length > 0) {
+            const taskOccupationIds = initialData.occupations.map(occ =>
+              typeof occ === 'number' ? occ : occ.id
+            );
+            const taskTeams = teamsQueryData.filter(team => taskOccupationIds.includes(team.id));
+            projectTeamsList = taskTeams;
           }
-        }
-        // Se estamos dentro de um projeto e temos equipes do projeto (não em modo de edição)
-        else if (projectTeams && projectTeams.length > 0) {
-          // Garantir que as equipes tenham todas as propriedades necessárias
-          const formattedTeams = projectTeams.map(team => {
-            // Se a equipe for apenas um ID, buscar os detalhes completos
-            if (typeof team === 'number') {
-              return { id: team, name: `Equipe ${team}` };
-            }
-            return team;
-          });
+
+          setTeams(
+            projectTeamsList.map(team =>
+              typeof team === 'number' ? { id: team, name: `Equipe ${team}` } : team
+            )
+          );
+        } else if (projectTeams && projectTeams.length > 0) {
+          const formattedTeams = projectTeams.map(team =>
+            typeof team === 'number' ? { id: team, name: `Equipe ${team}` } : team
+          );
           setTeams(formattedTeams);
-        }
-        // Se temos um projeto padrão (não em modo de edição)
-        else if (defaultProjectId) {
-          // Se temos um projeto padrão, tentar buscar as equipes do projeto
-          try {
-            const projectOccupations = await projectService.getProjectOccupations(defaultProjectId);
-
-            if (projectOccupations && projectOccupations.length > 0) {
-              setTeams(projectOccupations);
-            } else {
-              // Se não encontrou equipes, buscar o projeto completo
-              const projectData = await projectService.getProject(defaultProjectId);
-
-              if (projectData.occupations && Array.isArray(projectData.occupations)) {
-                const projectTeamsList = projectData.occupations.map(team => {
-                  if (typeof team === 'number') {
-                    return { id: team, name: `Equipe ${team}` };
-                  }
-                  return team;
-                });
-
-                setTeams(projectTeamsList);
-              } else {
-                // Se não encontrou equipes no projeto, carregar todas as equipes
-                const teamsData = await teamService.getTeams();
-                setTeams(teamsData);
-              }
-            }
-          } catch (error) {
-            // Em caso de erro, carregar todas as equipes
-            const teamsData = await teamService.getTeams();
-            setTeams(teamsData);
+        } else if (defaultProjectId && defaultProjectData) {
+          if (defaultProjectData.occupations && defaultProjectData.occupations.length > 0) {
+            setTeams(
+              defaultProjectData.occupations.map(team =>
+                typeof team === 'number' ? { id: team, name: `Equipe ${team}` } : team
+              )
+            );
+          } else {
+            setTeams(teamsQueryData);
           }
+        } else {
+          setTeams(teamsQueryData);
         }
-        // Se não temos projeto nem equipes específicas
-        else {
-          // Carregar todas as equipes
-          const teamsData = await teamService.getTeams();
-          setTeams(teamsData);
+
+        if (defaultProjectId) {
+          form.setValue('project_id', defaultProjectId);
+        }
+
+        if (defaultStatus) {
+          form.setValue('status', defaultStatus);
         }
 
         // Se temos um projeto padrão, pré-selecionar ele no formulário
@@ -478,7 +386,19 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
     };
 
     fetchData();
-  }, [defaultProjectId, defaultStatus, initialData?.id, projectsQueryData, usersQueryData]);
+  }, [
+    defaultProjectId,
+    defaultStatus,
+    initialData?.id,
+    projectsQueryData,
+    usersQueryData,
+    teamsQueryData,
+    projectUsers,
+    projectTeams,
+    isEditMode,
+    defaultProjectData,
+    editProjectData,
+  ]);
 
   // Efeito para filtrar usuários quando as equipes selecionadas mudarem
   useEffect(() => {

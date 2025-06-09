@@ -17,9 +17,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { projectService, Project, ProjectPriority } from '@/lib/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { Project, ProjectPriority, taskService, User, Team } from '@/lib/api';
 import { convertApiProjectToFrontend } from '@/lib/api/projects';
-import { taskService, teamService, User, Team } from '@/lib/api';
+import { useGetTeams } from '@/services/backend/teams';
+import { useGetProject, useDeleteProject, getProjectQueryOptions } from '@/services/backend/projects';
 import { useGetUsers } from '@/services/backend/users';
 import { ProjectForm } from '@/components/forms/ProjectForm';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -49,6 +51,12 @@ const ProjectView = () => {
   const { user } = useAuth();
   const permissions = usePermissions();
 
+  const projectIdNum = projectId ? parseInt(projectId) : 0
+  const { data: projectData, isLoading: projectLoading } = useGetProject(projectIdNum, Boolean(projectId))
+  const { data: teamsQueryData = [] } = useGetTeams()
+  const { mutateAsync: deleteProjectMutation } = useDeleteProject()
+  const queryClient = useQueryClient()
+
   // Referência para o componente KanbanBoard - Removida
   // const kanbanBoardRef = React.useRef<{ fetchTasks: () => Promise<void> }>(null);
 
@@ -60,7 +68,9 @@ const ProjectView = () => {
     try {
       // Buscar o projeto atualizado da API
       const id = parseInt(projectId);
-      const projectData = await projectService.getProject(id);
+      const { data: projectData } = await queryClient.fetchQuery(
+        getProjectQueryOptions(id)
+      );
 
       // Atualizar as tarefas
       const projectTasks = projectData.tasks || [];
@@ -84,7 +94,7 @@ const ProjectView = () => {
 
     } catch (err) {
     }
-  }, [projectId]); // Removido tasks.length, pois agora setRawTasks é chamado
+  }, [projectId, queryClient]); // Removido tasks.length, pois agora setRawTasks é chamado
 
   // Efeito para forçar a atualização das estatísticas quando o componente é montado
   useEffect(() => {
@@ -107,77 +117,36 @@ const ProjectView = () => {
   }, [isLoading, project, updateProjectTasks]);
 
   useEffect(() => {
-    const fetchProjectData = async () => {
-      if (!projectId) return;
+    if (!projectData) return;
 
-      setIsLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        // Converter projectId para número
-        const id = parseInt(projectId);
+    const convertedProject = convertApiProjectToFrontend(projectData);
+    setProject(convertedProject);
 
-        // Carregar projeto da API
-        const projectData = await projectService.getProject(id);
-        // Garantir que os dados do projeto estejam no formato correto
-        const convertedProject = convertApiProjectToFrontend(projectData);
-        setProject(convertedProject);
+    const projectTasks = projectData.tasks || [];
+    setRawTasks(projectTasks);
 
-        // Usar as tarefas que já vêm incluídas no projeto
-        const projectTasks = projectData.tasks || [];
-        setRawTasks(projectTasks); // Define rawTasks
+    if (projectTasks.length > 0) {
+      const completedTasks = projectTasks.filter(task => task.status === 'concluido').length;
+      setProgress(Math.round((completedTasks / projectTasks.length) * 100));
+    }
 
-        // Calcular progresso com base nas tarefas concluídas
-        if (projectTasks.length > 0) {
-          const completedTasks = projectTasks.filter(task => task.status === 'concluido').length;
-          const calculatedProgress = Math.round((completedTasks / projectTasks.length) * 100);
-          setProgress(calculatedProgress);
-        }
+    if (projectData.users && Array.isArray(projectData.users)) {
+      const usersArray = projectData.users.filter(u => typeof u === 'object') as User[];
+      setProjectUsers(usersArray);
+    }
 
-        // Usar diretamente os usuários e equipes do projeto retornados pela API
+    if (projectData.occupations && Array.isArray(projectData.occupations)) {
+      const teamsArray = projectData.occupations.filter(t => typeof t === 'object') as Team[];
+      setProjectTeams(teamsArray);
+    }
 
-        // Verificar se o projeto tem usuários e equipes
-        if (projectData.users && Array.isArray(projectData.users)) {
-          // Verificar se os usuários são objetos completos ou apenas IDs
-          const usersArray = projectData.users.map(user => {
-            if (typeof user === 'object' && user !== null) {
-              return user; // Já é um objeto de usuário completo
-            }
-            return null; // Não podemos processar apenas IDs aqui
-          }).filter(user => user !== null);
-
-          setProjectUsers(usersArray as User[]);
-        }
-
-        if (projectData.occupations && Array.isArray(projectData.occupations)) {
-          // Verificar se as equipes são objetos completos ou apenas IDs
-          const teamsArray = projectData.occupations.map(team => {
-            if (typeof team === 'object' && team !== null) {
-              return team; // Já é um objeto de equipe completo
-            }
-            return null; // Não podemos processar apenas IDs aqui
-          }).filter(team => team !== null);
-
-          setProjectTeams(teamsArray as Team[]);
-        }
-
-        // Carregar todos os usuários e equipes para referência
-        const [usersData, teamsData] = await Promise.all([
-          Promise.resolve(usersQueryData),
-          teamService.getTeams()
-        ]);
-
-        setAllUsers(usersData);
-        setAllTeams(teamsData);
-      } catch (err) {
-        setError('Não foi possível carregar os dados do projeto. Tente novamente mais tarde.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProjectData();
-  }, [projectId]);
+    setAllUsers(usersQueryData);
+    setAllTeams(teamsQueryData);
+    setIsLoading(false);
+  }, [projectData, usersQueryData, teamsQueryData]);
 
   // Efeito para atualizar os componentes KanbanBoard e TasksList quando o projectId mudar
   // ou quando os dados do projeto são carregados
@@ -352,7 +321,7 @@ const ProjectView = () => {
     // Recarregar os dados do projeto para refletir as alterações
     if (projectId) {
       const id = parseInt(projectId);
-      projectService.getProject(id).then(projectData => {
+      queryClient.fetchQuery(getProjectQueryOptions(id)).then(({ data: projectData }) => {
         const convertedProject = convertApiProjectToFrontend(projectData);
         setProject(convertedProject);
 
@@ -391,7 +360,7 @@ const ProjectView = () => {
 
     try {
       const id = parseInt(projectId);
-      await projectService.deleteProject(id);
+      await deleteProjectMutation(id);
       toast.success('Projeto removido com sucesso!');
       setIsDeleteDialogOpen(false);
       // Navegar de volta para a lista de projetos

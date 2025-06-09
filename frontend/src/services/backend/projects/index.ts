@@ -14,6 +14,11 @@ export const useGetProject = (projectId: number, enabled = true) =>
     enabled,
   })
 
+export const getProjectQueryOptions = (projectId: number) => ({
+  queryKey: ['project', projectId],
+  queryFn: () => projectService.getProject(projectId),
+})
+
 interface MutateProjectArgs {
   id?: number
   data: CreateProjectRequest | UpdateProjectRequest
@@ -26,6 +31,15 @@ export const useCreateProject = () => {
       id
         ? projectService.updateProject(id, data as UpdateProjectRequest)
         : projectService.createProject(data as CreateProjectRequest),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['projects'] }),
+  })
+}
+
+export const useDeleteProject = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => projectService.deleteProject(id),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['projects'] }),
   })
