@@ -433,22 +433,24 @@ const Tasks = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Select // NOVO FILTRO DE USUÁRIO
-                value={selectedUserId?.toString() || 'all'}
-                onValueChange={handleUserChange}
-              >
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Responsável" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os usuários</SelectItem>
-                  {allUsers.map((u) => (
-                    <SelectItem key={u.id} value={u.id.toString()}>
-                      {u.name || `Usuário ${u.id}`} {/* Fallback para nome de usuário */}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {permissions.isAdmin && (
+                <Select // NOVO FILTRO DE USUÁRIO
+                  value={selectedUserId?.toString() || 'all'}
+                  onValueChange={handleUserChange}
+                >
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os usuários</SelectItem>
+                    {allUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.id.toString()}>
+                        {u.name || `Usuário ${u.id}`} {/* Fallback para nome de usuário */}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Select
                 value={viewMode}
                 onValueChange={handleViewModeChange}
