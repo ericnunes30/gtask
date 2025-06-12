@@ -2,8 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { Task, CreateTaskRequest, UpdateTaskRequest } from '@/common/types'
 import { transformApiTaskToFrontend } from '@/utils/apiTransformers'
-
-const API_URL = 'http://localhost:3333'
+import API_URL from '@/services/api'
 
 const taskService = {
   async getTasks(): Promise<Task[]> {
