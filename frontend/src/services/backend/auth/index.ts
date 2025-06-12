@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios';
-import { LoginCredentials, AuthResponse, User } from '@/common/types';
-
-const API_URL = 'http://localhost:3333'; // Ajuste conforme sua URL da API
+import axios from 'axios'
+import { LoginCredentials, AuthResponse, User } from '@/common/types'
+import API_URL from '@/services/api'
 
 const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {

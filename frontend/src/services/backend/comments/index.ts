@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { CreateCommentRequest, UpdateCommentRequest, Comment } from '@/common/types'
-
-const API_URL = 'http://localhost:3333'
+import API_URL from '@/services/api'
 
 const commentService = {
   async getComments(): Promise<Comment[]> {

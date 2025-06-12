@@ -1,8 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import axios from 'axios'
 import { UpdateUserRequest, User } from '@/common/types'
-
-const API_URL = 'http://localhost:3333'
+import API_URL from '@/services/api'
 
 export interface ChangePasswordRequest {
   current_password: string

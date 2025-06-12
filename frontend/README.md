@@ -60,6 +60,14 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Configuração de Ambiente
+
+Crie um arquivo `.env` na pasta `frontend` seguindo o exemplo abaixo para definir a URL da API do backend:
+
+```env
+BACKEND_API_URL=http://localhost:3333
+```
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/b5917eb5-5eb6-4f23-8b1b-37c23ce2a0dc) and click on Share -> Publish.

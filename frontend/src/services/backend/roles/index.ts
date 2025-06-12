@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { CreateRoleRequest, UpdateRoleRequest, Role } from '@/common/types'
-
-const API_URL = 'http://localhost:3333'
+import API_URL from '@/services/api'
 
 const roleService = {
   async getRoles(): Promise<Role[]> {

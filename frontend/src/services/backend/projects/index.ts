@@ -2,8 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { Project, CreateProjectRequest, UpdateProjectRequest } from '@/common/types'
 import { transformApiProjectToFrontend } from '@/utils/apiTransformers'
-
-const API_URL = 'http://localhost:3333'
+import API_URL from '@/services/api'
 
 const projectService = {
   async getProjects(): Promise<Project[]> {
