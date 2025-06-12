@@ -35,7 +35,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { TaskStatus, UpdateTaskRequest } from '@/common/types';
-import { useCreateTask, useUpdateTask } from '@/services/backend/tasks';
+import { useBackendServices } from '@/hooks/useBackendServices';
 import TaskDetailsModal from "@/components/tasks/TaskDetailsModal";
 import useProcessedKanbanData from '@/hooks/useProcessedKanbanData';
 import {
@@ -580,8 +580,9 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
   const [duplicateTaskData, setDuplicateTaskData] = useState<KanbanTask | null>(null);
   const [isDuplicateMode, setIsDuplicateMode] = useState(false);
 
-  const { mutateAsync: updateTask } = useUpdateTask();
-  const { mutateAsync: createTask } = useCreateTask();
+  const { tasks } = useBackendServices();
+  const { mutateAsync: updateTask } = tasks.useUpdateTask();
+  const { mutateAsync: createTask } = tasks.useCreateTask();
 
   // Função wrapper para onUpdateTaskApi
   const handleUpdateTaskApi = useCallback(async (id: number, data: UpdateTaskRequest) => {

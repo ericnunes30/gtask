@@ -60,11 +60,7 @@ import { format, isPast, isBefore, formatDistanceToNow, parseISO, isValid } from
 import { ptBR } from 'date-fns/locale';
 import { Task, TaskPriority, TaskStatus, Comment as ApiComment, User as ApiUser, UpdateTaskRequest } from '@/common/types'; // Importando Comment, User e TaskStatus da API
 import { transformApiTaskToFrontend } from '@/utils/apiTransformers';
-import { useGetUsers } from '@/services/backend/users'
-import { useGetOccupations } from '@/services/backend/occupations'
-import { useGetProject } from '@/services/backend/projects'
-import { useGetTask, useUpdateTask, useDeleteTask } from '@/services/backend/tasks';
-import { useCreateComment } from '@/services/backend/comments';
+import { useBackendServices } from '@/hooks/useBackendServices';
 import { TaskTimer } from '@/components/tasks/TaskTimer';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -130,13 +126,17 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const { user: authUser } = useAuth(); // Renomeado para authUser para evitar conflito com 'user' em 'newComment.user'
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const permissions = usePermissions();
-  const { data: fetchedTask, refetch: refetchTask } = useGetTask(taskId);
-  const { mutateAsync: updateTask } = useUpdateTask();
-  const { mutateAsync: deleteTaskMutation } = useDeleteTask();
-  const { mutateAsync: createComment } = useCreateComment();
-  const { data: usersData = [] } = useGetUsers()
-  const { data: occupationsQueryData = [] } = useGetOccupations()
-  const { data: projectDetails } = useGetProject(task?.project?.id ?? 0, Boolean(task?.project?.id))
+  const { users: usersService, occupations, projects, tasks, comments } = useBackendServices();
+  const { data: fetchedTask, refetch: refetchTask } = tasks.useGetTask(taskId);
+  const { mutateAsync: updateTask } = tasks.useUpdateTask();
+  const { mutateAsync: deleteTaskMutation } = tasks.useDeleteTask();
+  const { mutateAsync: createComment } = comments.useCreateComment();
+  const { data: usersData = [] } = usersService.useGetUsers();
+  const { data: occupationsQueryData = [] } = occupations.useGetOccupations();
+  const { data: projectDetails } = projects.useGetProject(
+    task?.project?.id ?? 0,
+    Boolean(task?.project?.id),
+  );
 
   useEffect(() => {
     setOccupations(occupationsQueryData)

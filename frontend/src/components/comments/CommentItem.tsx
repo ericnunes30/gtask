@@ -6,7 +6,7 @@ import { Heart, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Comment as ApiComment, User as ApiUser } from '@/common/types'; // Importar a interface Comment e User
-import { useCreateComment, useDeleteComment, useLikeComment, useUnlikeComment } from '@/services/backend/comments'
+import { useBackendServices } from '@/hooks/useBackendServices'
 import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
 import { toast } from "sonner";
 
@@ -22,10 +22,11 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
   const [isLiked, setIsLiked] = useState(false); // Começa false (sem checkIfLiked)
   const [likesCount, setLikesCount] = useState(comment.likesCount || 0);
   const [isLiking, setIsLiking] = useState(false);
-  const { mutateAsync: createComment } = useCreateComment();
-  const { mutateAsync: deleteCommentMutation } = useDeleteComment();
-  const { mutateAsync: likeComment } = useLikeComment();
-  const { mutateAsync: unlikeComment } = useUnlikeComment();
+  const { comments } = useBackendServices();
+  const { mutateAsync: createComment } = comments.useCreateComment();
+  const { mutateAsync: deleteCommentMutation } = comments.useDeleteComment();
+  const { mutateAsync: likeComment } = comments.useLikeComment();
+  const { mutateAsync: unlikeComment } = comments.useUnlikeComment();
 
   const handleLikeToggle = async () => {
     if (isLiking) return;

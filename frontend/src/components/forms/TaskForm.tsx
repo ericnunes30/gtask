@@ -38,12 +38,9 @@ import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Task, TaskStatus } from '@/common/types';
-import { useGetProjects, useGetProject } from '@/services/backend/projects';
-import { useGetOccupations } from '@/services/backend/occupations';
+import { useBackendServices } from '@/hooks/useBackendServices';
 import { Occupation } from '@/common/types';
-import { useGetUsers } from '@/services/backend/users';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useCreateTask, useUpdateTask } from '@/services/backend/tasks';
 
 import { debounce } from 'lodash'; // Importar a função debounce
 
@@ -102,16 +99,17 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
   const [occupations, setOccupations] = useState<Occupation[]>([]);
   const [loading, setLoading] = useState(false);
   const permissions = usePermissions();
-  const { mutate: createTaskMutation, isPending: isCreatePending } = useCreateTask();
-  const { mutate: updateTaskMutation, isPending: isUpdatePending } = useUpdateTask();
-  const { data: projectsQueryData = [] } = useGetProjects();
-  const { data: usersQueryData = [] } = useGetUsers();
-  const { data: occupationsQueryData = [] } = useGetOccupations();
-  const { data: defaultProjectData } = useGetProject(
+  const { projects, tasks, users: usersService, occupations } = useBackendServices();
+  const { mutate: createTaskMutation, isPending: isCreatePending } = tasks.useCreateTask();
+  const { mutate: updateTaskMutation, isPending: isUpdatePending } = tasks.useUpdateTask();
+  const { data: projectsQueryData = [] } = projects.useGetProjects();
+  const { data: usersQueryData = [] } = usersService.useGetUsers();
+  const { data: occupationsQueryData = [] } = occupations.useGetOccupations();
+  const { data: defaultProjectData } = projects.useGetProject(
     defaultProjectId as number,
     Boolean(defaultProjectId)
   );
-  const { data: editProjectData } = useGetProject(
+  const { data: editProjectData } = projects.useGetProject(
     initialData?.project_id as number,
     isEditMode && Boolean(initialData?.project_id)
   );
