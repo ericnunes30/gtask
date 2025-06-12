@@ -16,13 +16,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from 'react-router-dom';
 import { Project } from '@/lib/types';
-import { useGetProjects } from '@/services/backend/projects';
+import { useBackendServices } from '@/hooks/useBackendServices';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const ProjectsList = () => {
   const navigate = useNavigate();
-  const { data: projects = [], isLoading, error } = useGetProjects();
+  const { projects: projectsService } = useBackendServices();
+  const { data: projects = [], isLoading, error } = projectsService.useGetProjects();
 
   // Hooks de autenticação e permissões
   const { user } = useAuth();

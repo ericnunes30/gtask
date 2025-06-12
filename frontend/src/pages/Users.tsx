@@ -33,9 +33,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
 import { User, Occupation, Role, CreateUserRequest, UpdateUserRequest } from "@/common/types";
-import { useGetUsers, useCreateUser, useDeleteUser } from '@/services/backend/users'
-import { useGetRoles } from '@/services/backend/roles'
-import { useGetOccupations } from '@/services/backend/occupations'
+import { useBackendServices } from '@/hooks/useBackendServices'
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -87,27 +85,44 @@ const Users = () => {
     isError: usersIsError,
     error: usersError,
     refetch,
-  } = useGetUsers();
+  const { users: usersService, roles, occupations } = useBackendServices();
+  const {
+    data: usersQueryData,
+    isLoading: usersLoading,
+    isError: usersIsError,
+    error: usersError,
+    refetch,
+  } = usersService.useGetUsers();
   const {
     data: rolesQueryData,
     isLoading: rolesLoading,
     isError: rolesIsError,
     refetch: refetchRoles,
-  } = useGetRoles();
+  const {
+    data: rolesQueryData,
+    isLoading: rolesLoading,
+    isError: rolesIsError,
+    refetch: refetchRoles,
+  } = roles.useGetRoles();
   const {
     data: occupationsQueryData,
     isLoading: occupationsLoading,
     isError: occupationsIsError,
     refetch: refetchOccupations,
-  } = useGetOccupations();
+  const {
+    data: occupationsQueryData,
+    isLoading: occupationsLoading,
+    isError: occupationsIsError,
+    refetch: refetchOccupations,
+  } = occupations.useGetOccupations();
   const error =
     dataError ||
     (usersIsError || rolesIsError || occupationsIsError
       ? 'Não foi possível carregar os dados.'
       : null);
   const loading = usersLoading || rolesLoading || occupationsLoading || dataLoading;
-  const { mutateAsync: mutateUser } = useCreateUser();
-  const { mutate: deleteUserMutate } = useDeleteUser();
+  const { mutateAsync: mutateUser } = usersService.useCreateUser();
+  const { mutate: deleteUserMutate } = usersService.useDeleteUser();
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   // Formulário de novo usuário

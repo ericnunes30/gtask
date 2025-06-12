@@ -38,10 +38,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Project, ProjectPriority, Task } from '@/common/types';
-import { useGetProject, useDeleteProject, getProjectQueryOptions } from '@/services/backend/projects';
-import { useGetTasksByProject } from '@/services/backend/tasks';
+import { useBackendServices } from '@/hooks/useBackendServices';
 import { useQueryClient } from '@tanstack/react-query';
-import { useGetProjects } from '@/services/backend/projects';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -71,12 +69,13 @@ const Projects = () => {
   const [projectTasksData, setProjectTasksData] = useState<Record<number, any[]>>({});
   const { user } = useAuth();
   const permissions = usePermissions();
+  const { projects: projectsService } = useBackendServices();
   const queryClient = useQueryClient();
   const [viewProjectId, setViewProjectId] = useState<number | null>(null);
-  const { data: viewProjectData } = useGetProject(viewProjectId as number, Boolean(viewProjectId));
-  const { mutateAsync: deleteProjectMutation } = useDeleteProject();
+  const { data: viewProjectData } = projectsService.useGetProject(viewProjectId as number, Boolean(viewProjectId));
+  const { mutateAsync: deleteProjectMutation } = projectsService.useDeleteProject();
 
-  const { data, isLoading, isError } = useGetProjects();
+  const { data, isLoading, isError } = projectsService.useGetProjects();
   const projects = data ?? [];
 
   // Efeito para verificar o estado das tarefas após o carregamento
@@ -327,7 +326,7 @@ const Projects = () => {
     try {
       // Buscar o projeto atualizado da API usando React Query
       const project: Project = await queryClient.fetchQuery(
-        getProjectQueryOptions(projectId)
+        projectsService.getProjectQueryOptions(projectId)
       );
 
       if (!project) {

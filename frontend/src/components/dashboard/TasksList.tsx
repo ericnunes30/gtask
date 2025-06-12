@@ -38,8 +38,7 @@ import { format } from "date-fns"; // Biblioteca para formatação de datas
 import { ptBR } from "date-fns/locale"; // Localização PT-BR para date-fns
 import { cn } from "@/utils/utils"; // Utilitário para classes condicionais (comum com Shadcn/ui)
 import { Task, TaskPriority, TaskStatus, UpdateTaskRequest } from '@/lib/types';
-import { useGetTasks, useGetTasksByProject, useUpdateTask, useDeleteTask } from '@/services/backend/tasks';
-import { useGetUser } from '@/services/backend/users';
+import { useBackendServices } from '@/hooks/useBackendServices';
 import { toast } from "sonner"; // Biblioteca para notificações (toast)
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -142,11 +141,12 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // Controla o diálogo de confirmação de exclusão
   const [timerRunningTaskId, setTimerRunningTaskId] = useState<string | null>(null); // ID da tarefa com timer em execução
 
+  const { tasks } = useBackendServices();
   const {
     data: allTasks = [],
     isLoading: allTasksLoading,
     refetch: refetchTasks,
-  } = useGetTasks();
+  } = tasks.useGetTasks();
   const projectIdNumber =
     projectId !== undefined && projectId !== null
       ? typeof projectId === 'string'
@@ -157,9 +157,9 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
     data: projectTasks = [],
     isLoading: projectTasksLoading,
     refetch: refetchProjectTasks,
-  } = useGetTasksByProject(projectIdNumber, Boolean(projectId));
-  const { mutateAsync: updateTask } = useUpdateTask();
-  const { mutateAsync: deleteTaskMutation } = useDeleteTask();
+  } = tasks.useGetTasksByProject(projectIdNumber, Boolean(projectId));
+  const { mutateAsync: updateTask } = tasks.useUpdateTask();
+  const { mutateAsync: deleteTaskMutation } = tasks.useDeleteTask();
 
   const loading = projectId ? projectTasksLoading : allTasksLoading;
 

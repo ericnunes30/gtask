@@ -20,10 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useQueryClient } from '@tanstack/react-query';
 import { Project, ProjectPriority, User, Occupation, UpdateTaskRequest } from '@/common/types';
 import { transformApiProjectToFrontend } from '@/utils/apiTransformers';
-import { useGetOccupations } from '@/services/backend/occupations';
-import { useGetProject, useDeleteProject, getProjectQueryOptions } from '@/services/backend/projects';
-import { useGetUsers } from '@/services/backend/users';
-import { useUpdateTask } from '@/services/backend/tasks';
+import { useBackendServices } from '@/hooks/useBackendServices';
 import { ProjectForm } from '@/components/forms/ProjectForm';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,17 +43,18 @@ const ProjectView = () => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allOccupations, setAllOccupations] = useState<Occupation[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const { data: usersQueryData = [] } = useGetUsers();
+  const { projects, users: usersService, occupations, tasks } = useBackendServices();
+  const { data: usersQueryData = [] } = usersService.useGetUsers();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const tasksListRef = React.useRef<{ fetchTasks: () => Promise<void> }>(null);
   const { user } = useAuth();
   const permissions = usePermissions();
 
   const projectIdNum = projectId ? parseInt(projectId) : 0
-  const { data: projectData, isLoading: projectLoading } = useGetProject(projectIdNum, Boolean(projectId))
-  const { data: occupationsQueryData = [] } = useGetOccupations()
-  const { mutateAsync: deleteProjectMutation } = useDeleteProject()
-  const { mutateAsync: updateTaskMutation } = useUpdateTask(); // Adicionar este hook
+  const { data: projectData, isLoading: projectLoading } = projects.useGetProject(projectIdNum, Boolean(projectId))
+  const { data: occupationsQueryData = [] } = occupations.useGetOccupations()
+  const { mutateAsync: deleteProjectMutation } = projects.useDeleteProject()
+  const { mutateAsync: updateTaskMutation } = tasks.useUpdateTask(); // Adicionar este hook
   const queryClient = useQueryClient()
 
   // Referência para o componente KanbanBoard - Removida

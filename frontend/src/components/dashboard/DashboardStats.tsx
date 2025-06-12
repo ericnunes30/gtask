@@ -3,12 +3,12 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BriefcaseIcon, CheckIcon, ListTodoIcon, ClockIcon } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
-import { useGetProjects } from '@/services/backend/projects';
-import { useGetTasks } from '@/services/backend/tasks';
+import { useBackendServices } from '@/hooks/useBackendServices';
 
 export const DashboardStats = () => {
-  const { data: projects = [], isLoading: projectsLoading } = useGetProjects();
-  const { data: tasks = [], isLoading: tasksLoading } = useGetTasks();
+  const { projects, tasks } = useBackendServices();
+  const { data: projects = [], isLoading: projectsLoading } = projects.useGetProjects();
+  const { data: tasks = [], isLoading: tasksLoading } = tasks.useGetTasks();
 
   const stats = useMemo(() => {
     if (projectsLoading || tasksLoading) {

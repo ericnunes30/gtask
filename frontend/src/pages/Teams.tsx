@@ -29,13 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Occupation, UserOccupation, User } from '@/common/types';
-import { useGetUsers } from '@/services/backend/users';
-import {
-  useGetOccupations,
-  useCreateOccupation,
-  useUpdateOccupation,
-  useDeleteOccupation,
-} from '@/services/backend/occupations';
+import { useBackendServices } from '@/hooks/useBackendServices';
 
 const OccupationsPage = () => {
   const navigate = useNavigate();
@@ -56,12 +50,19 @@ const OccupationsPage = () => {
     isError: occupationsIsError,
     error: occupationsError, // Renomeado de teamsError para occupationsError
     refetch: refetchOccupations, // Renomeado de refetchTeams para refetchOccupations
-  } = useGetOccupations();
+  const { users: usersService, occupations } = useBackendServices();
+  const {
+    data: occupationsData = [],
+    isLoading: occupationsLoading,
+    isError: occupationsIsError,
+    error: occupationsError, // Renomeado de teamsError para occupationsError
+    refetch: refetchOccupations, // Renomeado de refetchTeams para refetchOccupations
+  } = occupations.useGetOccupations();
 
-  const { mutateAsync: createOccupationMutate } = useCreateOccupation();
-  const { mutateAsync: updateOccupationMutate } = useUpdateOccupation();
-  const { mutateAsync: deleteOccupationMutate } = useDeleteOccupation();
-  const { data: usersQueryData = [] } = useGetUsers();
+  const { mutateAsync: createOccupationMutate } = occupations.useCreateOccupation();
+  const { mutateAsync: updateOccupationMutate } = occupations.useUpdateOccupation();
+  const { mutateAsync: deleteOccupationMutate } = occupations.useDeleteOccupation();
+  const { data: usersQueryData = [] } = usersService.useGetUsers();
 
   // Since the API endpoint doesn't exist, we'll derive occupation users from the main occupation data
   const derivedOccupationUsers = React.useMemo(() => {

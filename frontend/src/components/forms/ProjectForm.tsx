@@ -44,9 +44,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/utils/utils";
 import { Project, ProjectPriority, Occupation } from '@/common/types';
-import { useGetUsers } from '@/services/backend/users';
-import { useGetOccupations } from '@/services/backend/occupations';
-import { useCreateProject, useGetProject } from '@/services/backend/projects';
+import { useBackendServices } from '@/hooks/useBackendServices';
 
 // Schema de validação para o formulário
 const projectFormSchema = z.object({
@@ -81,10 +79,11 @@ interface ProjectFormProps {
 
 export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: ProjectFormProps) {
   const navigate = useNavigate();
-  const { mutate, isPending } = useCreateProject();
-  const { data: usersQueryData = [] } = useGetUsers();
-  const { data: occupationsQueryData = [] } = useGetOccupations();
-  const { data: projectData } = useGetProject(projectId as number, Boolean(projectId));
+  const { projects, users: usersService, occupations } = useBackendServices();
+  const { mutate, isPending } = projects.useCreateProject();
+  const { data: usersQueryData = [] } = usersService.useGetUsers();
+  const { data: occupationsQueryData = [] } = occupations.useGetOccupations();
+  const { data: projectData } = projects.useGetProject(projectId as number, Boolean(projectId));
   const loading = isPending;
   const [error, setError] = useState<string | null>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);

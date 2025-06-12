@@ -23,9 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Project, Task, TaskStatus, User, TaskPriority, UpdateTaskRequest } from '@/common/types';
-import { useGetUsers } from '@/services/backend/users';
-import { useGetProjects } from '@/services/backend/projects';
-import { useGetTasks, useCreateTask, useUpdateTask } from '@/services/backend/tasks';
+import { useBackendServices } from '@/hooks/useBackendServices';
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -68,17 +66,18 @@ const Tasks = () => {
   const projectIdParam = searchParams.get('projectId');
   const projectId = projectIdParam ? parseInt(projectIdParam) : undefined;
 
-  const { mutateAsync: createTask } = useCreateTask();
-  const { mutateAsync: updateTask } = useUpdateTask();
-  const { data: usersData = [] } = useGetUsers();
-  const { data: projectsData = [] } = useGetProjects();
+  const { users: usersService, projects: projectsService, tasks } = useBackendServices();
+  const { mutateAsync: createTask } = tasks.useCreateTask();
+  const { mutateAsync: updateTask } = tasks.useUpdateTask();
+  const { data: usersData = [] } = usersService.useGetUsers();
+  const { data: projectsData = [] } = projectsService.useGetProjects();
 
   const {
     data: tasksData = [],
     isLoading,
     isError,
     refetch,
-  } = useGetTasks();
+  } = tasks.useGetTasks();
 
   useEffect(() => {
     setRawTasks(tasksData);
