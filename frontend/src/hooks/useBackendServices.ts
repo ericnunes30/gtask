@@ -6,6 +6,7 @@ import * as projectsHooks from '../services/backend/projects';
 import * as rolesHooks from '../services/backend/roles';
 import * as tasksHooks from '../services/backend/tasks';
 import * as usersHooks from '../services/backend/users';
+import * as profileHooks from '../services/backend/profile';
 
 export const useBackendServices = () => {
   return {
@@ -15,6 +16,7 @@ export const useBackendServices = () => {
     projects: projectsHooks,
     roles: rolesHooks,
     tasks: tasksHooks,
+    profile: profileHooks,
     users: usersHooks,
   };
 };

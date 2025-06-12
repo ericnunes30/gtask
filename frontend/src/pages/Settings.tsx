@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,30 +32,66 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/components/ui/use-toast";
 import { Switch } from "@/components/ui/switch";
+import { useBackendServices } from '@/hooks/useBackendServices';
+import { useAuth } from '@/contexts/AuthContext';
 
 const profileFormSchema = z.object({
-  username: z.string().min(2, {
-    message: "O nome de usuário deve ter pelo menos 2 caracteres.",
+  name: z.string().min(2, {
+    message: "O nome deve ter pelo menos 2 caracteres.",
   }),
   email: z.string().email({
     message: "Insira um email válido.",
   }),
-  bio: z.string().max(160).optional(),
 });
+
+const passwordFormSchema = z
+  .object({
+    currentPassword: z.string().min(1, {
+      message: "Informe a senha atual.",
+    }),
+    newPassword: z.string().min(6, {
+      message: "A nova senha deve ter pelo menos 6 caracteres.",
+    }),
+    confirmPassword: z.string().min(6, {
+      message: "Confirme a nova senha.",
+    }),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "As senhas não conferem.",
+  });
 
 const Settings = () => {
   const [isDarkMode, setIsDarkMode] = useState(
     window.localStorage.getItem("theme") === "dark"
   );
 
-  const form = useForm<z.infer<typeof profileFormSchema>>({
+  const services = useBackendServices();
+  const { user } = useAuth();
+
+  const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      username: "Usuário Demo",
-      email: "usuario@exemplo.com",
-      bio: "Gerente de Projetos",
+      name: user?.name || "",
+      email: user?.email || "",
     },
   });
+
+  const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
+    resolver: zodResolver(passwordFormSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  useEffect(() => {
+    profileForm.reset({
+      name: user?.name || "",
+      email: user?.email || "",
+    });
+  }, [user]);
 
   const handleDarkModeToggle = () => {
     const newMode = !isDarkMode;
@@ -71,11 +107,44 @@ const Settings = () => {
     }
   };
 
-  function onSubmit(data: z.infer<typeof profileFormSchema>) {
-    toast({
-      title: "Perfil atualizado",
-      description: "As alterações no seu perfil foram salvas com sucesso.",
-    });
+  const updateProfile = services.profile.useUpdateProfile();
+  const changePassword = services.profile.useChangePassword();
+
+  async function onSubmit(data: z.infer<typeof profileFormSchema>) {
+    try {
+      await updateProfile.mutateAsync(data);
+      toast({
+        title: "Perfil atualizado",
+        description: "As alterações no seu perfil foram salvas com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o perfil.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function onSubmitPassword(data: z.infer<typeof passwordFormSchema>) {
+    try {
+      await changePassword.mutateAsync({
+        current_password: data.currentPassword,
+        new_password: data.newPassword,
+        confirm_password: data.confirmPassword,
+      });
+      toast({
+        title: "Senha atualizada",
+        description: "Sua senha foi alterada com sucesso.",
+      });
+      passwordForm.reset();
+    } catch (error) {
+      toast({
+        title: "Erro ao alterar senha",
+        description: "Não foi possível alterar sua senha.",
+        variant: "destructive",
+      });
+    }
   }
 
   return (
@@ -88,16 +157,13 @@ const Settings = () => {
           </p>
         </div>
         
-        <Tabs defaultValue="appearance" className="w-full">
+        <Tabs defaultValue="profile" className="w-full">
           <TabsList className="w-full md:w-auto">
-            {/** <TabsTrigger value="profile">Perfil</TabsTrigger> */}
+            <TabsTrigger value="profile">Perfil</TabsTrigger>
             <TabsTrigger value="appearance">Aparência</TabsTrigger>
-            {/** <TabsTrigger value="notifications">Notificações</TabsTrigger> */}
-            {/** <TabsTrigger value="system">Sistema</TabsTrigger> */}
           </TabsList>
-          
-          {/**
-          <TabsContent value="profile">
+
+          <TabsContent value="profile" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Perfil</CardTitle>
@@ -106,27 +172,24 @@ const Settings = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <Form {...profileForm}>
+                  <form onSubmit={profileForm.handleSubmit(onSubmit)} className="space-y-6">
                     <FormField
-                      control={form.control}
-                      name="username"
+                      control={profileForm.control}
+                      name="name"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Nome</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
-                          <FormDescription>
-                            Este é o seu nome de exibição.
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
-                      control={form.control}
+                      control={profileForm.control}
                       name="email"
                       render={({ field }) => (
                         <FormItem>
@@ -134,42 +197,70 @@ const Settings = () => {
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
-                          <FormDescription>
-                            Este é o seu email de contato.
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
-                    <FormField
-                      control={form.control}
-                      name="bio"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bio</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              {...field}
-                              placeholder="Conte um pouco sobre você"
-                              className="resize-none"
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Breve descrição para seu perfil. Máximo de 160 caracteres.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
+
                     <Button type="submit">Salvar alterações</Button>
                   </form>
                 </Form>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Alterar Senha</CardTitle>
+                <CardDescription>Atualize sua senha de acesso.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...passwordForm}>
+                  <form onSubmit={passwordForm.handleSubmit(onSubmitPassword)} className="space-y-6">
+                    <FormField
+                      control={passwordForm.control}
+                      name="currentPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Senha Atual</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={passwordForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nova Senha</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={passwordForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirmar Nova Senha</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit">Alterar Senha</Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
           </TabsContent>
-          */}
           
           <TabsContent value="appearance">
             <Card>
