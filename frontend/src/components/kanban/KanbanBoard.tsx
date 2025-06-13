@@ -34,7 +34,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { TaskStatus, UpdateTaskRequest } from '@/common/types';
+import { Task, TaskStatus, UpdateTaskRequest } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import TaskDetailsModal from "@/components/tasks/TaskDetailsModal";
 import useProcessedKanbanData from '@/hooks/useProcessedKanbanData';
@@ -964,33 +964,45 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     // Se newStatus é 'em_andamento' e timerRunningTaskId é null ou diferente, a lógica acima cobre.
   };
 
-  const handleTaskFormSuccess = async (taskData: any) => {
-    try {
-      const newTask = await createTask(taskData);
+const handleTaskFormSuccess = async (newTaskFromForm: Task) => {
+  // A TaskForm já executou a mutação (createTask ou updateTask)
+  // e esta função (onSuccess do TaskForm) é chamada apenas se a mutação foi bem-sucedida.
+  // O TaskForm em si já lida com o toast.error da mutação da API.
 
-      handleCloseKanbanDialog();
-      
-      if (isDuplicateMode) {
-        toast.success('Tarefa duplicada com sucesso!');
-      } else {
-        toast.success('Tarefa criada com sucesso!');
-      }
-      
-      // Atualizar lista de tarefas se necessário
-      if (onGenericTaskUpdate) {
-        await onGenericTaskUpdate();
-      }
-    } catch (error) {
-      console.error('[KanbanBoard.tsx] ERRO CAPTURADO em handleTaskFormSuccess:', error);
-      
-      if (isDuplicateMode) {
-        toast.error('Erro ao duplicar tarefa. Verifique os dados e tente novamente.');
-      } else {
-        toast.error('Erro ao criar tarefa no Kanban. Verifique os dados e tente novamente.');
-      }
-      // Não fechar o diálogo em caso de erro para o usuário poder corrigir
+  // 1. Mostrar o toast de sucesso específico do Kanban e fechar o diálogo.
+  try {
+    handleCloseKanbanDialog();
+    
+    if (isDuplicateMode) { // isDuplicateMode é um estado do KanbanBoard
+      toast.success('Tarefa duplicada com sucesso no quadro!'); // Mensagem específica do Kanban
+    } else {
+      toast.success('Tarefa criada com sucesso no quadro!'); // Mensagem específica do Kanban
     }
-  };
+  } catch (dialogOrToastError) {
+    // Erro ao fechar diálogo ou ao mostrar toast de sucesso (muito improvável, mas para robustez)
+    console.error('[KanbanBoard.tsx] Erro ao fechar diálogo ou mostrar toast de sucesso:', dialogOrToastError);
+    // Não há muito o que fazer aqui, a tarefa já foi criada/duplicada.
+    // Talvez um toast genérico de erro de UI, se necessário.
+  }
+
+  // 2. Tentar atualizar a lista de tarefas do quadro.
+  if (onGenericTaskUpdate) {
+    try {
+      await onGenericTaskUpdate();
+    } catch (updateError) {
+      console.error('[KanbanBoard.tsx] Erro durante onGenericTaskUpdate (atualização do quadro):', updateError);
+      // A tarefa FOI criada/duplicada com sucesso.
+      // Apenas a atualização da visualização do quadro falhou.
+      toast.warning('A tarefa foi salva, mas houve um problema ao atualizar o quadro. Tente atualizar a página.');
+    }
+  }
+  
+  // Resetar o modo de duplicação se aplicável
+  if (isDuplicateMode) {
+    setIsDuplicateMode(false);
+    setDuplicateTaskData(null);
+  }
+};
 
   // A ordem das colunas (processedColumnOrder) vem do hook useProcessedKanbanData
   // As colunas (processedColumns) e o mapa de tarefas (processedTasksMap) também vêm do hook.
