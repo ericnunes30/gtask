@@ -76,7 +76,7 @@ export default {
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},
-			keyframes: {
+                        keyframes: {
 				'accordion-down': {
 					from: {
 						height: '0'
@@ -93,22 +93,28 @@ export default {
 						height: '0'
 					}
 				},
-				'fade-in': {
-					'0%': {
-						opacity: '0',
-						transform: 'translateY(10px)'
-					},
-					'100%': {
-						opacity: '1',
-						transform: 'translateY(0)'
-					}
-				},
-			},
-			animation: {
-				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out',
-				'fade-in': 'fade-in 0.3s ease-out',
-			}
+                                'fade-in': {
+                                        '0%': {
+                                                opacity: '0',
+                                                transform: 'translateY(10px)'
+                                        },
+                                        '100%': {
+                                                opacity: '1',
+                                                transform: 'translateY(0)'
+                                        }
+                                },
+                                'task-pulse': {
+                                        '0%': { boxShadow: '0 0 0 0 rgba(59, 130, 246, 0.5)' },
+                                        '70%': { boxShadow: '0 0 0 10px rgba(59, 130, 246, 0)' },
+                                        '100%': { boxShadow: '0 0 0 0 rgba(59, 130, 246, 0)' }
+                                },
+                        },
+                        animation: {
+                                'accordion-down': 'accordion-down 0.2s ease-out',
+                                'accordion-up': 'accordion-up 0.2s ease-out',
+                                'fade-in': 'fade-in 0.3s ease-out',
+                                'task-pulse': 'task-pulse 1.5s infinite',
+                        }
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
