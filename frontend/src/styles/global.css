@@ -135,3 +135,69 @@
     @apply bg-accent text-accent-foreground;
   }
 }
+
+@layer components {
+  /* Kanban styles migrados de kanban.css */
+  .react-beautiful-dnd-dragging {
+    @apply cursor-grabbing !important;
+  }
+
+  body.dragging {
+    @apply cursor-grabbing select-none;
+  }
+
+  .react-beautiful-dnd-placeholder {
+    @apply opacity-50 bg-black\/10 rounded-md mb-2;
+  }
+
+  .kanban-column-dragging-over {
+    @apply bg-black\/5 transition-colors;
+  }
+
+  [data-rbd-draggable-id] {
+    @apply cursor-grab;
+  }
+
+  [data-rbd-draggable-id]:active {
+    @apply cursor-grabbing;
+  }
+
+  .task-card-dragging {
+    @apply animate-pulse-dnd scale-105 z-[9999];
+  }
+
+  .kanban-container {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+    min-width: calc(280px * 7 + 24px * 6);
+  }
+
+  .kanban-container::-webkit-scrollbar {
+    height: 12px;
+  }
+
+  .kanban-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 6px;
+    margin: 0 8px;
+  }
+
+  .kanban-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+    border: 2px solid #f1f5f9;
+  }
+
+  .kanban-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  .kanban-column {
+    @apply flex-shrink-0 flex-grow-0 min-w-[280px] max-w-[280px] w-[280px];
+  }
+
+  .kanban-column .p-2 {
+    overflow: visible;
+  }
+}
