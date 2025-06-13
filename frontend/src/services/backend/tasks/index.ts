@@ -1,67 +1,36 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
+import api from '@/services/backend/api'
 import { Task, CreateTaskRequest, UpdateTaskRequest } from '@/common/types'
 import { transformApiTaskToFrontend } from '@/utils/apiTransformers'
-import API_URL from '@/services/api'
 
 const taskService = {
   async getTasks(): Promise<Task[]> {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(`${API_URL}/task`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    const response = await api.get('/task')
     return response.data.map(transformApiTaskToFrontend)
   },
 
   async getTask(id: number): Promise<Task> {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(`${API_URL}/task/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    const response = await api.get(`/task/${id}`)
     return transformApiTaskToFrontend(response.data)
   },
 
   async getTasksByProject(projectId: number): Promise<Task[]> {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(`${API_URL}/task?project_id=${projectId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    const response = await api.get(`/task?project_id=${projectId}`)
     return response.data.map(transformApiTaskToFrontend)
   },
 
   async createTask(data: CreateTaskRequest): Promise<Task> {
-    const token = localStorage.getItem('token')
-    const response = await axios.post(`${API_URL}/task`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    const response = await api.post('/task', data)
     return transformApiTaskToFrontend(response.data)
   },
 
   async updateTask(id: number, data: UpdateTaskRequest): Promise<Task> {
-    const token = localStorage.getItem('token')
-    const response = await axios.put(`${API_URL}/task/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    const response = await api.put(`/task/${id}`, data)
     return transformApiTaskToFrontend(response.data)
   },
 
   async deleteTask(id: number): Promise<void> {
-    const token = localStorage.getItem('token')
-    await axios.delete(`${API_URL}/task/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    await api.delete(`/task/${id}`)
   },
 }
 

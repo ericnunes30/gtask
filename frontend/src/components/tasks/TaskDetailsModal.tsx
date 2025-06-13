@@ -126,21 +126,18 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const { user: authUser } = useAuth(); // Renomeado para authUser para evitar conflito com 'user' em 'newComment.user'
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const permissions = usePermissions();
-  const { users: usersService, occupations, projects, tasks, comments } = useBackendServices();
+  const { users: usersService, occupations: occupationsService, projects, tasks, comments: commentsService } = useBackendServices();
   const { data: fetchedTask, refetch: refetchTask } = tasks.useGetTask(taskId);
   const { mutateAsync: updateTask } = tasks.useUpdateTask();
   const { mutateAsync: deleteTaskMutation } = tasks.useDeleteTask();
-  const { mutateAsync: createComment } = comments.useCreateComment();
+  const { mutateAsync: createComment } = commentsService.useCreateComment();
   const { data: usersData = [] } = usersService.useGetUsers();
-  const { data: occupationsQueryData = [] } = occupations.useGetOccupations();
+  const { data: occupationsQueryData = [] } = occupationsService.useGetOccupations();
   const { data: projectDetails } = projects.useGetProject(
     task?.project?.id ?? 0,
     Boolean(task?.project?.id),
   );
 
-  useEffect(() => {
-    setOccupations(occupationsQueryData)
-  }, [occupationsQueryData])
 
   useEffect(() => {
     if (projectDetails) {
@@ -906,7 +903,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       if ((!user.occupations || user.occupations.length === 0) && user.occupation) {
         const occupation = user.occupation;
         const occupationId = typeof occupation === 'number' ? occupation : occupation.id;
-        const team = teams.find(t => t.id === occupationId);
+        const team = occupations.find(t => t.id === occupationId);
         if (team) {
           user.occupations = [{ id: team.id, name: team.name }];
         }
@@ -1810,7 +1807,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
                             // Depois atualizar no backend
                             updateTask({ id: task.id, data: updateData })
-                              .then(() => {
+                              .then((updatedTask) => {
                                 toast.success('Tempo da tarefa atualizado com sucesso!');
 
                                 // Não atualizar o estado novamente para evitar recarregar o modal
@@ -1894,7 +1891,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         if (Array.isArray(task.occupations) && task.occupations.length > 0) {
                           task.occupations.forEach(team => {
                             const teamId = typeof team === 'number' ? team : team.id;
-                            if (!teamsToShowIds.has(teamId)) {
+                            if (!occupationsToShowIds.has(teamId)) {
                               // Buscar a equipe completa na lista de equipes
                               const fullTeam = occupations.find(t => {
                                 const tId = typeof t === 'number' ? t : t.id;
@@ -1915,7 +1912,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         // 3. Adicionar as equipes atualmente selecionadas (que podem ter sido adicionadas durante a edição)
                         if (selectedTeamIds.length > 0) {
                           selectedTeamIds.forEach(teamId => {
-                            if (!teamsToShowIds.has(teamId)) {
+                            if (!occupationsToShowIds.has(teamId)) {
                               // Buscar a equipe completa na lista de equipes
                               const fullTeam = occupations.find(t => {
                                 const tId = typeof t === 'number' ? t : t.id;
@@ -1923,12 +1920,12 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                               });
 
                               if (fullTeam) {
-                                teamsToShow.push(fullTeam);
+                                occupationsToShow.push(fullTeam);
                               } else {
                                 // Se não encontrar, criar um objeto temporário
-                                teamsToShow.push({ id: teamId, name: `Equipe ${teamId}` });
+                                occupationsToShow.push({ id: teamId, name: `Equipe ${teamId}` });
                               }
-                              teamsToShowIds.add(teamId);
+                              occupationsToShowIds.add(teamId);
                             }
                           });
                         }

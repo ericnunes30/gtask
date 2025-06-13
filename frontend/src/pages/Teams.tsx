@@ -28,10 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Occupation, UserOccupation, User } from '@/common/types';
+import { Team, UserOccupation, User } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
 
-const OccupationsPage = () => {
+const TeamsPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -41,59 +41,53 @@ const OccupationsPage = () => {
   const [selectedOccupationIdForUser, setSelectedOccupationIdForUser] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
-  const [editingOccupation, setEditingOccupation] = useState<Occupation | null>(null);
-  const [occupationToDelete, setOccupationToDelete] = useState<Occupation | null>(null);
+  const [editingOccupation, setEditingOccupation] = useState<Team | null>(null);
+  const [occupationToDelete, setOccupationToDelete] = useState<Team | null>(null);
 
+  const { users: usersService, teams: teamsService } = useBackendServices();
   const {
-    data: allOccupations = [],
-    isLoading: occupationsLoading,
-    isError: occupationsIsError,
-    error: occupationsError, // Renomeado de teamsError para occupationsError
-    refetch: refetchOccupations, // Renomeado de refetchTeams para refetchOccupations
-  const { users: usersService, occupations } = useBackendServices();
-  const {
-    data: occupationsData = [],
-    isLoading: occupationsLoading,
-    isError: occupationsIsError,
-    error: occupationsError, // Renomeado de teamsError para occupationsError
-    refetch: refetchOccupations, // Renomeado de refetchTeams para refetchOccupations
-  } = occupations.useGetOccupations();
+    data: teamsQueryData = [],
+    isLoading: teamsLoading,
+    isError: teamsIsError,
+    error: teamsError,
+    refetch: refetchTeams,
+  } = teamsService.useGetTeams();
 
-  const { mutateAsync: createOccupationMutate } = occupations.useCreateOccupation();
-  const { mutateAsync: updateOccupationMutate } = occupations.useUpdateOccupation();
-  const { mutateAsync: deleteOccupationMutate } = occupations.useDeleteOccupation();
+  const { mutateAsync: createTeamMutate } = teamsService.useCreateTeam();
+  const { mutateAsync: updateTeamMutate } = teamsService.useUpdateTeam();
+  const { mutateAsync: deleteTeamMutate } = teamsService.useDeleteTeam();
   const { data: usersQueryData = [] } = usersService.useGetUsers();
 
-  // Since the API endpoint doesn't exist, we'll derive occupation users from the main occupation data
-  const derivedOccupationUsers = React.useMemo(() => {
+  // Since the API endpoint doesn't exist, we'll derive team users from the main team data
+  const derivedTeamUsers = React.useMemo(() => {
     const map: Record<number, User[]> = {};
-    if (Array.isArray(allOccupations)) {
-      allOccupations.forEach((occupation) => {
-        // Use the users preloaded in the occupation data
-        map[occupation.id] = occupation.users || [];
+    if (Array.isArray(teamsQueryData)) {
+      teamsQueryData.forEach((team) => {
+        // Use the users preloaded in the team data
+        map[team.id] = team.users || [];
       });
     }
     return map;
-  }, [allOccupations]);
-
-  const loading = occupationsLoading;
-  const error = occupationsIsError ? 'Não foi possível carregar as ocupações.' : (occupationsError as any)?.message || null;
+  }, [teamsQueryData]);
+ 
+  const loading = teamsLoading;
+  const error = teamsIsError ? 'Não foi possível carregar as equipes.' : (teamsError as any)?.message || null;
 
 
   const handleAddOccupation = async () => {
     if (!occupationName.trim()) {
-      toast.error('O nome da ocupação é obrigatório');
+      toast.error('O nome da equipe é obrigatório');
       return;
     }
     try {
-      await createOccupationMutate({ name: occupationName, description: '' });
+      await createTeamMutate({ name: occupationName, description: '' });
       setOccupationName('');
       setIsDialogOpen(false);
-      toast.success('Ocupação criada com sucesso!');
-      queryClient.invalidateQueries({ queryKey: ['occupations'] });
-      queryClient.invalidateQueries({ queryKey: ['occupationUsers'] });
+      toast.success('Equipe criada com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['teamUsers'] });
     } catch (err) {
-      toast.error((err as Error).message || 'Não foi possível criar a ocupação. Tente novamente.');
+      toast.error((err as Error).message || 'Não foi possível criar a equipe. Tente novamente.');
     }
   };
 
@@ -105,74 +99,74 @@ const OccupationsPage = () => {
   //   }
   //   try {
   //     const userId = parseInt(selectedUserId);
-  //     const occupationId = selectedOccupationIdForUser;
-  //     await addUserToOccupationMutate({
-  //       occupationId: occupationId,
+  //     const teamId = selectedOccupationIdForUser;
+  //     await addUserToTeamMutate({
+  //       teamId: teamId,
   //       userId: userId,
   //     });
   //     setSelectedUserId('');
   //     setAddUserDialogOpen(false);
   //     setSelectedOccupationIdForUser(null);
-  //     toast.success('Usuário adicionado à ocupação com sucesso!');
-  //     queryClient.invalidateQueries({ queryKey: ['occupationUsers', occupationId] });
+  //     toast.success('Usuário adicionado à equipe com sucesso!');
+  //     queryClient.invalidateQueries({ queryKey: ['teamUsers', teamId] });
   //   } catch (err) {
-  //     toast.error((err as Error).message || 'Não foi possível adicionar o usuário à ocupação. Tente novamente.');
+  //     toast.error((err as Error).message || 'Não foi possível adicionar o usuário à equipe. Tente novamente.');
   //   }
   // };
 
-  // const handleRemoveUserFromOccupation = async (occupationId: number, userId: number) => {
-  //   if (!confirm('Tem certeza que deseja remover este usuário da ocupação?')) {
+  // const handleRemoveUserFromTeam = async (teamId: number, userId: number) => {
+  //   if (!confirm('Tem certeza que deseja remover este usuário da equipe?')) {
   //     return;
   //   }
   //   try {
-  //     await removeUserFromOccupationMutate({ occupationId, userId });
-  //     toast.success('Usuário removido da ocupação com sucesso!');
-  //     queryClient.invalidateQueries({ queryKey: ['occupationUsers', occupationId] });
+  //     await removeUserFromTeamMutate({ teamId, userId });
+  //     toast.success('Usuário removido da equipe com sucesso!');
+  //     queryClient.invalidateQueries({ queryKey: ['teamUsers', teamId] });
   //   } catch (err) {
-  //     toast.error((err as Error).message || 'Não foi possível remover o usuário da ocupação. Tente novamente.');
+  //     toast.error((err as Error).message || 'Não foi possível remover o usuário da equipe. Tente novamente.');
   //   }
   // };
 
-  const handleEditOccupationStart = (occupation: Occupation) => {
-    setEditingOccupation(occupation);
-    setOccupationName(occupation.name);
+  const handleEditOccupationStart = (team: Team) => {
+    setEditingOccupation(team);
+    setOccupationName(team.name);
     setIsEditDialogOpen(true);
   };
 
-  const handleDeleteOccupation = (occupation: Occupation) => {
-    setOccupationToDelete(occupation);
+  const handleDeleteOccupation = (team: Team) => {
+    setOccupationToDelete(team);
     setIsDeleteDialogOpen(true);
   };
 
   const handleDeleteOccupationConfirm = async () => {
     if (!occupationToDelete) return;
     try {
-      await deleteOccupationMutate(occupationToDelete.id);
+      await deleteTeamMutate(occupationToDelete.id);
       setIsDeleteDialogOpen(false);
       setOccupationToDelete(null);
-      toast.success(`Ocupação ${occupationToDelete.name} removida com sucesso!`);
-      queryClient.invalidateQueries({ queryKey: ['occupations'] });
-      queryClient.invalidateQueries({ queryKey: ['occupationUsers'] });
+      toast.success(`Equipe ${occupationToDelete.name} removida com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['teamUsers'] });
     } catch (err) {
-      toast.error((err as Error).message || 'Não foi possível excluir a ocupação. Tente novamente.');
+      toast.error((err as Error).message || 'Não foi possível excluir a equipe. Tente novamente.');
     }
   };
 
   const handleEditOccupationSave = async () => {
     if (!editingOccupation || !occupationName.trim()) {
-      toast.error('O nome da ocupação é obrigatório');
+      toast.error('O nome da equipe é obrigatório');
       return;
     }
     try {
-      await updateOccupationMutate({ id: editingOccupation.id, data: { name: occupationName, description: editingOccupation.description || '' } });
+      await updateTeamMutate({ id: editingOccupation.id, data: { name: occupationName, description: editingOccupation.description || '' } });
       setOccupationName('');
       setEditingOccupation(null);
       setIsEditDialogOpen(false);
-      toast.success('Ocupação atualizada com sucesso!');
-      queryClient.invalidateQueries({ queryKey: ['occupations'] });
-      queryClient.invalidateQueries({ queryKey: ['occupationUsers'] });
+      toast.success('Equipe atualizada com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['teamUsers'] });
     } catch (err) {
-      toast.error((err as Error).message || 'Não foi possível atualizar a ocupação. Tente novamente.');
+      toast.error((err as Error).message || 'Não foi possível atualizar a equipe. Tente novamente.');
     }
   };
 
@@ -213,23 +207,23 @@ const OccupationsPage = () => {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Ocupações</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Equipes</h1>
             <p className="text-muted-foreground">
-              Gerencie suas ocupações e atribua usuários.
+              Gerencie suas equipes e atribua usuários.
             </p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-1">
                 <PlusCircle className="h-4 w-4" />
-                Nova Ocupação
+                Nova Equipe
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Criar Nova Ocupação</DialogTitle>
+                <DialogTitle>Criar Nova Equipe</DialogTitle>
                 <DialogDescription>
-                  Preencha os detalhes da ocupação. Clique em salvar quando terminar.
+                  Preencha os detalhes da equipe. Clique em salvar quando terminar.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -242,7 +236,7 @@ const OccupationsPage = () => {
                     value={occupationName}
                     onChange={(e) => setOccupationName(e.target.value)}
                     className="col-span-3"
-                    placeholder="Nome da ocupação"
+                    placeholder="Nome da equipe"
                   />
                 </div>
               </div>
@@ -255,9 +249,9 @@ const OccupationsPage = () => {
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Editar Ocupação</DialogTitle>
+                <DialogTitle>Editar Equipe</DialogTitle>
                 <DialogDescription>
-                  Atualize os detalhes da ocupação. Clique em salvar quando terminar.
+                  Atualize os detalhes da equipe. Clique em salvar quando terminar.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -270,7 +264,7 @@ const OccupationsPage = () => {
                     value={occupationName}
                     onChange={(e) => setOccupationName(e.target.value)}
                     className="col-span-3"
-                    placeholder="Nome da ocupação"
+                    placeholder="Nome da equipe"
                   />
                 </div>
               </div>
@@ -284,15 +278,15 @@ const OccupationsPage = () => {
           <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Remover Ocupação</DialogTitle>
+                <DialogTitle>Remover Equipe</DialogTitle>
                 <DialogDescription>
-                  Tem certeza que deseja remover a ocupação {occupationToDelete?.name}?
+                  Tem certeza que deseja remover a equipe {occupationToDelete?.name}?
                   Esta ação não pode ser desfeita.
                 </DialogDescription>
               </DialogHeader>
               <div className="flex items-center bg-destructive/10 p-3 rounded-md mt-2">
                 <AlertCircle className="h-5 w-5 text-destructive mr-2" />
-                <p className="text-sm">Todos os dados relacionados a esta ocupação serão perdidos.</p>
+                <p className="text-sm">Todos os dados relacionados a esta equipe serão perdidos.</p>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="mr-2">Cancelar</Button>
@@ -310,35 +304,35 @@ const OccupationsPage = () => {
         )}
 
         <div className="grid grid-cols-1 gap-6">
-          {Array.isArray(allOccupations) && allOccupations.length > 0 ? (
-            allOccupations.map((occupation) => (
-              <Card key={occupation.id} className="overflow-hidden">
+          {Array.isArray(teamsQueryData) && teamsQueryData.length > 0 ? ( // Alterado occupationsQueryData para teamsQueryData
+            teamsQueryData.map((team) => ( // Renomeado de 'occupation' para 'team'
+              <Card key={team.id} className="overflow-hidden">
                 <CardContent className="p-0">
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-xl font-semibold">{occupation.name}</h3>
+                        <h3 className="text-xl font-semibold">{team.name}</h3>
                         <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
                           <div className="flex items-center">
                             <Users className="h-3.5 w-3.5 mr-1" />
-                            {derivedOccupationUsers[occupation.id]?.length || 0} usuários
+                            {derivedTeamUsers[team.id]?.length || 0} usuários // Alterado derivedOccupationUsers para derivedTeamUsers
                           </div>
-                           {occupation.created_at && (
+                           {team.created_at && (
                             <div className="flex items-center">
                               <Calendar className="h-3.5 w-3.5 mr-1" />
-                              Criado em {new Date(occupation.created_at).toLocaleDateString('pt-BR')}
+                              Criado em {new Date(team.created_at).toLocaleDateString('pt-BR')}
                             </div>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Dialog open={addUserDialogOpen && selectedOccupationIdForUser === occupation.id} onOpenChange={(isOpen) => {
+                        <Dialog open={addUserDialogOpen && selectedOccupationIdForUser === team.id} onOpenChange={(isOpen) => {
                           if (!isOpen) {
                             setAddUserDialogOpen(false);
                             setSelectedOccupationIdForUser(null);
                             setSelectedUserId(''); // Limpa o usuário selecionado ao fechar
                           } else {
-                             setSelectedOccupationIdForUser(occupation.id);
+                             setSelectedOccupationIdForUser(team.id);
                              setAddUserDialogOpen(true); // Abre o diálogo
                           }
                         }}>
@@ -357,9 +351,9 @@ const OccupationsPage = () => {
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Adicionar Usuário à Ocupação: {occupation.name}</DialogTitle>
+                              <DialogTitle>Adicionar Usuário à Equipe: {team.name}</DialogTitle>
                               <DialogDescription>
-                                Selecione um usuário para adicionar a esta ocupação.
+                                Selecione um usuário para adicionar a esta equipe.
                               </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
@@ -375,8 +369,8 @@ const OccupationsPage = () => {
                                     <SelectValue placeholder="Selecione um usuário" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {Array.isArray(usersQueryData) ? usersQueryData.filter(user => 
-                                      !derivedOccupationUsers[occupation.id]?.find(ou => ou.id === user.id)
+                                    {Array.isArray(usersQueryData) ? usersQueryData.filter(user =>
+                                      !derivedTeamUsers[team.id]?.find(ou => ou.id === user.id) // Alterado derivedOccupationUsers para derivedTeamUsers
                                     ).map((user) => (
                                       <SelectItem key={user.id} value={user.id.toString()}>
                                         {user.name} ({user.email})
@@ -408,8 +402,8 @@ const OccupationsPage = () => {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            onClick={() => handleEditOccupationStart(occupation)}
-                            title="Editar ocupação"
+                            onClick={() => handleEditOccupationStart(team)} // Renomeado para 'team'
+                            title="Editar equipe"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -417,8 +411,8 @@ const OccupationsPage = () => {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
-                            onClick={() => handleDeleteOccupation(occupation)}
-                            title="Remover ocupação"
+                            onClick={() => handleDeleteOccupation(team)} // Renomeado para 'team'
+                            title="Remover equipe"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -430,17 +424,17 @@ const OccupationsPage = () => {
                       <div className="flex justify-between items-center mb-2">
                         <h4 className="text-sm font-semibold flex items-center">
                           <Users className="h-4 w-4 mr-1" />
-                          Usuários na Ocupação
+                          Usuários na Equipe
                         </h4>
                         <span className="text-xs text-muted-foreground">
-                          {derivedOccupationUsers[occupation.id]?.length || 0} usuários
+                          {derivedTeamUsers[team.id]?.length || 0} usuários // Alterado derivedOccupationUsers para derivedTeamUsers
                         </span>
                       </div>
 
-                      {derivedOccupationUsers[occupation.id]?.length > 0 ? (
+                      {derivedTeamUsers[team.id]?.length > 0 ? ( // Alterado derivedOccupationUsers para derivedTeamUsers
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                          {derivedOccupationUsers[occupation.id].map((user) => (
-                            <div key={`${occupation.id}-${user.id}`} className="flex items-center justify-between p-2 bg-muted rounded-md hover:bg-muted/80 transition-colors">
+                          {derivedTeamUsers[team.id].map((user) => ( // Alterado derivedOccupationUsers para derivedTeamUsers
+                            <div key={`${team.id}-${user.id}`} className="flex items-center justify-between p-2 bg-muted rounded-md hover:bg-muted/80 transition-colors">
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-6 w-6">
                                    <AvatarImage src={user.avatar_url || undefined} alt={user.name} />
@@ -457,7 +451,7 @@ const OccupationsPage = () => {
                                 size="sm"
                                 className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
                                 onClick={() => toast.error('Funcionalidade não disponível - API não implementada')}
-                                title="Remover usuário da ocupação"
+                                title="Remover usuário da equipe"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
@@ -466,7 +460,7 @@ const OccupationsPage = () => {
                         </div>
                       ) : (
                          <div className="text-muted-foreground text-sm p-3 bg-muted rounded-md text-center">
-                           Nenhum usuário nesta ocupação. Adicione usuários usando o botão acima.
+                           Nenhum usuário nesta equipe. Adicione usuários usando o botão acima.
                          </div>
                       )}
                     </div>
@@ -479,13 +473,13 @@ const OccupationsPage = () => {
             <Card className="col-span-1">
               <CardContent className="p-6 text-center">
                 <Briefcase className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Nenhuma Ocupação Encontrada</h3>
+                <h3 className="text-xl font-semibold mb-2">Nenhuma Equipe Encontrada</h3>
                 <p className="text-muted-foreground mb-4">
-                  Comece criando uma nova ocupação para organizar seus usuários.
+                  Comece criando uma nova equipe para organizar seus usuários.
                 </p>
                 <Button className="gap-1" onClick={() => setIsDialogOpen(true)}>
                   <PlusCircle className="h-4 w-4" />
-                  Criar Nova Ocupação
+                  Criar Nova Equipe
                 </Button>
               </CardContent>
             </Card>
@@ -497,4 +491,4 @@ const OccupationsPage = () => {
   );
 };
 
-export default OccupationsPage;
+export default TeamsPage;

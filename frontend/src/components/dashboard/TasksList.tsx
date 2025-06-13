@@ -37,7 +37,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"; // Biblioteca para formatação de datas
 import { ptBR } from "date-fns/locale"; // Localização PT-BR para date-fns
 import { cn } from "@/utils/utils"; // Utilitário para classes condicionais (comum com Shadcn/ui)
-import { Task, TaskPriority, TaskStatus, UpdateTaskRequest } from '@/lib/types';
+import { Task, TaskPriority, TaskStatus, UpdateTaskRequest, Team } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { toast } from "sonner"; // Biblioteca para notificações (toast)
 import { usePermissions } from '@/hooks/usePermissions';
@@ -77,7 +77,9 @@ const getStatusLabel = (status: TaskStatus): string => {
     case "a_fazer": return "A Fazer";
     case "em_andamento": return "Em Andamento";
     case "em_revisao": return "Em Revisão";
+    case "aguardando_cliente": return "Aguardando Cliente";
     case "concluido": return "Concluído";
+    case "cancelado": return "Cancelado";
     default: return "A Fazer";
   }
 };
@@ -91,9 +93,13 @@ const getStatusColor = (status: TaskStatus): "secondary" | "default" | "destruct
     case "em_andamento":
       return "default";
     case "em_revisao":
-      return "outline"; // Alterado de "warning" para "outline"
+      return "outline";
+    case "aguardando_cliente":
+      return "outline";
     case "concluido":
-      return "secondary"; // Alterado de "success" para "secondary"
+      return "default";
+    case "cancelado":
+      return "destructive";
     default:
       return "secondary";
   }
@@ -102,11 +108,11 @@ const getStatusColor = (status: TaskStatus): "secondary" | "default" | "destruct
 // --- Props do Componente ---
 interface TasksListProps {
   projectId?: string | number; // ID do projeto (opcional, para filtrar tarefas)
-  teams?: any[]; // Lista de equipes (não usado diretamente no fetch, mas pode ser útil)
+  teams?: Team[]; // Lista de equipes (não usado diretamente no fetch, mas pode ser útil)
   selectedTeamId?: number | null; // ID da equipe selecionada (para filtrar tarefas)
   selectedUserId?: number | null; // ID do usuário selecionado (para filtrar tarefas)
   viewMode?: 'status' | 'date'; // Modo de visualização ('status' ou 'date')
-  priorityFilter?: string | null; // Filtro por prioridade
+  priorityFilter?: TaskPriority | null; // Filtro por prioridade
   onTasksUpdated?: () => Promise<void>; // Callback para notificar o componente pai sobre atualizações
   forceUserFilter?: boolean; // Força a filtragem pelo ID do usuário logado, mesmo que não seja membro
   showCompleted?: boolean; // Adicionado para controlar a exibição de tarefas concluídas
@@ -141,12 +147,12 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // Controla o diálogo de confirmação de exclusão
   const [timerRunningTaskId, setTimerRunningTaskId] = useState<string | null>(null); // ID da tarefa com timer em execução
 
-  const { tasks } = useBackendServices();
+  const { tasks: tasksService, users: usersService } = useBackendServices();
   const {
     data: allTasks = [],
     isLoading: allTasksLoading,
     refetch: refetchTasks,
-  } = tasks.useGetTasks();
+  } = tasksService.useGetTasks();
   const projectIdNumber =
     projectId !== undefined && projectId !== null
       ? typeof projectId === 'string'
@@ -157,9 +163,9 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
     data: projectTasks = [],
     isLoading: projectTasksLoading,
     refetch: refetchProjectTasks,
-  } = tasks.useGetTasksByProject(projectIdNumber, Boolean(projectId));
-  const { mutateAsync: updateTask } = tasks.useUpdateTask();
-  const { mutateAsync: deleteTaskMutation } = tasks.useDeleteTask();
+  } = tasksService.useGetTasksByProject(projectIdNumber, Boolean(projectId));
+  const { mutateAsync: updateTask } = tasksService.useUpdateTask();
+  const { mutateAsync: deleteTaskMutation } = tasksService.useDeleteTask();
 
   const loading = projectId ? projectTasksLoading : allTasksLoading;
 
@@ -248,7 +254,9 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
             'a_fazer': 1,
             'em_andamento': 2,
             'em_revisao': 3,
-            'concluido': 4
+            'aguardando_cliente': 4,
+            'concluido': 5,
+            'cancelado': 6
         };
         filteredTasks.sort((a, b) => {
           return (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99);
@@ -293,8 +301,13 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
               // Exemplo: Buscando um por um (MELHORAR: buscar em lote se a API permitir)
               for (const userId of userIdsToFetch) {
                    if (!userMap[userId]) { // Verifica novamente caso tenha sido preenchido por outra tarefa
-                       const userDetails = await userService.getUser(userId); // Usando getUser
-                       userMap[userId] = userDetails?.name ?? `Usuário ${userId}`;
+                       try {
+                         const userDetails = await usersService.userService.getUser(userId); // Usando getUser
+                         userMap[userId] = userDetails?.name ?? `Usuário ${userId}`;
+                       } catch (userError) {
+                         console.error(`Erro ao buscar usuário ${userId}:`, userError);
+                         userMap[userId] = `Usuário ${userId}`;
+                       }
                    }
               }
           } catch (userFetchError) {
@@ -312,12 +325,12 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       setProjects(projectMap);
       setUsers(userMap);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro detalhado ao carregar tarefas:', err);
-      setError(`Não foi possível carregar as tarefas: ${err.message || 'Erro desconhecido'}. Tente novamente mais tarde.`);
+      setError(`Não foi possível carregar as tarefas: ${err instanceof Error ? err.message : 'Erro desconhecido'}. Tente novamente mais tarde.`);
       setTasks([]); // Limpa tarefas em caso de erro
     }
-  }, [projectId, selectedTeamId, selectedUserId, viewMode, priorityFilter, forceUserFilter, user?.id, permissions.isMember, allTasks, projectTasks]); // Dependências do useCallback
+  }, [projectId, selectedTeamId, selectedUserId, viewMode, priorityFilter, forceUserFilter, permissions.isMember, allTasks, projectTasks, props.showCompleted, user, usersService]); // Dependências do useCallback
 
   // Expõe fetchTasks para o componente pai via ref
   useImperativeHandle(ref, () => ({
@@ -977,7 +990,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                         <DropdownMenuContent align="start">
                         <DropdownMenuLabel>Alterar status</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {(['a_fazer', 'em_andamento', 'em_revisao', 'concluido'] as TaskStatus[]).map(s => (
+                        {(['a_fazer', 'em_andamento', 'em_revisao', 'aguardando_cliente', 'concluido', 'cancelado'] as TaskStatus[]).map(s => (
                             <DropdownMenuItem key={s} onClick={() => handleStatusChange(task.id, s)} disabled={task.status === s}>
                             <Badge variant={getStatusColor(s)} className="mr-2 w-28 justify-center">{getStatusLabel(s)}</Badge>
                             </DropdownMenuItem>

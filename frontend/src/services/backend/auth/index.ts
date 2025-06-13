@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { LoginCredentials, AuthResponse, User } from '@/common/types'
-import API_URL from '@/services/api'
+import api from '@/services/backend/api'
 
 const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await axios.post(`${API_URL}/session`, credentials);
+    const response = await api.post('/session', credentials);
     localStorage.setItem('token', response.data.token);
     localStorage.setItem('user_id', response.data.user_id);
     return response.data;
@@ -17,11 +16,7 @@ const authService = {
     if (!token || !userId) {
       throw new Error('Token ou User ID não encontrados.');
     }
-    const response = await axios.get(`${API_URL}/user/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(`/user/${userId}`);
     return response.data;
   },
 

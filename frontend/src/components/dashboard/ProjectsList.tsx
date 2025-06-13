@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from 'react-router-dom';
-import { Project } from '@/lib/types';
+import { Project } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,9 +31,11 @@ export const ProjectsList = () => {
 
   const recentProjects = useMemo(() => {
     return [...projects]
-      .sort((a, b) =>
-        new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime(),
-      )
+      .sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0; // Trata undefined/null como 0 para ir para o início ou usar Infinity para ir para o fim
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0; // Trata undefined/null como 0
+        return dateB - dateA; // Para ordenar do mais recente para o mais antigo
+      })
       .slice(0, 4);
   }, [projects]);
 
@@ -78,7 +80,7 @@ export const ProjectsList = () => {
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{error instanceof Error ? error.message : 'Erro ao carregar projetos'}</AlertDescription>
           </Alert>
         )}
 

@@ -162,6 +162,15 @@ const Tasks = () => {
     await refetch();
   };
 
+  const handleUpdateTaskApi = useCallback(async (taskId: number, data: UpdateTaskRequest) => {
+    try {
+      await updateTask({ id: taskId, data });
+    } catch (error) {
+      console.error('Erro ao atualizar tarefa via API:', error);
+      throw error;
+    }
+  }, [updateTask]);
+
   const handleTaskFormSuccess = useCallback(async (taskData: any) => {
     const callbackId = successCallbackInstanceCounter.current;
     try {
@@ -489,6 +498,7 @@ const Tasks = () => {
                   }}
                   onTaskStatusChange={handleKanbanTaskStatusChange}
                   onGenericTaskUpdate={handleKanbanGenericTaskUpdate}
+                  onUpdateTaskApi={handleUpdateTaskApi}
                 />
               )}
             </div>

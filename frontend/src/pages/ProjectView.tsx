@@ -18,9 +18,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useQueryClient } from '@tanstack/react-query';
-import { Project, ProjectPriority, User, Occupation, UpdateTaskRequest } from '@/common/types';
+import { Project, ProjectPriority, User, Team, UpdateTaskRequest, TaskStatus } from '@/common/types';
 import { transformApiProjectToFrontend } from '@/utils/apiTransformers';
 import { useBackendServices } from '@/hooks/useBackendServices';
+import { getProjectQueryOptions } from '@/services/backend/projects';
 import { ProjectForm } from '@/components/forms/ProjectForm';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,9 +40,9 @@ const ProjectView = () => {
   const [priorityFilter, setPriorityFilter] = useState<ProjectPriority | 'todos'>('todos');
   const [kanbanViewMode, setKanbanViewMode] = useState<'status' | 'date'>('status');
   const [projectUsers, setProjectUsers] = useState<User[]>([]);
-  const [projectOccupations, setProjectOccupations] = useState<Occupation[]>([]);
+  const [projectOccupations, setProjectOccupations] = useState<Team[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [allOccupations, setAllOccupations] = useState<Occupation[]>([]);
+  const [allOccupations, setAllOccupations] = useState<Team[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { projects, users: usersService, occupations, tasks } = useBackendServices();
   const { data: usersQueryData = [] } = usersService.useGetUsers();
@@ -180,7 +181,7 @@ const ProjectView = () => {
           const occupationsArray = projectData.occupations
             .map(occupation => typeof occupation === 'object' && occupation !== null ? occupation : null)
             .filter(occupation => occupation !== null);
-          setProjectOccupations(occupationsArray as Occupation[]);
+          setProjectOccupations(occupationsArray as Team[]);
         }
       });
     }
@@ -197,7 +198,7 @@ const ProjectView = () => {
   }, [updateTaskMutation]);
 
   // Função para lidar com mudança de status da tarefa no Kanban
-  const handleKanbanTaskStatusChange = useCallback(async (task: any, newStatus: string, newOrder?: number) => {
+  const handleKanbanTaskStatusChange = useCallback(async (task: any, newStatus: TaskStatus, newOrder?: number) => {
     try {
       const updateData: UpdateTaskRequest = { status: newStatus };
       if (newOrder !== undefined) {
@@ -285,7 +286,7 @@ const ProjectView = () => {
     }
 
     if (projectData.occupations && Array.isArray(projectData.occupations)) {
-      const occupationsArray = projectData.occupations.filter(o => typeof o === 'object') as Occupation[];
+      const occupationsArray = projectData.occupations.filter(o => typeof o === 'object') as Team[];
       setProjectOccupations(occupationsArray);
     }
 

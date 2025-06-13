@@ -1,52 +1,42 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
-import { CreateOccupationRequest, UpdateOccupationRequest, Occupation, UserOccupation } from '@/common/types'
-import API_URL from '@/services/api'
+import api from '@/services/backend/api'
+import { Team } from '@/common/types'
+
+interface CreateOccupationRequest {
+  name: string
+  description?: string
+}
+
+interface UpdateOccupationRequest {
+  name?: string
+  description?: string
+}
+
+interface UserOccupation {
+  id: number
+  name: string
+  email: string
+}
 
 const occupationService = {
-  async getOccupations(): Promise<Occupation[]> {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(`${API_URL}/occupation`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+  async getOccupations(): Promise<Team[]> {
+    const response = await api.get('/occupation')
     return response.data
   },
-  async getOccupation(occupationId: number): Promise<Occupation> {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(`${API_URL}/occupation/${occupationId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+  async getOccupation(occupationId: number): Promise<Team> {
+    const response = await api.get(`/occupation/${occupationId}`)
     return response.data
   },
-  async createOccupation(data: CreateOccupationRequest): Promise<Occupation> {
-    const token = localStorage.getItem('token')
-    const response = await axios.post(`${API_URL}/occupation`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+  async createOccupation(data: CreateOccupationRequest): Promise<Team> {
+    const response = await api.post('/occupation', data)
     return response.data
   },
-  async updateOccupation(id: number, data: UpdateOccupationRequest): Promise<Occupation> {
-    const token = localStorage.getItem('token')
-    const response = await axios.put(`${API_URL}/occupation/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+  async updateOccupation(id: number, data: UpdateOccupationRequest): Promise<Team> {
+    const response = await api.put(`/occupation/${id}`, data)
     return response.data
   },
   async deleteOccupation(id: number): Promise<void> {
-    const token = localStorage.getItem('token')
-    await axios.delete(`${API_URL}/occupation/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    await api.delete(`/occupation/${id}`)
   },
 }
 
@@ -54,16 +44,10 @@ const occupationUserService = {
   async addUserToOccupation(
     occupationId: number,
     userId: number,
-  ): Promise<Occupation> {
-    const token = localStorage.getItem('token')
-    const response = await axios.post(
-      `${API_URL}/occupation/${occupationId}/users`,
-      { userId },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
+  ): Promise<Team> {
+    const response = await api.post(
+      `/occupation/${occupationId}/users`,
+      { userId }
     )
     return response.data
   },
@@ -72,23 +56,12 @@ const occupationUserService = {
     occupationId: number,
     userId: number,
   ): Promise<void> {
-    const token = localStorage.getItem('token')
-    await axios.delete(`${API_URL}/occupation/${occupationId}/users/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    await api.delete(`/occupation/${occupationId}/users/${userId}`)
   },
 
   async getOccupationUsers(occupationId: number): Promise<UserOccupation[]> {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(
-      `${API_URL}/occupation/${occupationId}/users`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
+    const response = await api.get(
+      `/occupation/${occupationId}/users`
     )
     return response.data
   },

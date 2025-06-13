@@ -1,52 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { CreateRoleRequest, UpdateRoleRequest, Role } from '@/common/types'
-import API_URL from '@/services/api'
+import api from '@/services/backend/api'
 
 const roleService = {
   async getRoles(): Promise<Role[]> {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(`${API_URL}/role`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    const response = await api.get('/role')
     return response.data
   },
   async getRole(roleId: number): Promise<Role> {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(`${API_URL}/role/${roleId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    const response = await api.get(`/role/${roleId}`)
     return response.data
   },
   async createRole(data: CreateRoleRequest): Promise<Role> {
-    const token = localStorage.getItem('token')
-    const response = await axios.post(`${API_URL}/role`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    const response = await api.post('/role', data)
     return response.data
   },
   async updateRole(id: number, data: UpdateRoleRequest): Promise<Role> {
-    const token = localStorage.getItem('token')
-    const response = await axios.put(`${API_URL}/role/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    const response = await api.put(`/role/${id}`, data)
     return response.data
   },
   async deleteRole(id: number): Promise<void> {
-    const token = localStorage.getItem('token')
-    await axios.delete(`${API_URL}/role/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    await api.delete(`/role/${id}`)
   },
 }
 

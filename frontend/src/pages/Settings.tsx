@@ -111,8 +111,16 @@ const Settings = () => {
   const changePassword = services.profile.useChangePassword();
 
   async function onSubmit(data: z.infer<typeof profileFormSchema>) {
+    if (!user?.id) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado. Não foi possível atualizar o perfil.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
-      await updateProfile.mutateAsync(data);
+      await updateProfile.mutateAsync({ userId: user.id, data });
       toast({
         title: "Perfil atualizado",
         description: "As alterações no seu perfil foram salvas com sucesso.",
@@ -127,11 +135,18 @@ const Settings = () => {
   }
 
   async function onSubmitPassword(data: z.infer<typeof passwordFormSchema>) {
+    if (!user?.id) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado. Não foi possível alterar a senha.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       await changePassword.mutateAsync({
-        current_password: data.currentPassword,
-        new_password: data.newPassword,
-        confirm_password: data.confirmPassword,
+        userId: user.id,
+        newPassword: data.newPassword,
       });
       toast({
         title: "Senha atualizada",

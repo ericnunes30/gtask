@@ -275,7 +275,6 @@ const TaskDetails = () => {
                         <TaskForm
                           initialData={task}
                           onSuccess={handleEditTask}
-                          submitButtonText="Salvar Alterações"
                           isEditMode={true}
                         />
                       </div>

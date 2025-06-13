@@ -37,9 +37,8 @@ import { cn } from "@/utils/utils";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Task, TaskStatus } from '@/common/types';
+import { Task, TaskStatus, User, Team } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
-import { Occupation } from '@/common/types';
 import { usePermissions } from '@/hooks/usePermissions';
 
 import { debounce } from 'lodash'; // Importar a função debounce
@@ -50,7 +49,7 @@ const taskFormSchema = z.object({
     message: "O título deve ter pelo menos 3 caracteres.",
   }),
   description: z.string().optional(),
-  status: z.enum(['pendente', 'a_fazer', 'em_andamento', 'em_revisao', 'concluido'] as const, {
+  status: z.enum(['pendente', 'a_fazer', 'em_andamento', 'em_revisao', 'aguardando_cliente', 'concluido', 'cancelado'] as const, {
     required_error: "Por favor selecione um status.",
   }),
   priority: z.enum(['baixa', 'media', 'alta', 'urgente'] as const, {
@@ -71,8 +70,8 @@ export interface TaskFormProps {
   onSuccess: (data: Partial<Task>) => void;
   defaultProjectId?: number;
   defaultStatus?: TaskStatus;
-  projectUsers?: any[];
-  projectTeams?: any[];
+  projectUsers?: User[];
+  projectTeams?: Team[];
   isEditMode?: boolean; // Indica se o formulário está em modo de edição
   isDuplicateMode?: boolean; // Indica se o formulário está em modo de duplicação
   formInstanceId?: string; // Adicionado para rastrear a instância
@@ -89,27 +88,28 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
     a_fazer: "A Fazer",
     em_andamento: "Em Andamento",
     em_revisao: "Em Revisão",
+    aguardando_cliente: "Aguardando Cliente",
     concluido: "Concluído",
+    cancelado: "Cancelado",
   };
 
-  const [projects, setProjects] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [occupations, setOccupations] = useState<Occupation[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [occupations, setOccupations] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const permissions = usePermissions();
-  const { projects, tasks, users: usersService, occupations } = useBackendServices();
+  const { projects: projectsService, tasks, users: usersService, teams: teamsService } = useBackendServices();
   const { mutate: createTaskMutation, isPending: isCreatePending } = tasks.useCreateTask();
   const { mutate: updateTaskMutation, isPending: isUpdatePending } = tasks.useUpdateTask();
-  const { data: projectsQueryData = [] } = projects.useGetProjects();
+  const { data: projectsQueryData = [] } = projectsService.useGetProjects();
   const { data: usersQueryData = [] } = usersService.useGetUsers();
-  const { data: occupationsQueryData = [] } = occupations.useGetOccupations();
-  const { data: defaultProjectData } = projects.useGetProject(
+  const { data: teamsQueryData = [] } = teamsService.useGetTeams();
+  const { data: defaultProjectData } = projectsService.useGetProject(
     defaultProjectId as number,
     Boolean(defaultProjectId)
   );
-  const { data: editProjectData } = projects.useGetProject(
+  const { data: editProjectData } = projectsService.useGetProject(
     initialData?.project_id as number,
     isEditMode && Boolean(initialData?.project_id)
   );
@@ -286,7 +286,6 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
       try {
         // Carregar projetos
         const projectsData = projectsQueryData;
-        setProjects(projectsData);
 
         const usersData = usersQueryData;
         setAllUsers(usersData || []);
@@ -294,59 +293,59 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
 
         if (projectUsers && projectUsers.length > 0) {
           const formattedUsers = projectUsers.map(user =>
-            typeof user === 'number' ? { id: user, name: `Usuário ${user}` } : user
+            typeof user === 'number' ? { id: user, name: `Usuário ${user}`, email: '' } : user
           );
-          setUsers(formattedUsers);
-          setFilteredUsers(formattedUsers);
+          setUsers(formattedUsers.map(u => ({ ...u, email: (u as User).email || '' }) as User));
+          setFilteredUsers(formattedUsers.map(u => ({ ...u, email: (u as User).email || '' }) as User));
         } else if (defaultProjectId && defaultProjectData) {
           if (defaultProjectData.users && Array.isArray(defaultProjectData.users)) {
             const projectUsersList = defaultProjectData.users.map(user =>
-              typeof user === 'number' ? { id: user, name: `Usuário ${user}` } : user
+              typeof user === 'number' ? { id: user, name: `Usuário ${user}`, email: '' } as User : { ...user, email: (user as User).email || '' } as User
             );
             setUsers(projectUsersList);
             setFilteredUsers(projectUsersList);
           } else {
-            setUsers(usersData);
+            setUsers(usersData.map(u => ({ ...u, email: u.email || '' } as User)));
             setFilteredUsers([]);
           }
         } else {
-          setUsers(usersData);
+          setUsers(usersData.map(u => ({ ...u, email: u.email || '' }) as User));
           setFilteredUsers([]);
         }
 
         if (isEditMode && initialData?.project_id && editProjectData) {
-          let projectTeamsList: any[] = editProjectData.occupations || [];
+          let projectTeamsList: Team[] = editProjectData.occupations || [];
 
-          if (!projectTeamsList.length && initialData.occupations && occupationsQueryData.length > 0) {
+          if (!projectTeamsList.length && initialData.occupations && teamsQueryData.length > 0) {
             const taskOccupationIds = initialData.occupations.map(occ =>
               typeof occ === 'number' ? occ : occ.id
             );
-            const taskOccupations = occupationsQueryData.filter(occupation => taskOccupationIds.includes(occupation.id));
+            const taskOccupations = teamsQueryData.filter(team => taskOccupationIds.includes(team.id));
             projectTeamsList = taskOccupations;
           }
 
           setOccupations(
-            projectTeamsList.map(occupation =>
-              typeof occupation === 'number' ? { id: occupation, name: `Ocupação ${occupation}` } : occupation
+            projectTeamsList.map(team =>
+              typeof team === 'number' ? { id: team, name: `Equipe ${team}` } : team
             )
           );
-        } else if (projectTeams && projectTeams.length > 0) { // Assumindo que projectTeams agora contém dados de ocupações
-          const formattedOccupations = projectTeams.map(occupation =>
-            typeof occupation === 'number' ? { id: occupation, name: `Ocupação ${occupation}` } : occupation
+        } else if (projectTeams && projectTeams.length > 0) { // Assumindo que projectTeams agora contém dados de equipes
+          const formattedTeams = projectTeams.map(team =>
+            typeof team === 'number' ? { id: team, name: `Equipe ${team}` } : team
           );
-          setOccupations(formattedOccupations);
+          setOccupations(formattedTeams);
         } else if (defaultProjectId && defaultProjectData) {
           if (defaultProjectData.occupations && defaultProjectData.occupations.length > 0) {
             setOccupations(
-              defaultProjectData.occupations.map(occupation =>
-                typeof occupation === 'number' ? { id: occupation, name: `Ocupação ${occupation}` } : occupation
+              defaultProjectData.occupations.map(team =>
+                typeof team === 'number' ? { id: team, name: `Equipe ${team}` } : team
               )
             );
           } else {
-            setOccupations(occupationsQueryData);
+            setOccupations(teamsQueryData);
           }
         } else {
-          setOccupations(occupationsQueryData);
+          setOccupations(teamsQueryData);
         }
 
         if (defaultProjectId) {
@@ -354,7 +353,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
         }
 
         if (defaultStatus) {
-          form.setValue('status', defaultStatus);
+          form.setValue('status', defaultStatus as TaskStatus);
         }
 
         // Se temos um projeto padrão, pré-selecionar ele no formulário
@@ -364,7 +363,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
 
         // Se temos um status padrão, pré-selecionar ele no formulário
         if (defaultStatus) {
-          form.setValue('status', defaultStatus);
+          form.setValue('status', defaultStatus as TaskStatus);
         }
       } catch (error) {
         toast.error("Erro ao carregar dados. Tente novamente.");
@@ -380,7 +379,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
     initialData?.id,
     projectsQueryData,
     usersQueryData,
-    occupationsQueryData,
+    teamsQueryData,
     projectUsers,
     projectTeams,
     isEditMode,
@@ -417,34 +416,34 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
   }, [form.watch('occupation_ids'), occupations, allUsers, filteredUsers, form, filterUsersByOccupations]);
 
   // Função para obter as equipes de um usuário
-  const getUserOccupations = (user: any) => {
+  const getUserOccupations = (user: User) => {
     if (!user) return 'Sem equipe';
 
     let teamNames: string[] = [];
 
     try {
-      // Verificar se o usuário tem ocupações múltiplas
+      // Verificar se o usuário tem equipes múltiplas (mapear de occupations para teams)
       if (user.occupations && Array.isArray(user.occupations) && user.occupations.length > 0) {
-        // Mapear IDs de ocupações para nomes
-        teamNames = user.occupations.map((occ: any) => {
-          const occId = typeof occ === 'number' ? occ : occ.id;
-          const occupation = occupations.find(o => o.id === occId);
-          return occupation ? occupation.name : `Ocupação ${occId}`;
+        // Mapear IDs de equipes para nomes
+        teamNames = user.occupations.map((teamIdOrObject: number | Team) => {
+          const teamId = typeof teamIdOrObject === 'number' ? teamIdOrObject : teamIdOrObject.id;
+          const team = occupations.find(t => t.id === teamId); // 'occupations' aqui é na verdade 'teams'
+          return team ? team.name : `Equipe ${teamId}`;
         });
       }
 
-      // Verificar se o usuário tem uma ocupação direta
+      // Verificar se o usuário tem uma equipe direta
       const userOccupationId = user.occupationId || user.occupation_id;
       if (userOccupationId && teamNames.length === 0) {
-        const occupation = occupations.find(o => o.id === userOccupationId);
-        if (occupation) teamNames.push(occupation.name);
+        const team = occupations.find(t => t.id === userOccupationId);
+        if (team) teamNames.push(team.name);
       }
 
-      // Verificar se o usuário tem um objeto de ocupação
+      // Verificar se o usuário tem um objeto de equipe
       if (user.occupation && user.occupation.id && teamNames.length === 0) {
-        const occupation = occupations.find(o => o.id === user.occupation.id);
-        if (occupation) {
-          teamNames.push(occupation.name);
+        const team = occupations.find(t => t.id === user.occupation.id);
+        if (team) {
+          teamNames.push(team.name);
         } else if (user.occupation.name) {
           teamNames.push(user.occupation.name);
         }
@@ -757,7 +756,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="0">Sem projeto</SelectItem>
-                    {projects.map((project) => (
+                    {projectsQueryData.map((project) => (
                       <SelectItem key={project.id} value={project.id.toString()}>
                         {project.title}
                       </SelectItem>

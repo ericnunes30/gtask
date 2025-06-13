@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from "zod";
@@ -43,8 +42,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/utils/utils";
-import { Project, ProjectPriority, Occupation } from '@/common/types';
+import { Project, ProjectPriority, Team, User, CreateProjectRequest, UpdateProjectRequest } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
+import { Label } from "@/components/ui/label"; // Adicionar importação de Label
 
 // Schema de validação para o formulário
 const projectFormSchema = z.object({
@@ -65,7 +65,7 @@ const projectFormSchema = z.object({
     message: "A data de término é obrigatória.",
   }),
   users: z.array(z.number()).default([]),
-  occupations: z.array(z.number()).default([]),
+  teams: z.array(z.number()).default([]), // Renomeado de 'occupations' para 'teams'
 });
 
 type ProjectFormValues = z.infer<typeof projectFormSchema>;
@@ -79,17 +79,17 @@ interface ProjectFormProps {
 
 export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: ProjectFormProps) {
   const navigate = useNavigate();
-  const { projects, users: usersService, occupations } = useBackendServices();
+  const { projects, users: usersService, teams: teamsService } = useBackendServices();
   const { mutate, isPending } = projects.useCreateProject();
-  const { data: usersQueryData = [] } = usersService.useGetUsers();
-  const { data: occupationsQueryData = [] } = occupations.useGetOccupations();
+  const { data: usersQueryData = [] as User[] } = usersService.useGetUsers();
+  const { data: teamsQueryData = [] as Team[] } = teamsService.useGetTeams();
   const { data: projectData } = projects.useGetProject(projectId as number, Boolean(projectId));
   const loading = isPending;
   const [error, setError] = useState<string | null>(null);
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
-  const [occupations, setOccupations] = useState<any[]>([]);
-  const [selectedOccupations, setSelectedOccupations] = useState<number[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<number[]>([]);
 
   // Inicializar o formulário com valores padrão
   const form = useForm<ProjectFormValues>({
@@ -102,35 +102,35 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
       start_date: new Date().toISOString().split('T')[0],
       end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       users: [],
-      occupations: [],
+      teams: [], // Renomeado de 'occupations' para 'teams'
     },
   });
 
   // Carregar dados do projeto se estiver editando
   useEffect(() => {
-    // Carregar usuários e ocupações da API
-    const loadUsersAndOccupations = async () => {
+    // Carregar usuários e equipes da API
+    const loadUsersAndTeams = async () => {
       try {
-        // Carregar usuários e equipes (ocupações) usando os hooks
+        // Carregar usuários e equipes usando os hooks
         const usersData = usersQueryData;
-        const occupationsData = occupationsQueryData;
+        const teamsData = teamsQueryData;
 
         setAllUsers(usersData);
-        setOccupations(occupationsData);
+        setTeams(teamsData); // Atribuir a 'teams'
 
         // Se estiver editando um projeto, usar os valores do formulário
         if (projectId) {
           // Obter os valores atuais do formulário
           const currentValues = form.getValues();
 
-          // Usar as ocupações do formulário
-          const occupationIds = currentValues.occupations || [];
+          // Usar as equipes do formulário
+          const teamIds = currentValues.teams || []; // Usar 'teams'
 
-          // Definir as ocupações selecionadas
-          setSelectedOccupations(occupationIds);
+          // Definir as equipes selecionadas
+          setSelectedTeams(teamIds); // Usar 'selectedTeams'
 
-          // Filtrar usuários com base nas ocupações selecionadas
-          filterUsersByOccupations(occupationIds, usersData);
+          // Filtrar usuários com base nas equipes selecionadas
+          filterUsersByTeams(teamIds, usersData); // Renomeado função
 
           // Garantir que os usuários selecionados estejam disponíveis mesmo que não estejam nas equipes selecionadas
           const selectedUserIds = currentValues.users || [];
@@ -159,11 +159,11 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
           setFilteredUsers(usersData);
         }
       } catch (error) {
-        setError('Erro ao carregar usuários e ocupações. Tente novamente.');
+        setError('Erro ao carregar usuários e equipes. Tente novamente.'); // Texto atualizado
       }
     };
-    loadUsersAndOccupations();
-  }, [projectId, form, initialData?.occupations, usersQueryData, occupationsQueryData]);
+    loadUsersAndTeams(); // Renomeado função
+  }, [projectId, form, initialData?.occupations, usersQueryData, teamsQueryData]); // Manter initialData?.occupations para compatibilidade com o tipo Project
 
   useEffect(() => {
     if (projectData) {
@@ -171,7 +171,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
         ? projectData.users.map(user => (typeof user === 'number' ? user : user.id))
         : [];
 
-      const occupationIds = Array.isArray(projectData.occupations)
+      const teamIds = Array.isArray(projectData.occupations) // projectData ainda usa 'occupations'
         ? projectData.occupations.map(occ => (typeof occ === 'number' ? occ : occ.id))
         : [];
 
@@ -183,15 +183,15 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
         start_date: projectData.start_date.split('T')[0],
         end_date: projectData.end_date.split('T')[0],
         users: userIds,
-        occupations: occupationIds,
+        teams: teamIds, // Atribuir a 'teams'
       });
     }
   }, [projectData, form]);
 
-  // Função para filtrar usuários com base nas ocupações selecionadas
-  const filterUsersByOccupations = (occupationIds: number[], users = allUsers) => {
-    if (!occupationIds.length) {
-      // Se nenhuma ocupação for selecionada, mostrar todos os usuários
+  // Função para filtrar usuários com base nas equipes selecionadas
+  const filterUsersByTeams = (teamIds: number[], users: User[] = allUsers) => {
+    if (!teamIds.length) {
+      // Se nenhuma equipe for selecionada, mostrar todos os usuários
       setFilteredUsers(users);
 
       // Não limpar a seleção de usuários se estiver editando um projeto
@@ -203,44 +203,44 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
 
 
     // Buscar usuários diretamente das equipes selecionadas
-    const selectedTeams = occupations.filter(occ => occupationIds.includes(occ.id));
+    const selectedTeamsData = teams.filter((team: Team) => teamIds.includes(team.id));
 
-    const usersFromTeams = selectedTeams.flatMap(occ => occ.users || []);
+    const usersFromTeams = selectedTeamsData.flatMap(team => team.users || []);
 
     // Criar um mapa de IDs de usuários para evitar duplicatas
     const userIdMap = new Map();
 
     // Adicionar usuários das equipes
-    usersFromTeams.forEach(user => {
+    usersFromTeams.forEach((user: User) => {
       if (user && user.id) {
         userIdMap.set(user.id, user);
       }
     });
 
-    // Adicionar usuários que têm a ocupação diretamente associada
-    users.forEach(user => {
+    // Adicionar usuários que têm a ocupação (agora equipe) diretamente associada
+    users.forEach((user: User) => {
       // Verificar se o usuário tem uma ocupação e se ela está entre as selecionadas
-      const userOccupationId = user.occupationId || user.occupation_id;
+      const userTeamId = user.occupationId || user.occupation_id;
 
-      // Verificar se o usuário tem ocupações múltiplas
+      // Verificar se o usuário tem múltiplas equipes (ocupações)
       if (user.occupations && Array.isArray(user.occupations)) {
-        const hasSelectedOccupation = user.occupations.some(occ => {
+        const hasSelectedTeam = user.occupations.some(occ => {
           const occId = typeof occ === 'number' ? occ : occ.id;
-          return occupationIds.includes(occId);
+          return teamIds.includes(occId);
         });
 
-        if (hasSelectedOccupation) {
+        if (hasSelectedTeam) {
           userIdMap.set(user.id, user);
         }
       }
 
-      // Verificar se o usuário tem uma ocupação direta
-      else if (userOccupationId && occupationIds.includes(userOccupationId)) {
+      // Verificar se o usuário tem uma equipe (ocupação) direta
+      else if (userTeamId && teamIds.includes(userTeamId)) {
         userIdMap.set(user.id, user);
       }
 
-      // Verificar se o usuário tem um objeto de ocupação
-      else if (user.occupation && user.occupation.id && occupationIds.includes(user.occupation.id)) {
+      // Verificar se o usuário tem um objeto de equipe (ocupação)
+      else if (user.occupation && user.occupation.id && teamIds.includes(user.occupation.id)) {
         userIdMap.set(user.id, user);
       }
     });
@@ -252,29 +252,29 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
   };
 
   // Função para obter as equipes de um usuário
-  const getUserOccupations = (user: any) => {
+  const getUserTeams = (user: User) => {
     let teamNames: string[] = [];
 
-    // Verificar se o usuário tem ocupações múltiplas
+    // Verificar se o usuário tem múltiplas equipes (ocupações)
     if (user.occupations && Array.isArray(user.occupations) && user.occupations.length > 0) {
-      // Mapear IDs de ocupações para nomes
+      // Mapear IDs de equipes para nomes
       teamNames = user.occupations.map(occ => {
         const occId = typeof occ === 'number' ? occ : occ.id;
-        const team = occupations.find(t => t.id === occId);
+        const team = teams.find(t => t.id === occId); // Usar 'teams'
         return team ? team.name : `Equipe ${occId}`;
       });
     }
 
-    // Verificar se o usuário tem uma ocupação direta
-    const userOccupationId = user.occupationId || user.occupation_id;
-    if (userOccupationId && teamNames.length === 0) {
-      const team = occupations.find(t => t.id === userOccupationId);
+    // Verificar se o usuário tem uma equipe (ocupação) direta
+    const userTeamId = user.occupationId || user.occupation_id;
+    if (userTeamId && teamNames.length === 0) {
+      const team = teams.find(t => t.id === userTeamId); // Usar 'teams'
       if (team) teamNames.push(team.name);
     }
 
-    // Verificar se o usuário tem um objeto de ocupação
+    // Verificar se o usuário tem um objeto de equipe (ocupação)
     if (user.occupation && user.occupation.id && teamNames.length === 0) {
-      const team = occupations.find(t => t.id === user.occupation.id);
+      const team = teams.find(t => t.id === user.occupation.id); // Usar 'teams'
       if (team) {
         teamNames.push(team.name);
       } else if (user.occupation.name) {
@@ -296,10 +296,10 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
       // Verificar se usuários foram selecionados
       let selectedUsers = values.users || [];
 
-      // Se nenhum usuário foi selecionado, incluir todos os usuários das ocupações selecionadas
-      if (selectedUsers.length === 0 && values.occupations && values.occupations.length > 0) {
+      // Se nenhum usuário foi selecionado, incluir todos os usuários das equipes selecionadas
+      if (selectedUsers.length === 0 && values.teams && values.teams.length > 0) { // Usar 'teams'
 
-        // Obter todos os usuários das ocupações selecionadas
+        // Obter todos os usuários das equipes selecionadas
         selectedUsers = filteredUsers.map(user => user.id);
       }
 
@@ -308,7 +308,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
       // Preparar os dados do projeto com os usuários selecionados
       // Garantir que as datas estejam no formato correto (YYYY-MM-DD)
       // Explicitamente define the type to match the API request types
-      const projectData = {
+      const projectData: CreateProjectRequest | UpdateProjectRequest = {
         title: values.title,
         description: values.description,
         priority: values.priority,
@@ -316,7 +316,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
         start_date: values.start_date,
         end_date: values.end_date,
         users: selectedUsers,
-        occupations: values.occupations || [],
+        teams: values.teams || [],
       };
 
       // Verificar o formato das datas
@@ -532,8 +532,8 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
-            name="occupations"
-            render={() => (
+            name="teams"
+            render={({ field }) => (
               <FormItem className="h-full">
                 <FormLabel>Equipes do Projeto</FormLabel>
                 <Card className="h-[calc(100%-2rem)]">
@@ -549,41 +549,36 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-2 max-h-[200px] overflow-y-auto">
-                    {occupations.length > 0 ? (
-                      occupations.map((occupation) => (
-                        <div key={occupation.id} className="flex items-center space-x-2">
+                    {teams.length > 0 ? (
+                      teams.map((team) => (
+                        <div key={team.id} className="flex items-center space-x-2">
                           <Checkbox
-                            checked={form.watch('occupations').includes(occupation.id)}
+                            id={`team-${team.id}`}
+                            checked={field.value?.includes(team.id)}
                             onCheckedChange={(checked) => {
-                              const currentOccupations = form.watch('occupations');
-                              const newOccupations = checked
-                                ? [...currentOccupations, occupation.id]
-                                : currentOccupations.filter(id => id !== occupation.id);
-                              form.setValue('occupations', newOccupations);
-
-                              // Atualizar a lista de usuários filtrados com base nas equipes selecionadas
-                              filterUsersByOccupations(newOccupations);
+                              const newTeams = checked
+                                ? [...(field.value || []), team.id]
+                                : (field.value || []).filter((id) => id !== team.id);
+                              field.onChange(newTeams);
+                              filterUsersByTeams(newTeams);
                             }}
                             disabled={loading}
                           />
-                          <label className="text-sm font-medium leading-none">
-                            {occupation.name}
-                          </label>
+                          <Label htmlFor={`team-${team.id}`} className="font-normal cursor-pointer">
+                            {team.name}
+                          </Label>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Nenhuma equipe encontrada.
-                      </p>
+                      <p className="text-muted-foreground text-sm text-center py-4">Nenhuma equipe disponível.</p>
                     )}
                   </CardContent>
                   <CardFooter className="pt-2">
                     <p className="text-xs text-muted-foreground">
-                      {form.watch('occupations').length} equipe(s) selecionada(s)
+                      {field.value?.length || 0} equipe(s) selecionada(s)
                     </p>
                   </CardFooter>
                 </Card>
-                <FormMessage />
               </FormItem>
             )}
           />
@@ -591,7 +586,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
           <FormField
             control={form.control}
             name="users"
-            render={() => (
+            render={({ field }) => (
               <FormItem className="h-full">
                 <FormLabel>Usuários do Projeto</FormLabel>
                 <Card className="h-[calc(100%-2rem)]">
@@ -604,7 +599,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
                     </CardTitle>
                     <CardDescription>
                       Selecione os usuários que participarão deste projeto.
-                      {form.watch('occupations').length > 0 && form.watch('users').length === 0 && (
+                      {form.watch('teams')?.length > 0 && field.value?.length === 0 && (
                         <p className="mt-2 text-xs text-amber-500">
                           <AlertTriangle className="h-3 w-3 inline mr-1" />
                           Se nenhum usuário for selecionado, todos os usuários das equipes selecionadas serão adicionados automaticamente.
@@ -617,79 +612,65 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
                       filteredUsers.map((user) => (
                         <div key={user.id} className="flex items-center space-x-2 py-1 px-2 hover:bg-muted/50 rounded-md">
                           <Checkbox
-                            checked={form.watch('users').includes(user.id)}
+                            id={`user-${user.id}`}
+                            checked={field.value?.includes(user.id)}
                             onCheckedChange={(checked) => {
-                              const currentUsers = form.watch('users');
+                              const currentUsers = field.value || [];
                               const newUsers = checked
                                 ? [...currentUsers, user.id]
-                                : currentUsers.filter(id => id !== user.id);
-                              form.setValue('users', newUsers);
+                                : currentUsers.filter((id) => id !== user.id);
+                              field.onChange(newUsers);
                             }}
                             disabled={loading}
                           />
-                          <label className="flex items-center gap-2 w-full overflow-hidden">
+                          <label htmlFor={`user-${user.id}`} className="flex items-center gap-2 w-full overflow-hidden">
                             <Avatar className="h-6 w-6 flex-shrink-0">
-                              <AvatarFallback>
-                                {user.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'UN'}
+                              {/* <AvatarImage src={user.avatar_url || undefined} alt={user.name} /> */}
+                              <AvatarFallback className="text-xs">
+                                {user.name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'U'}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-sm font-medium truncate">{user.name}</span>
+                            <div className="flex flex-col overflow-hidden">
+                              <span className="font-medium text-sm truncate">{user.name}</span>
+                              <span className="text-xs text-muted-foreground truncate">{user.email}</span>
                               <span className="text-xs text-muted-foreground truncate">
-                                {getUserOccupations(user)}
+                                {getUserTeams(user)}
                               </span>
                             </div>
                           </label>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">
-                        {form.watch('occupations').length > 0
-                          ? "Nenhum usuário encontrado nas equipes selecionadas."
-                          : "Selecione equipes primeiro para ver os usuários disponíveis."}
-                      </p>
+                      <p className="text-muted-foreground text-sm text-center py-4">Nenhum usuário disponível.</p>
                     )}
                   </CardContent>
                   <CardFooter className="pt-2">
                     <p className="text-xs text-muted-foreground">
-                      {form.watch('users').length} usuário(s) selecionado(s)
+                      {field.value?.length || 0} usuário(s) selecionado(s)
                     </p>
                   </CardFooter>
                 </Card>
-                <FormMessage />
               </FormItem>
             )}
           />
         </div>
 
-        <div className="flex justify-between gap-2">
-          {/* Botão de remover projeto (apenas em modo de edição) */}
+        <div className="flex gap-2 ml-auto">
           {projectId && onDelete && (
             <Button
               type="button"
-              variant="outline"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+              variant="destructive"
               onClick={onDelete}
               disabled={loading}
+              className="gap-1"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Remover
+              <Trash2 className="h-4 w-4" />
+              Remover Projeto
             </Button>
           )}
-
-          <div className="flex gap-2 ml-auto">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onSuccess ? onSuccess() : navigate('/projects')}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Salvando..." : projectId ? "Atualizar" : "Criar"}
-            </Button>
-          </div>
+          <Button type="submit" disabled={loading} className="ml-auto">
+            {loading ? 'Salvando...' : projectId ? 'Atualizar Projeto' : 'Criar Projeto'}
+          </Button>
         </div>
       </form>
     </Form>

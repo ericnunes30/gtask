@@ -6,9 +6,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBackendServices } from '@/hooks/useBackendServices';
 
 export const DashboardStats = () => {
-  const { projects, tasks } = useBackendServices();
-  const { data: projects = [], isLoading: projectsLoading } = projects.useGetProjects();
-  const { data: tasks = [], isLoading: tasksLoading } = tasks.useGetTasks();
+  const { projects: projectsService, tasks: tasksService } = useBackendServices();
+  const { data: projects = [], isLoading: projectsLoading } = projectsService.useGetProjects();
+  const { data: tasks = [], isLoading: tasksLoading } = tasksService.useGetTasks();
 
   const stats = useMemo(() => {
     if (projectsLoading || tasksLoading) {
@@ -28,9 +28,11 @@ export const DashboardStats = () => {
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const newProjects = projects.filter(project =>
-      project.created_at ? new Date(project.created_at) > thirtyDaysAgo : false
-    ).length;
+    const newProjects = projects.filter(project => {
+      if (!project.created_at && !project.createdAt) return false;
+      const createdDate = new Date(project.created_at || project.createdAt || '');
+      return !isNaN(createdDate.getTime()) && createdDate > thirtyDaysAgo;
+    }).length;
 
     const pendingTasks = tasks.filter(
       task => task.status === 'a_fazer' || task.status === 'pendente'
@@ -44,9 +46,12 @@ export const DashboardStats = () => {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayCompletedTasks = tasks.filter(task =>
-      task.status === 'concluido' && task.updated_at && new Date(task.updated_at) > today
-    ).length;
+    const todayCompletedTasks = tasks.filter(task => {
+      if (task.status !== 'concluido') return false;
+      if (!task.updated_at && !task.updatedAt) return false;
+      const updatedDate = new Date(task.updated_at || task.updatedAt || '');
+      return !isNaN(updatedDate.getTime()) && updatedDate > today;
+    }).length;
 
     const totalHours = tasks.length * 3;
     const todayHours = Math.floor(Math.random() * 10);

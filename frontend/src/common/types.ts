@@ -24,13 +24,13 @@ export interface Role {
   updated_at?: string;
 }
 
-export interface Occupation {
+export interface Team { // Renomeado de Occupation para Team
   id: number;
   name: string;
   description?: string; // Tornar opcional
   created_at?: string;
   updated_at?: string;
-  users?: User[]; // Adicionado para incluir usuários associados à ocupação
+  users?: User[]; // Adicionado para incluir usuários associados à equipe
 }
 
 
@@ -53,7 +53,7 @@ export interface User {
     id: number;
     name: string;
   };
-  occupations?: Array<{
+  occupations?: Array<{ // Manter 'occupations' no User para compatibilidade com o backend
     id: number;
     name: string;
   }>;
@@ -62,7 +62,7 @@ export interface User {
 
 export interface CreateUserRequest {
   name: string;
-  email: string;
+  email?: string;
   password: string;
   occupation_id?: number;
   roles?: number[];
@@ -75,7 +75,7 @@ export interface UpdateUserRequest {
   password?: string;
   occupation_id?: number;
   roles?: number[];
-  occupations?: number[];
+  teams?: number[];
 }
 
 // =====================================================
@@ -83,7 +83,7 @@ export interface UpdateUserRequest {
 // =====================================================
 
 export interface LoginCredentials {
-  email: string;
+  email?: string;
   password: string;
 }
 
@@ -115,7 +115,7 @@ export interface Project {
   updatedAt?: string;
   // Relacionamentos
   users?: Array<number | { id: number; name: string; email: string; occupationId?: number }>;
-  occupations?: Occupation[];
+  occupations?: Team[]; // Renomeado de Occupation[] para Team[]
   tasks?: Array<{
     id: number;
     title: string;
@@ -139,7 +139,7 @@ export interface CreateProjectRequest {
   start_date: string;
   end_date: string;
   users?: number[];
-  occupations?: number[];
+  occupations?: number[]; // Manter 'occupations' para o backend
 }
 
 export interface UpdateProjectRequest {
@@ -150,7 +150,7 @@ export interface UpdateProjectRequest {
   start_date?: string;
   end_date?: string;
   users?: number[];
-  occupations?: number[];
+  teams?: number[];
 }
 
 // =====================================================
@@ -176,7 +176,7 @@ export interface Task {
   createdAt?: string; // Campo usado pela API
   updatedAt?: string; // Campo usado pela API
   users?: Array<number | { id: number; name: string; email: string; occupation_id?: number; occupationId?: number }>;
-  occupations?: Occupation[];
+  occupations?: Team[]; // Renomeado de Occupation[] para Team[]
   project?: Project; // Usar a interface Project importada
   comments?: Comment[]; // Adicionado para incluir comentários pré-carregados
 }
@@ -195,7 +195,7 @@ export interface CreateTaskRequest {
   order?: number;
   timer?: number; // Tempo em segundos
   users?: number[];
-  occupations?: number[];
+  occupations?: number[]; // Manter 'occupations' para o backend
 }
 
 export interface UpdateTaskRequest {
@@ -212,7 +212,7 @@ export interface UpdateTaskRequest {
   order?: number;
   timer?: number; // Tempo em segundos
   users?: number[];
-  occupations?: number[];
+  occupations?: number[]; // Manter 'occupations' para o backend
 }
 
 // =====================================================
@@ -244,14 +244,14 @@ export interface UpdateCommentRequest {
   content: string;
 }
 
-export interface UserOccupation {
+export interface UserOccupation { // Manter UserOccupation para compatibilidade com a estrutura de dados do backend
   id: number;
   user_id: number;
   occupation_id: number;
   created_at: string;
   updated_at: string;
   user?: User;
-  occupation?: Occupation;
+  occupation?: Team; // Renomeado Occupation para Team
 }
 
 // =====================================================
@@ -269,20 +269,20 @@ export interface UpdateRoleRequest {
 }
 
 // =====================================================
-// OCCUPATION INTERFACES
+// TEAM INTERFACES (Antigas OCCUPATION INTERFACES)
 // =====================================================
 
-export interface CreateOccupationRequest {
+export interface CreateTeamRequest { // Renomeado de CreateOccupationRequest
   name: string;
   description: string;
 }
 
-export interface UpdateOccupationRequest {
+export interface UpdateTeamRequest { // Renomeado de UpdateOccupationRequest
   name?: string;
   description?: string;
 }
 
-export interface AddUserToOccupationRequest {
+export interface AddUserToTeamRequest { // Renomeado de AddUserToOccupationRequest
   user_id: number;
 }
 

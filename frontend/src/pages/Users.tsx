@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
-import { User, Occupation, Role, CreateUserRequest, UpdateUserRequest } from "@/common/types";
+import { User, Role, CreateUserRequest, UpdateUserRequest } from "@/common/types";
 import { useBackendServices } from '@/hooks/useBackendServices'
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
@@ -70,22 +70,14 @@ const Users = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
-  const [occupations, setOccupations] = useState<Occupation[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [dataLoading, setDataLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false); // Estado para controlar a atualização
   const [dataError, setDataError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
-  const {
-    data: usersQueryData,
-    isLoading: usersLoading,
-    isError: usersIsError,
-    error: usersError,
-    refetch,
-  const { users: usersService, roles, occupations } = useBackendServices();
+  const { users: usersService, roles: rolesService, occupations: occupationsService } = useBackendServices();
   const {
     data: usersQueryData,
     isLoading: usersLoading,
@@ -97,33 +89,23 @@ const Users = () => {
     data: rolesQueryData,
     isLoading: rolesLoading,
     isError: rolesIsError,
+    error: rolesError,
     refetch: refetchRoles,
-  const {
-    data: rolesQueryData,
-    isLoading: rolesLoading,
-    isError: rolesIsError,
-    refetch: refetchRoles,
-  } = roles.useGetRoles();
+  } = rolesService.useGetRoles();
   const {
     data: occupationsQueryData,
     isLoading: occupationsLoading,
     isError: occupationsIsError,
+    error: occupationsError,
     refetch: refetchOccupations,
-  const {
-    data: occupationsQueryData,
-    isLoading: occupationsLoading,
-    isError: occupationsIsError,
-    refetch: refetchOccupations,
-  } = occupations.useGetOccupations();
+  } = occupationsService.useGetOccupations();
   const error =
-    dataError ||
     (usersIsError || rolesIsError || occupationsIsError
       ? 'Não foi possível carregar os dados.'
       : null);
-  const loading = usersLoading || rolesLoading || occupationsLoading || dataLoading;
+  const loading = usersLoading || rolesLoading || occupationsLoading;
   const { mutateAsync: mutateUser } = usersService.useCreateUser();
   const { mutate: deleteUserMutate } = usersService.useDeleteUser();
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   // Formulário de novo usuário
   const [newUser, setNewUser] = useState<{
@@ -164,8 +146,6 @@ const Users = () => {
       const rolesData = rolesRes.data || [];
       const occupationsData = occupationsRes.data || [];
 
-      setRoles(rolesData);
-      setOccupations(occupationsData);
 
       return { users: [], roles: rolesData, occupations: occupationsData };
     } catch (err) {
@@ -185,35 +165,8 @@ const Users = () => {
   }, []);
 
 
-  useEffect(() => {
-    if (rolesQueryData) {
-      setRoles(rolesQueryData);
-    }
-  }, [rolesQueryData]);
 
-  useEffect(() => {
-    if (occupationsQueryData) {
-      setOccupations(occupationsQueryData);
-    }
-  }, [occupationsQueryData]);
 
-  useEffect(() => {
-    if (usersQueryData) {
-      const processed = usersQueryData.map(user => {
-        if (user.occupationId && !user.occupation_id) {
-          user.occupation_id = user.occupationId;
-        }
-        if (user.createdAt && !user.created_at) {
-          user.created_at = user.createdAt;
-        }
-        if (user.updatedAt && !user.updated_at) {
-          user.updated_at = user.updatedAt;
-        }
-        return user;
-      });
-      setUsers(processed);
-    }
-  }, [usersQueryData]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -222,7 +175,7 @@ const Users = () => {
 
   const handleTeamChange = (value) => {
     // Verificar se a ocupação existe na lista
-    const occupation = occupations.find(o => o.id.toString() === value);
+    const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id.toString() === value) : null;
     if (!occupation) {
       console.warn('Ocupação não encontrada na lista de ocupações disponíveis');
     }
@@ -297,7 +250,7 @@ const Users = () => {
   const handleEditUserStart = (user: User) => {
     // Verificar se o usuário tem occupation_id
     if (user.occupation_id) {
-      const occupation = occupations.find(o => o.id === user.occupation_id);
+      const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id === user.occupation_id) : null;
       if (!occupation) {
         console.warn('Ocupação não encontrada para o usuário em edição');
       }
@@ -375,9 +328,9 @@ const Users = () => {
         userData.occupation_id = parseInt(newUser.occupation_id);
       }
 
-      // Adicionar occupations se houver
+      // Adicionar teams se houver
       if (newUser.occupations && newUser.occupations.length > 0) {
-        userData.occupations = newUser.occupations;
+        userData.teams = newUser.occupations;
       }
 
       // Adicionar roles se houver
@@ -422,13 +375,13 @@ const Users = () => {
     const occupationId = user.occupationId || user.occupation_id;
     if (!occupationId) return 'Sem ocupação';
 
-    const occupation = occupations.find(o => o.id === occupationId);
+    const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id === occupationId) : null;
     return occupation ? occupation.name : 'Ocupação desconhecida';
   };
 
   // Função para obter o nome da role pelo ID
   const getRoleName = (roleId: number) => {
-    const role = roles.find(r => r.id === roleId);
+    const role = Array.isArray(rolesQueryData) ? rolesQueryData.find(r => r.id === roleId) : null;
     return role ? role.name : `Função ${roleId}`;
   };
 
@@ -468,10 +421,10 @@ const Users = () => {
   };
 
   // Filtragem dos usuários
-  const filteredUsers = users.filter(user =>
+  const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : [];
 
   // Renderizar tela de carregamento
   if (loading) {
@@ -607,17 +560,17 @@ const Users = () => {
                         <SelectValue placeholder="Adicionar equipe" />
                       </SelectTrigger>
                       <SelectContent>
-                        {occupations.map((occupation) => (
+                        {Array.isArray(occupationsQueryData) ? occupationsQueryData.map((occupation) => (
                           <SelectItem key={occupation.id} value={occupation.id.toString()}>
                             {occupation.name}
                           </SelectItem>
-                        ))}
+                        )) : null}
                       </SelectContent>
                     </Select>
 
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newUser.occupations.map((occupationId) => {
-                        const occupation = occupations.find((o) => o.id === occupationId);
+                        const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find((o) => o.id === occupationId) : null;
                         return (
                           <div
                             key={occupationId}
@@ -662,11 +615,11 @@ const Users = () => {
                         <SelectValue placeholder="Selecionar nível de permissão" />
                       </SelectTrigger>
                       <SelectContent>
-                        {roles.map((role) => (
+                        {Array.isArray(rolesQueryData) ? rolesQueryData.map((role) => (
                           <SelectItem key={role.id} value={role.id.toString()}>
                             {role.name}
                           </SelectItem>
-                        ))}
+                        )) : null}
                       </SelectContent>
                     </Select>
 
@@ -766,17 +719,17 @@ const Users = () => {
                         <SelectValue placeholder="Adicionar equipe" />
                       </SelectTrigger>
                       <SelectContent>
-                        {occupations.map((occupation) => (
+                        {Array.isArray(occupationsQueryData) ? occupationsQueryData.map((occupation) => (
                           <SelectItem key={occupation.id} value={occupation.id.toString()}>
                             {occupation.name}
                           </SelectItem>
-                        ))}
+                        )) : null}
                       </SelectContent>
                     </Select>
 
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newUser.occupations.map((occupationId) => {
-                        const occupation = occupations.find((o) => o.id === occupationId);
+                        const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find((o) => o.id === occupationId) : null;
                         return (
                           <div
                             key={occupationId}
@@ -821,11 +774,11 @@ const Users = () => {
                         <SelectValue placeholder="Selecionar nível de permissão" />
                       </SelectTrigger>
                       <SelectContent>
-                        {roles.map((role) => (
+                        {Array.isArray(rolesQueryData) ? rolesQueryData.map((role) => (
                           <SelectItem key={role.id} value={role.id.toString()}>
                             {role.name}
                           </SelectItem>
-                        ))}
+                        )) : null}
                       </SelectContent>
                     </Select>
 
@@ -940,7 +893,7 @@ const Users = () => {
                         <div className="flex flex-wrap gap-1">
                           {user.occupations.map(occ => {
                             const teamId = typeof occ === 'number' ? occ : occ.id;
-                            const teamName = typeof occ === 'number' ? occupations.find(o => o.id === occ)?.name || 'Ocupação desconhecida' : occ.name;
+                            const teamName = typeof occ === 'number' ? (Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id === occ)?.name : null) || 'Ocupação desconhecida' : occ.name;
                             const badgeColor = getBadgeColorClass(teamId);
 
                             return (
