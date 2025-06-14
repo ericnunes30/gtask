@@ -97,3 +97,48 @@ body.dragging {
 .kanban-column .p-2 {
   overflow: visible;
 }
+
+/* Scroll horizontal fixo na parte inferior */
+.kanban-scroll-container {
+  position: relative;
+  padding-bottom: 20px; /* Espaço para o scroll */
+}
+
+.kanban-scroll-container::-webkit-scrollbar {
+  height: 12px;
+  position: sticky;
+  bottom: 0;
+}
+
+.kanban-scroll-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+  margin: 0 8px;
+  position: sticky;
+  bottom: 0;
+}
+
+.kanban-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+  border: 2px solid #f1f5f9;
+  position: sticky;
+  bottom: 0;
+}
+
+.kanban-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Scroll horizontal sem margem extra - cola na parte inferior */
+.kanban-sticky-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+  
+  /* Remove qualquer padding/margin que possa criar espaço extra */
+  padding-bottom: 0;
+  margin-bottom: 0;
+}

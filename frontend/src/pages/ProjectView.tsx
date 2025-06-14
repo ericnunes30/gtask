@@ -421,20 +421,30 @@ const ProjectView = () => {
     <AppLayout>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 mb-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => navigate('/projects')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {project.title}
-            </h1>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => navigate('/projects')}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <h1 className="text-3xl font-bold tracking-tight">
+                {project.title}
+              </h1>
+              <Badge variant={project.priority === 'urgente' ? "destructive" :
+                     project.priority === 'alta' ? "destructive" :
+                     project.priority === 'media' ? "default" : "secondary"}>
+                Prioridade {project.priority.charAt(0).toUpperCase() + project.priority.slice(1)}
+              </Badge>
+              <Badge variant={project.status ? "default" : "secondary"}>
+                {project.status ? "Ativo" : "Inativo"}
+              </Badge>
+            </div>
             {!permissions.isMember && (
-              <div className="flex gap-2 ml-2">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -455,17 +465,6 @@ const ProjectView = () => {
                 </Button>
               </div>
             )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Badge variant={project.priority === 'urgente' ? "destructive" :
-                   project.priority === 'alta' ? "destructive" :
-                   project.priority === 'media' ? "default" : "secondary"}>
-              Prioridade {project.priority.charAt(0).toUpperCase() + project.priority.slice(1)}
-            </Badge>
-            <Badge variant={project.status ? "default" : "secondary"}>
-              {project.status ? "Ativo" : "Inativo"}
-            </Badge>
           </div>
         </div>
 
@@ -777,31 +776,33 @@ const ProjectView = () => {
                 </Select>
               </div>
             </div>
-            <TabsContent value="kanban" className="mt-6">
-              <div className="px-5">
-                {isLoading && !rawTasks.length ? (
-                  <Skeleton className="w-full h-[500px]" />
-                ) : (
-                  <KanbanBoard
-                    rawTasks={rawTasks}
-                    boardMode="project-view"
-                    viewMode={kanbanViewMode}
-                    filters={{
-                      priority: priorityFilter === 'todos' ? null : priorityFilter,
-                      teamId: selectedTeamId,
-                      userId: selectedUserId,
-                      // No ProjectView, geralmente mostramos todas as tarefas (concluídas ou não)
-                      // a menos que haja um switch específico para isso nesta página.
-                      // Por ora, vamos assumir que sempre mostra concluídas.
-                      showCompleted: true,
-                    }}
-                    projectId={projectId} // Passar o projectId string
-                    project={project} // Passar o objeto do projeto se o KanbanBoard ainda o utiliza
-                    onUpdateTaskApi={handleUpdateTaskApi} // Passar a função de atualização da API
-                    onTaskStatusChange={handleKanbanTaskStatusChange} // Adicionar handler de mudança de status
-                    onGenericTaskUpdate={handleGenericTaskUpdate} // Adicionar handler de atualização genérica
-                  />
-                )}
+            <TabsContent value="kanban" className="mt-6 pb-0">
+              <div className="overflow-x-auto pb-0 mb-0">
+                <div className="px-5" style={{ minWidth: 'calc(280px * 7 + 1rem * 6 + 2.5rem)' }}>
+                  {isLoading && !rawTasks.length ? (
+                    <Skeleton className="w-full h-[500px]" />
+                  ) : (
+                    <KanbanBoard
+                      rawTasks={rawTasks}
+                      boardMode="project-view"
+                      viewMode={kanbanViewMode}
+                      filters={{
+                        priority: priorityFilter === 'todos' ? null : priorityFilter,
+                        teamId: selectedTeamId,
+                        userId: selectedUserId,
+                        // No ProjectView, geralmente mostramos todas as tarefas (concluídas ou não)
+                        // a menos que haja um switch específico para isso nesta página.
+                        // Por ora, vamos assumir que sempre mostra concluídas.
+                        showCompleted: true,
+                      }}
+                      projectId={projectId} // Passar o projectId string
+                      project={project} // Passar o objeto do projeto se o KanbanBoard ainda o utiliza
+                      onUpdateTaskApi={handleUpdateTaskApi} // Passar a função de atualização da API
+                      onTaskStatusChange={handleKanbanTaskStatusChange} // Adicionar handler de mudança de status
+                      onGenericTaskUpdate={handleGenericTaskUpdate} // Adicionar handler de atualização genérica
+                    />
+                  )}
+                </div>
               </div>
             </TabsContent>
             <TabsContent value="list" className="mt-6">

@@ -298,14 +298,15 @@ const Tasks = () => {
 
   return (
     <AppLayout>
-      <div className="flex flex-col gap-6">
+      <div className="-m-4 md:-m-6">
+        <div className="flex flex-col gap-6 p-0">
         {(error || isError) && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error || 'Falha ao carregar tarefas.'}</AlertDescription>
           </Alert>
         )}
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between pt-[30px] px-[30px] pb-0">
           <div>
             {isLoading && !filteredTasks.length ? ( // Ajustado para considerar filteredTasks no loading inicial
               <div className="flex flex-col">
@@ -405,7 +406,7 @@ const Tasks = () => {
           )}
         </div>
         <Tabs defaultValue="kanban" className="w-full" onValueChange={handleTabChange}>
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4 mx-[30px]">
             <TabsList>
               <TabsTrigger value="kanban">Kanban</TabsTrigger>
               <TabsTrigger value="list">Lista</TabsTrigger>
@@ -481,26 +482,28 @@ const Tasks = () => {
               </div>
             </div>
           </div>
-          <TabsContent value="kanban" className="mt-6">
-            <div className="min-h-[500px]">
-              {isLoading && !filteredTasks.length ? (
-                <Skeleton className="w-full h-[500px]" />
-              ) : (
-                <KanbanBoard
-                  rawTasks={filteredTasks} // Passando as tarefas já filtradas
-                  boardMode="tasks-view"
-                  viewMode={viewMode}
-                  filters={{
-                    priority: selectedPriorityFilter ? selectedPriorityFilter as TaskPriority : undefined,
-                    projectId: selectedProjectFilter || projectId,
-                    userId: selectedUserId, // Usando o estado do filtro de usuário
-                    showCompleted: showCompleted,
-                  }}
-                  onTaskStatusChange={handleKanbanTaskStatusChange}
-                  onGenericTaskUpdate={handleKanbanGenericTaskUpdate}
-                  onUpdateTaskApi={handleUpdateTaskApi}
-                />
-              )}
+          <TabsContent value="kanban" className="mt-6 pb-0">
+            <div className="overflow-x-auto pb-0 mb-0">
+              <div className="min-h-[73.7vh]" style={{ minWidth: 'calc(280px * 7 + 1rem * 6)', padding:"0px 30px"}}>
+                {isLoading && !filteredTasks.length ? (
+                  <Skeleton className="w-full h-[500px]" />
+                ) : (
+                  <KanbanBoard
+                    rawTasks={filteredTasks} // Passando as tarefas já filtradas
+                    boardMode="tasks-view"
+                    viewMode={viewMode}
+                    filters={{
+                      priority: selectedPriorityFilter ? selectedPriorityFilter as TaskPriority : undefined,
+                      projectId: selectedProjectFilter || projectId,
+                      userId: selectedUserId, // Usando o estado do filtro de usuário
+                      showCompleted: showCompleted,
+                    }}
+                    onTaskStatusChange={handleKanbanTaskStatusChange}
+                    onGenericTaskUpdate={handleKanbanGenericTaskUpdate}
+                    onUpdateTaskApi={handleUpdateTaskApi}
+                  />
+                )}
+              </div>
             </div>
           </TabsContent>
           <TabsContent value="list" className="mt-6">
@@ -519,6 +522,7 @@ const Tasks = () => {
             </div>
           </TabsContent>
         </Tabs>
+        </div>
       </div>
     </AppLayout>
   );

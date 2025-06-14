@@ -1060,7 +1060,7 @@ const handleTaskFormSuccess = async (newTaskFromForm: Task) => {
         onDragEnd={handleDragEnd}
         autoScroll={true}
       >
-        <div className="kanban-container flex gap-4 h-full w-full overflow-x-auto overflow-y-hidden pb-4" style={{ minWidth: 'calc(280px * 7 + 1rem * 6)' }}>
+        <div className="kanban-container flex gap-4 h-full w-full overflow-x-auto overflow-y-hidden" style={{ minWidth: 'calc(280px * 7 + 1rem * 6)' }}>
           {processedColumnOrder.map(columnId => {
             const columnData = processedColumns[columnId];
             if (!columnData) {

@@ -315,7 +315,7 @@ const TeamsPage = () => {
                         <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
                           <div className="flex items-center">
                             <Users className="h-3.5 w-3.5 mr-1" />
-                            {derivedTeamUsers[team.id]?.length || 0} usuários // Alterado derivedOccupationUsers para derivedTeamUsers
+                            {derivedTeamUsers[team.id]?.length || 0} usuários 
                           </div>
                            {team.created_at && (
                             <div className="flex items-center">
