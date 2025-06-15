@@ -1174,6 +1174,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       case 'em_andamento': return 'Em Andamento';
       case 'em_revisao': return 'Em Revisão';
       case 'concluido': return 'Concluído';
+      case 'aguardando_cliente': return 'Aguardando Cliente';
+      case 'cancelado': return 'Cancelado';
       default: return 'Desconhecido';
     }
   };
@@ -1183,6 +1185,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       case 'concluido': return 'default';
       case 'em_andamento': return 'secondary';
       case 'em_revisao': return 'warning';
+      case 'aguardando_cliente': return 'warning'; // Amarelo/Laranja
+      case 'cancelado': return 'destructive'; // Vermelho claro
       default: return 'outline';
     }
   };
@@ -1193,7 +1197,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       case 'a_fazer': return 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200';
       case 'em_andamento': return 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200';
       case 'em_revisao': return 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-200';
+      case 'aguardando_cliente': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200';
       case 'concluido': return 'bg-green-100 text-green-800 hover:bg-green-200 border-green-200';
+      case 'cancelado': return 'bg-red-100 text-red-800 hover:bg-red-200 border-red-200';
       default: return '';
     }
   };
@@ -1214,7 +1220,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       case 'a_fazer': return 'bg-blue-500';
       case 'em_andamento': return 'bg-amber-500';
       case 'em_revisao': return 'bg-purple-500';
+      case 'aguardando_cliente': return 'bg-yellow-500';
       case 'concluido': return 'bg-green-500';
+      case 'cancelado': return 'bg-red-500';
       default: return 'bg-gray-400';
     }
   };
@@ -1621,7 +1629,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Alterar Status</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {['pendente', 'a_fazer', 'em_andamento', 'em_revisao', 'concluido'].map((status) => (
+                        {['pendente', 'a_fazer', 'em_andamento', 'em_revisao', 'aguardando_cliente', 'concluido', 'cancelado'].map((status) => (
                           <DropdownMenuItem
                             key={status}
                               onClick={() => handleQuickStatusChange(status as TaskStatus)}
