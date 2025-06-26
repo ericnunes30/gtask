@@ -14,8 +14,8 @@ RUN npm install
 COPY . .
 
 # Define um argumento que pode ser passado durante o build.
-# Este será o URL da sua API de backend
-ARG VITE_BACKEND_API_URL
+# AGORA COM VALOR PADRÃO PARA PRODUÇÃO
+ARG VITE_BACKEND_API_URL=https://mgapi.surrealgroup.com.br
 ENV VITE_BACKEND_API_URL=${VITE_BACKEND_API_URL}
 
 # Executa o build do Vite

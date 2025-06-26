@@ -66,6 +66,8 @@ spec:
             secretKeyRef:
               name: manager-group-secret
               key: APP_KEY
+        - name: FRONTEND_URL
+          value: "https://mg.surrealgroup.com.br"
         resources:
           requests:
             memory: "256Mi"
