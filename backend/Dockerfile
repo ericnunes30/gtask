@@ -17,6 +17,9 @@ RUN node ace build --ignore-ts-errors
 # Estágio 2: Production - A imagem final, limpa e otimizada
 FROM node:20-slim
 
+ARG FRONTEND_URL
+ENV FRONTEND_URL=$FRONTEND_URL
+
 WORKDIR /app
 
 # Copia apenas os ficheiros essenciais do estágio 'builder'

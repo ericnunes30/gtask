@@ -1,0 +1,171 @@
+# 1. Namespace: Para organizar todos os recursos da sua aplicação
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manager-group
+---
+# 2. Secret: Para armazenar senhas e chaves de forma segura
+apiVersion: v1
+kind: Secret
+metadata:
+  name: manager-group-secret
+  namespace: manager-group
+type: Opaque
+stringData:
+  # Dados do seu ambiente de produção
+  DB_PASSWORD: "5c36692ddf14070fad66b79690df4d47" # Senha do seu banco de dados
+  APP_KEY: "GGotMrcDH66h1hQjsc8tX6KoEkMWdaxk"     # A sua APP_KEY
+---
+# 3. Deployment do Backend: Define como executar a imagem do seu backend
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: manager-group-backend-deployment
+  namespace: manager-group
+  labels:
+    app: manager-group-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: manager-group-backend
+  template:
+    metadata:
+      labels:
+        app: manager-group-backend
+    spec:
+      containers:
+      - name: backend
+        image: ericnunes30/manager-group-backend:latest # Sua imagem do Docker Hub
+        ports:
+        - containerPort: 3333
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "3333"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: DB_HOST
+          value: "postgres-service.postgres.svc.cluster.local" # Endereço do seu DB no k8s
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_DATABASE
+          value: "manager_group" # Nome do seu DB de produção
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: manager-group-secret
+              key: DB_PASSWORD
+        - name: APP_KEY
+          valueFrom:
+            secretKeyRef:
+              name: manager-group-secret
+              key: APP_KEY
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+# 4. Service do Backend: Expõe o backend para outros serviços dentro do cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: manager-group-backend-service
+  namespace: manager-group
+spec:
+  selector:
+    app: manager-group-backend
+  ports:
+  - protocol: TCP
+    port: 3333
+    targetPort: 3333
+---
+# 5. Deployment do Frontend: Define como executar a imagem do seu frontend
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: manager-group-frontend-deployment
+  namespace: manager-group
+  labels:
+    app: manager-group-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: manager-group-frontend
+  template:
+    metadata:
+      labels:
+        app: manager-group-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ericnunes30/manager-group-frontend:latest # Sua imagem do Docker Hub
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "250m"
+---
+# 6. Service do Frontend: Expõe o frontend para outros serviços dentro do cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: manager-group-frontend-service
+  namespace: manager-group
+spec:
+  selector:
+    app: manager-group-frontend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+---
+# 7. Ingress: Expõe o frontend e o backend para o mundo exterior (internet)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: manager-group-ingress
+  namespace: manager-group
+  annotations:
+    # Suas anotações para HTTPS e Traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - mg.surrealgroup.com.br # O seu domínio
+    secretName: manager-group-tls
+  rules:
+  - host: mg.surrealgroup.com.br # O seu domínio
+    http:
+      paths:
+      # Rota para a API do Backend
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: manager-group-backend-service
+            port:
+              number: 3333
+      # Rota para a aplicação Frontend
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: manager-group-frontend-service
+            port:
+              number: 80
