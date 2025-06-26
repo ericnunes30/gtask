@@ -10,6 +10,9 @@ SOLUCAO_MIME_TYPE.md
 claude.md
 AGENTS.md
 
+update_project.sh
+setup_project.sh
+
 .env
 melhorias_arquitetura.md
 
