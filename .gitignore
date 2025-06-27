@@ -11,6 +11,7 @@ manager-group-deployment.yml
 
 claude.md
 AGENTS.md
+plan_new_feature.md
 
 update_project.sh
 setup_project.sh

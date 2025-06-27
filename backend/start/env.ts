@@ -9,6 +9,7 @@
     |
     */
 
+    import 'dotenv/config'
     import { Env } from '@adonisjs/core/env';
 
     const baseUrl = new URL('../../', import.meta.url);
@@ -26,4 +27,3 @@
         DB_DATABASE: Env.schema.string(),
         FRONTEND_URL: Env.schema.string.optional(),
     });
-    // # sourceMappingURL=env.js.map
