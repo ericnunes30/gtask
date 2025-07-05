@@ -500,8 +500,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         if (isDateOnlyUpdate) {
           // Para atualizações apenas de datas, enviar apenas os campos modificados
           taskData = {
-            startDate: editedTask.start_date ? new Date(editedTask.start_date).toISOString() : undefined,
-            dueDate: editedTask.due_date ? new Date(editedTask.due_date).toISOString() : undefined
+            start_date: editedTask.start_date ? new Date(editedTask.start_date).toISOString() : undefined,
+            due_date: editedTask.due_date ? new Date(editedTask.due_date).toISOString() : undefined
           };
         } else {
           // Para atualizações completas, usar a função prepareTaskDataForApi
@@ -1057,10 +1057,10 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       if (isValidDate(updatedFields.start_date)) {
         // Se uma nova data válida foi fornecida, usar essa data
         const startDate = new Date(updatedFields.start_date);
-        taskData.startDate = startDate.toISOString();
+        taskData.start_date = startDate.toISOString();
       } else {
         // Se a data foi definida como null ou string vazia, enviar null
-        taskData.startDate = null;
+        taskData.start_date = null;
       }
     }
 
@@ -1069,10 +1069,10 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       if (isValidDate(updatedFields.due_date)) {
         // Se uma nova data válida foi fornecida, usar essa data
         const dueDate = new Date(updatedFields.due_date);
-        taskData.dueDate = dueDate.toISOString();
+        taskData.due_date = dueDate.toISOString();
       } else {
         // Se a data foi definida como null ou string vazia, enviar null
-        taskData.dueDate = null;
+        taskData.due_date = null;
       }
     }
 

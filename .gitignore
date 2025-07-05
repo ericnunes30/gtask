@@ -8,10 +8,16 @@ SOLUCAO_ERRO_MIME_TYPE.md
 SOLUCAO_MIME_TYPE.md
 
 manager-group-deployment.yml
-
+LOG_DESENVOLVIMENTO.md
+PLAN_OAUTH.md
+recurring-tasks-decisions.md
+RECORRENCIA_PLANO.md
+backend_old
 claude.md
 AGENTS.md
 plan_new_feature.md
+docs_logs
+check_event
 
 update_project.sh
 setup_project.sh

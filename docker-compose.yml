@@ -25,7 +25,7 @@ services:
       - "3333:3333"
     environment:
       # --- Variáveis do seu .env ---
-      NODE_ENV: development
+      NODE_ENV: production
       TZ: UTC
       HOST: '0.0.0.0' # '0.0.0.0' para ser acessível externamente ao container
       PORT: 3333
@@ -53,5 +53,45 @@ services:
     depends_on:
       - backend
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: manager-group-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  event-relay-service:
+    container_name: manager-group-event-relay
+    build:
+      context: ./event-relay-service
+      dockerfile: Dockerfile
+    environment:
+      - DB_HOST=db
+    env_file:
+      - ./event-relay-service/.env
+    depends_on:
+      - db
+      - rabbitmq
+
+  scheduler-service:
+    container_name: manager-group-scheduler
+    build:
+      context: ./scheduler-service
+      dockerfile: Dockerfile
+    environment:
+      - DB_HOST=db
+      - BACKEND_API_URL=http://backend:3333
+    env_file:
+      - ./scheduler-service/.env
+    depends_on:
+      - backend
+      - rabbitmq
+
 volumes:
   pg_data:
+  rabbitmq_data:
