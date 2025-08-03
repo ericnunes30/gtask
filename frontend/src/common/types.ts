@@ -287,6 +287,58 @@ export interface AddUserToTeamRequest { // Renomeado de AddUserToOccupationReque
 }
 
 // =====================================================
+// RECURRING TASK INTERFACES
+// =====================================================
+
+export type RecurringTaskScheduleType = 'interval' | 'cron';
+
+export interface RecurringTaskTemplateData {
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  assignee_ids: number[];
+  occupations?: number[];
+}
+
+export interface RecurringTask {
+  id: number;
+  name: string;
+  schedule_type: RecurringTaskScheduleType;
+  frequency_interval: string | null;
+  frequency_cron: string | null;
+  next_due_date: string;
+  is_active: boolean;
+  userId: number;
+  projectId: number;
+  templateData: RecurringTaskTemplateData;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateRecurringTaskRequest {
+  name: string;
+  schedule_type: RecurringTaskScheduleType;
+  frequency_interval?: string | null;
+  frequency_cron?: string | null;
+  next_due_date: string;
+  is_active: boolean;
+  userId: number;
+  projectId: number;
+  templateData: RecurringTaskTemplateData;
+}
+
+export interface UpdateRecurringTaskRequest {
+  name?: string;
+  is_active?: boolean;
+  schedule_type?: RecurringTaskScheduleType;
+  frequency_interval?: string | null;
+  frequency_cron?: string | null;
+  next_due_date?: string;
+  projectId?: number;
+  templateData?: Partial<RecurringTaskTemplateData>;
+}
+
+// =====================================================
 // UTILITY INTERFACES
 // =====================================================
 

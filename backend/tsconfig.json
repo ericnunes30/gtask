@@ -3,6 +3,11 @@
   "compilerOptions": {
     "rootDir": "./",
     "outDir": "./build",
-    "moduleResolution": "NodeNext"
+    "moduleResolution": "NodeNext",
+    "paths": {
+      "#scripts/*": [
+        "./app/scripts/*.js"
+      ]
+    }
   }
 }

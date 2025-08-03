@@ -34,6 +34,11 @@ node ace db:seed
 node ace serve
 ```
 
+6. (Opcional) Inicie o worker de agendamento em um terminal separado:
+```
+node ace scheduler:work
+```
+
 ## Autenticação
 
 A API utiliza autenticação JWT. Para acessar as rotas protegidas, é necessário obter um token de acesso através da rota de login.
@@ -155,6 +160,48 @@ Content-Type: application/json
 - true (ativo)
 - false (inativo)
 
+### Tarefas Recorrentes
+| Método | Rota | Descrição | Autenticação | Cabeçalhos |
+|--------|------|-----------|--------------|------------|
+| GET | `/recurring-task` | Listar tarefas recorrentes | Sim | Authorization: Bearer TOKEN |
+| POST | `/recurring-task` | Criar tarefa recorrente | Sim | Authorization: Bearer TOKEN<br>Content-Type: application/json |
+| GET | `/recurring-task/:id` | Obter tarefa recorrente | Sim | Authorization: Bearer TOKEN |
+| PUT/PATCH | `/recurring-task/:id` | Atualizar tarefa recorrente | Sim | Authorization: Bearer TOKEN<br>Content-Type: application/json |
+| DELETE | `/recurring-task/:id` | Excluir tarefa recorrente | Sim | Authorization: Bearer TOKEN |
+
+**Corpo da Requisição (POST):**
+```
+{
+  "name": "Nome da Regra de Recorrência",
+  "schedule_type": "interval",
+  "frequency_interval": "7 days",
+  "frequency_cron": null,
+  "next_due_date": "2025-07-01T09:00:00.000-03:00",
+  "is_active": true,
+  "userId": 1,
+  "projectId": 1,
+  "templateData": {
+    "title": "Template do Título da Tarefa",
+    "description": "Template da descrição",
+    "priority": "media",
+    "assignee_ids": [1, 2],
+    "occupations": [3, 4]
+  }
+}
+```
+
+**Corpo da Requisição (PUT/PATCH):**
+```
+{
+  "name": "Novo nome da Regra",
+  "is_active": false
+}
+```
+
+**Valores para o campo schedule_type:**
+- interval
+- cron
+
 ### Tarefas
 
 | Método | Rota | Descrição | Autenticação | Cabeçalhos |
@@ -211,6 +258,49 @@ Content-Type: application/json
 - em_andamento
 - em_revisao
 - concluido
+
+### Tarefas Recorrentes
+
+| Método | Rota | Descrição | Autenticação | Cabeçalhos |
+|--------|------|-----------|--------------|------------|
+| GET | `/recurring-task` | Listar tarefas recorrentes | Sim | Authorization: Bearer TOKEN |
+| POST | `/recurring-task` | Criar tarefa recorrente | Sim | Authorization: Bearer TOKEN<br>Content-Type: application/json |
+| GET | `/recurring-task/:id` | Obter tarefa recorrente | Sim | Authorization: Bearer TOKEN |
+| PUT/PATCH | `/recurring-task/:id` | Atualizar tarefa recorrente | Sim | Authorization: Bearer TOKEN<br>Content-Type: application/json |
+| DELETE | `/recurring-task/:id` | Excluir tarefa recorrente | Sim | Authorization: Bearer TOKEN |
+
+**Corpo da Requisição (POST):**
+```
+{
+  "name": "Nome da Regra de Recorrência",
+  "schedule_type": "interval",
+  "frequency_interval": "7 days",
+  "frequency_cron": null,
+  "next_due_date": "2025-07-01T09:00:00.000-03:00",
+  "is_active": true,
+  "userId": 1,
+  "projectId": 1,
+  "templateData": {
+    "title": "Template do Título da Tarefa",
+    "description": "Template da descrição",
+    "priority": "media",
+    "assignee_ids": [1, 2],
+    "occupations": [3, 4]
+  }
+}
+```
+
+**Corpo da Requisição (PUT/PATCH):**
+```
+{
+  "name": "Novo nome da Regra",
+  "is_active": false
+}
+```
+
+**Valores para o campo schedule_type:**
+- interval
+- cron
 
 ### Comentários
 

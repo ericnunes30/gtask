@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 // ... outros imports
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ArrowLeft, AlertCircle } from 'lucide-react';
+import { PlusCircle, ArrowLeft, AlertCircle, Repeat } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
 import { KanbanTask } from '@/components/kanban/kanbanTypes';
@@ -31,9 +31,11 @@ import { Switch } from "@/components/ui/switch";
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaskFormRef } from '@/components/forms/TaskForm';
+import { RecurringTasksList } from '@/components/recurring/RecurringTasksList';
 
 const Tasks = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRecurringTasksDialogOpen, setIsRecurringTasksDialogOpen] = useState(false);
   const [taskFormKey, setTaskFormKey] = useState(0);
   const successCallbackInstanceCounter = useRef(0);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -298,6 +300,19 @@ const Tasks = () => {
 
   return (
     <AppLayout>
+      {/* Modal para Tarefas Recorrentes */}
+      <Dialog open={isRecurringTasksDialogOpen} onOpenChange={setIsRecurringTasksDialogOpen}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Tarefas Recorrentes</DialogTitle>
+            <DialogDescription>
+              Crie, edite e visualize todas as suas regras de recorrência.
+            </DialogDescription>
+          </DialogHeader>
+          <RecurringTasksList />
+        </DialogContent>
+      </Dialog>
+
       <div className="-m-4 md:-m-6">
         <div className="flex flex-col gap-6 p-0">
         {(error || isError) && (
@@ -348,16 +363,24 @@ const Tasks = () => {
               </div>
             )}
           </div>
-          {permissions.canCreateTasks && !permissions.isMember && (
-            <Button className="gap-1" disabled={isLoading} onClick={() => {
-              const newKey = taskFormKey + 1;
-              setTaskFormKey(newKey);
-              setIsDialogOpen(true);
-            }}>
-              <PlusCircle className="h-4 w-4" />
-              Nova Tarefa
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {permissions.canCreateTasks && !permissions.isMember && (
+              <Button variant="outline" className="gap-1" disabled={isLoading} onClick={() => setIsRecurringTasksDialogOpen(true)}>
+                <Repeat className="h-4 w-4" />
+                Tarefas Recorrentes
+              </Button>
+            )}
+            {permissions.canCreateTasks && !permissions.isMember && (
+              <Button className="gap-1" disabled={isLoading} onClick={() => {
+                const newKey = taskFormKey + 1;
+                setTaskFormKey(newKey);
+                setIsDialogOpen(true);
+              }}>
+                <PlusCircle className="h-4 w-4" />
+                Nova Tarefa
+              </Button>
+            )}
+          </div>
           {isDialogOpen && (
             <Dialog key={`dialog-${taskFormKey}`} open={isDialogOpen} onOpenChange={(open) => {
               // Se estiver fechando o diálogo, podemos incrementar o contador para a próxima vez que handleTaskFormSuccess for definido

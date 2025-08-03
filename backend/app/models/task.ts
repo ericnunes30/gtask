@@ -7,6 +7,7 @@ import User from '#models/user' // ManyToMany
 import Project from '#models/project' // belongsTo
 import Occupation from '#models/occupation' // ManyToMany
 import Comment from '#models/comment' // Adicionado Comment
+import RecurringTask from '#models/recurring_task'
 
 export enum PriorityLevel {
   Low = 'baixa',
@@ -56,6 +57,9 @@ export default class Task extends BaseModel {
   @column({ columnName: 'project_id' })
   declare project_id: number
 
+  @column({ columnName: 'recurring_task_id' })
+  declare recurring_task_id: number | null
+
   // Método de serialização personalizado para garantir que o campo timer seja incluído
   toJSON() {
     const json = super.toJSON()
@@ -69,6 +73,11 @@ export default class Task extends BaseModel {
     foreignKey: 'project_id'
   })
   declare project: BelongsTo<typeof Project>
+
+  @belongsTo(() => RecurringTask, {
+    foreignKey: 'recurring_task_id',
+  })
+  declare recurringTask: BelongsTo<typeof RecurringTask>
 
   @manyToMany(() => User, {
     pivotTable: 'task_user'

@@ -8,6 +8,7 @@ import * as tasksHooks from '../services/backend/tasks';
 import * as usersHooks from '../services/backend/users';
 import * as profileHooks from '../services/backend/profile';
 import * as occupationsHooks from '../services/backend/occupations';
+import * as recurringTasksHooks from '../services/backend/recurring-tasks';
 
 export const useBackendServices = () => {
   return {
@@ -20,5 +21,6 @@ export const useBackendServices = () => {
     profile: profileHooks,
     users: usersHooks,
     occupations: occupationsHooks,
+    recurringTasks: recurringTasksHooks,
   };
 };

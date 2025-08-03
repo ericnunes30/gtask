@@ -9,16 +9,9 @@ import OccupationsController from '#controllers/occupation_controller'
 import ProjectsController from '#controllers/project_controller'
 import RolesController from '#controllers/role_controller'
 import SessionController from '#controllers/session_controller'
+import RecurringTasksController from '#controllers/recurring_task_controller'
 
 router.post('session', [SessionController, 'store'])
-
-// Definir rotas de usuário manualmente para suportar PATCH
-router.get('user', [UsersController, 'index'])
-router.post('user', [UsersController, 'store'])
-router.get('user/:id', [UsersController, 'show'])
-router.put('user/:id', [UsersController, 'update']) // Manter PUT para compatibilidade
-router.patch('user/:id', [UsersController, 'update']) // Adicionar PATCH
-router.delete('user/:id', [UsersController, 'destroy'])
 
 // Linha removida, a rota será definida dentro do grupo abaixo
 router.group(() => {
@@ -33,4 +26,6 @@ router.group(() => {
     router.resource('occupation', OccupationsController).apiOnly()
     router.resource('project', ProjectsController).apiOnly()
     router.resource('role', RolesController).apiOnly()
+    router.resource('recurring-task', RecurringTasksController).apiOnly()
+    router.resource('user', UsersController).apiOnly()
 }).use(middleware.auth())

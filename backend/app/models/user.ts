@@ -8,11 +8,13 @@ import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 
 import type { HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
 
+// models
 import Role from '#models/role'
 import Occupation from '#models/occupation'
 import Project from '#models/project'
 import Task from '#models/task'
 import Comment from '#models/comment'
+import RecurringTask from '#models/recurring_task'
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   uids: ['email'],
@@ -51,6 +53,9 @@ export default class User extends compose(BaseModel, AuthFinder) {
     pivotTable: 'task_user'
   })
   declare tasks: ManyToMany<typeof Task>
+
+  @hasMany(() => RecurringTask)
+  declare recurringTasks: HasMany<typeof RecurringTask>
 
   @hasMany(() => Comment, {
     foreignKey: 'userId'
