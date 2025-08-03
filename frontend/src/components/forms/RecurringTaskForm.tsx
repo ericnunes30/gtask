@@ -40,6 +40,7 @@ import {
   RecurringTaskScheduleType
 } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
+import { useAuth } from '@/contexts/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Schema de validação para o formulário
@@ -95,6 +96,7 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
   const { recurringTasks, projects, users: usersService, occupations: occupationsService } = useBackendServices();
   const { mutate: createMutate, isPending: isCreating } = recurringTasks.useCreateRecurringTask();
   const { mutate: updateMutate, isPending: isUpdating } = recurringTasks.useUpdateRecurringTask();
+  const { user: currentUser } = useAuth();
   
   const { data: projectsData = [] } = projects.useGetProjects();
   const { data: usersData = [] } = usersService.useGetUsers();
@@ -331,7 +333,7 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
         schedule_type: scheduleTypeForApi,
         frequency_interval: frequencyIntervalForApi,
         frequency_cron: frequencyCronForApi,
-        userId: 1,
+        userId: currentUser?.id || parseInt(localStorage.getItem('user_id') || '1'),
     };
 
     if (recurringTaskId) {
