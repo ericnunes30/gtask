@@ -427,7 +427,7 @@ const TeamsPage = () => {
                           Usuários na Equipe
                         </h4>
                         <span className="text-xs text-muted-foreground">
-                          {derivedTeamUsers[team.id]?.length || 0} usuários // Alterado derivedOccupationUsers para derivedTeamUsers
+                          {derivedTeamUsers[team.id]?.length || 0} usuários 
                         </span>
                       </div>
 
