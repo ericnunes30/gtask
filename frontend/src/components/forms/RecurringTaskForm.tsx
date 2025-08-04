@@ -159,7 +159,7 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
             templateData: {
                 ...initialData.templateData,
                 assignee_ids: initialData.templateData.assignee_ids || [],
-                occupation_ids: initialData.templateData.occupations || [],
+                occupation_ids: initialData.templateData.occupations?.map((occ: any) => typeof occ === 'object' ? occ.id : occ) || [],
             }
         };
     }
