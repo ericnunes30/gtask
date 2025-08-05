@@ -508,7 +508,7 @@ const Projects = () => {
             .filter((project) => {
               const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                     project.description.toLowerCase().includes(searchTerm.toLowerCase());
-              const matchesInactiveFilter = showInactiveProjects || project.status; // Se showInactiveProjects for true, mostra todos; caso contrário, só mostra projetos ativos (status true)
+              const matchesInactiveFilter = showInactiveProjects ? !project.status : project.status; // Se showInactiveProjects for true, mostra apenas inativos; caso contrário, só mostra projetos ativos
               return matchesSearch && matchesInactiveFilter;
             })
             .sort((a, b) => a.title.localeCompare(b.title)) // Ordenar por título alfabeticamente
