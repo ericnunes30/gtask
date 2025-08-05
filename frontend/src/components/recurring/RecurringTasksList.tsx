@@ -173,7 +173,9 @@ export function RecurringTasksList() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Todos os projetos</SelectItem>
-                        {projects.map((project) => (
+                        {projects
+                            .sort((a, b) => a.title.localeCompare(b.title))
+                            .map((project) => (
                             <SelectItem key={project.id} value={String(project.id)}>
                                 {project.title}
                             </SelectItem>
