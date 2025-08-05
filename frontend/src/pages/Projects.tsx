@@ -499,15 +499,7 @@ const Projects = () => {
               project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
               project.description.toLowerCase().includes(searchTerm.toLowerCase())
             )
-            .sort((a, b) => {
-              const priorityOrder: Record<ProjectPriority, number> = {
-                'urgente': 4,
-                'alta': 3,
-                'media': 2,
-                'baixa': 1
-              };
-              return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
-            })
+            .sort((a, b) => a.title.localeCompare(b.title)) // Ordenar por título alfabeticamente
             .map((project) => {
               // Obter membros do projeto (usando a propriedade users da API)
               const members = getProjectMembers((project as UIProject).members || project.users?.map(u => typeof u === 'object' ? u.id : u) || []);
