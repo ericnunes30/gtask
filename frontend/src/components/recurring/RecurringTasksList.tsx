@@ -10,6 +10,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -40,11 +47,13 @@ export function RecurringTasksList() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<RecurringTask | null>(null);
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<number | null>(null);
   
   const permissions = usePermissions();
-  const { recurringTasks: recurringTasksService } = useBackendServices();
+  const { recurringTasks: recurringTasksService, projects: projectsService } = useBackendServices();
   
   const { data: rawRecurringTasks = [], isLoading, isError } = recurringTasksService.useGetRecurringTasks();
+  const { data: projects = [] } = projectsService.useGetProjects();
   const { mutateAsync: deleteRecurringTaskMutation } = recurringTasksService.useDeleteRecurringTask();
 
   const getScheduleDescription = (task: RecurringTask) => {
@@ -81,9 +90,22 @@ export function RecurringTasksList() {
     return 'N/A';
   };
 
-  // Normalize API data (camelCase) to frontend format (snake_case)
+  const getProjectName = (projectId: number) => {
+    const project = projects.find(p => p.id === projectId);
+    return project ? project.title : 'Projeto não encontrado';
+  };
+
+  const handleProjectFilterChange = (value: string) => {
+    if (value === 'all') {
+      setSelectedProjectFilter(null);
+    } else {
+      setSelectedProjectFilter(Number(value));
+    }
+  };
+
+  // Normalize API data (camelCase) to frontend format (snake_case) and apply filters
   const recurringTasks = useMemo(() => {
-    return (rawRecurringTasks as any[]).map((task) => ({
+    const normalizedTasks = (rawRecurringTasks as any[]).map((task) => ({
       ...task,
       is_active: task.isActive ?? task.is_active,
       next_due_date: task.nextDueDate ?? task.next_due_date,
@@ -91,7 +113,14 @@ export function RecurringTasksList() {
       frequency_interval: task.frequencyInterval ?? task.frequency_interval,
       frequency_cron: task.frequencyCron ?? task.frequency_cron,
     }));
-  }, [rawRecurringTasks]);
+
+    // Apply project filter
+    if (selectedProjectFilter !== null) {
+      return normalizedTasks.filter(task => task.projectId === selectedProjectFilter);
+    }
+
+    return normalizedTasks;
+  }, [rawRecurringTasks, selectedProjectFilter]);
 
   const handleFormSuccess = () => {
     setIsCreateDialogOpen(false);
@@ -134,14 +163,31 @@ export function RecurringTasksList() {
     <div className="flex flex-col gap-4 pt-4">
         <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold">Regras de Recorrência</h3>
-            {!permissions.isMember && (
-                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1">
-                    <PlusCircle className="h-4 w-4" />
-                    Nova Regra
-                    </Button>
-                </DialogTrigger>
+            <div className="flex items-center gap-2">
+                <Select
+                    value={selectedProjectFilter ? String(selectedProjectFilter) : 'all'}
+                    onValueChange={handleProjectFilterChange}
+                >
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Todos os projetos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos os projetos</SelectItem>
+                        {projects.map((project) => (
+                            <SelectItem key={project.id} value={String(project.id)}>
+                                {project.title}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                {!permissions.isMember && (
+                    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="sm" className="gap-1">
+                        <PlusCircle className="h-4 w-4" />
+                        Nova Regra
+                        </Button>
+                    </DialogTrigger>
                 <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                     <DialogTitle>Criar Nova Regra de Recorrência</DialogTitle>
@@ -151,7 +197,8 @@ export function RecurringTasksList() {
                     </div>
                 </DialogContent>
                 </Dialog>
-            )}
+                )}
+            </div>
         </div>
 
 
@@ -167,6 +214,7 @@ export function RecurringTasksList() {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Nome</TableHead>
+                        <TableHead>Projeto</TableHead>
                         <TableHead>Frequência</TableHead>
                         <TableHead>Próxima Execução</TableHead>
                         <TableHead>Status</TableHead>
@@ -178,6 +226,7 @@ export function RecurringTasksList() {
                     Array.from({ length: 3 }).map((_, index) => (
                         <TableRow key={index}>
                             <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                             <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
@@ -188,6 +237,7 @@ export function RecurringTasksList() {
                     recurringTasks.map((task) => (
                     <TableRow key={task.id}>
                         <TableCell className="font-medium">{task.name}</TableCell>
+                        <TableCell className="text-sm">{getProjectName(task.projectId)}</TableCell>
                         <TableCell>{getScheduleDescription(task)}</TableCell>
                         <TableCell>{task.next_due_date ? format(new Date(task.next_due_date), 'PPP p', { locale: ptBR }) : 'N/A'}</TableCell>
                         <TableCell>
@@ -221,7 +271,7 @@ export function RecurringTasksList() {
                     ))
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
+                        <TableCell colSpan={6} className="h-24 text-center">
                             Nenhuma regra de recorrência encontrada.
                         </TableCell>
                     </TableRow>
