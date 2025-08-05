@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 // ... outros imports
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ArrowLeft, AlertCircle, Repeat } from 'lucide-react';
+import { PlusCircle, ArrowLeft, AlertCircle, Repeat, RefreshCw } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
 import { KanbanTask } from '@/components/kanban/kanbanTypes';
@@ -55,6 +55,7 @@ const Tasks = () => {
     const savedShowCompleted = localStorage.getItem('showCompletedTasksPage');
     return savedShowCompleted === 'true';
   });
+  const [refreshing, setRefreshing] = useState(false);
   const tasksListRef = useRef<{ fetchTasks: () => Promise<void> }>(null);
   const taskFormRef = useRef<TaskFormRef>(null);
   const location = useLocation();
@@ -249,6 +250,12 @@ const Tasks = () => {
   const handleShowCompletedChange = (checked: boolean) => {
     setShowCompleted(checked);
     localStorage.setItem('showCompletedTasksPage', String(checked));
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
   };
 
   // Memoized filtered tasks to avoid re-calculating on every render
@@ -446,10 +453,22 @@ const Tasks = () => {
         </div>
         <Tabs defaultValue="kanban" className="w-full" onValueChange={handleTabChange}>
           <div className="flex justify-between items-center mb-4 mx-[30px]">
-            <TabsList>
-              <TabsTrigger value="kanban">Kanban</TabsTrigger>
-              <TabsTrigger value="list">Lista</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center gap-2">
+              <TabsList>
+                <TabsTrigger value="kanban">Kanban</TabsTrigger>
+                <TabsTrigger value="list">Lista</TabsTrigger>
+              </TabsList>
+              <Button
+                variant="outline"
+                size="icon"
+                title="Atualizar lista"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className={refreshing ? "animate-spin" : ""}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
             <div className="flex items-center gap-2 flex-wrap"> {/* Adicionado flex-wrap */}
               <Select
                 value={selectedPriorityFilter || 'all'}

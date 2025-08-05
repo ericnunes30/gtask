@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PlusCircle, MoreHorizontal, Users, Calendar, ArrowRight, ClipboardList, AlertCircle, Edit, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Users, Calendar, ArrowRight, ClipboardList, AlertCircle, Edit, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -80,6 +80,7 @@ const Projects = () => {
   const projects = data ?? [];
   const [searchTerm, setSearchTerm] = useState(''); // Adicionar estado para o termo de busca
   const [showInactiveProjects, setShowInactiveProjects] = useState(false); // Adicionar estado para o filtro de projetos inativos
+  const [refreshing, setRefreshing] = useState(false);
 
   // Efeito para verificar o estado das tarefas após o carregamento
   useEffect(() => {
@@ -148,6 +149,12 @@ const Projects = () => {
   const handleAddProject = async () => {
     // Fechar o diálogo e recarregar os projetos
     setIsDialogOpen(false);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: projectsService.getProjectsQueryKey() });
+    setRefreshing(false);
   };
 
   const handleEditProject = async () => {
