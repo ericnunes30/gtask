@@ -188,8 +188,17 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
           bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
           break;
         case 'status':
-          aValue = getStatusLabel(a.status).toLowerCase();
-          bValue = getStatusLabel(b.status).toLowerCase();
+          const statusOrder = {
+            'pendente': 0,
+            'a_fazer': 1,
+            'em_andamento': 2,
+            'em_revisao': 3,
+            'aguardando_cliente': 4,
+            'concluido': 5,
+            'cancelado': 6
+          };
+          aValue = statusOrder[a.status] ?? 99;
+          bValue = statusOrder[b.status] ?? 99;
           break;
         case 'date':
           aValue = a.due_date ? new Date(a.due_date).getTime() : 0;
@@ -236,8 +245,17 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
           bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
           break;
         case 'status':
-          aValue = getStatusLabel(a.status).toLowerCase();
-          bValue = getStatusLabel(b.status).toLowerCase();
+          const statusOrder = {
+            'pendente': 0,
+            'a_fazer': 1,
+            'em_andamento': 2,
+            'em_revisao': 3,
+            'aguardando_cliente': 4,
+            'concluido': 5,
+            'cancelado': 6
+          };
+          aValue = statusOrder[a.status] ?? 99;
+          bValue = statusOrder[b.status] ?? 99;
           break;
         case 'date':
           aValue = a.due_date ? new Date(a.due_date).getTime() : 0;
