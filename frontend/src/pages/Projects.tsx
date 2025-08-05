@@ -77,6 +77,7 @@ const Projects = () => {
 
   const { data, isLoading, isError } = projectsService.useGetProjects();
   const projects = data ?? [];
+  const [searchTerm, setSearchTerm] = useState(''); // Adicionar estado para o termo de busca
 
   // Efeito para verificar o estado das tarefas após o carregamento
   useEffect(() => {
@@ -410,6 +411,13 @@ const Projects = () => {
             <p className="text-muted-foreground">
               Gerencie seus projetos e acompanhe o progresso.
             </p>
+            <Input
+              type="text"
+              placeholder="Buscar projetos..."
+              className="mt-4 max-w-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
           <div className="flex gap-2">
             {!permissions.isMember ? (
@@ -487,6 +495,10 @@ const Projects = () => {
             ))
           ) : projects.length > 0 ? (
             projects
+            .filter((project) =>
+              project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              project.description.toLowerCase().includes(searchTerm.toLowerCase())
+            )
             .sort((a, b) => {
               const priorityOrder: Record<ProjectPriority, number> = {
                 'urgente': 4,
