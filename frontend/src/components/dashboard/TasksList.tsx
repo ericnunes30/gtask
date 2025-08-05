@@ -146,8 +146,8 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   const { user } = useAuth();
   const permissions = usePermissions();
 
-  // Função para lidar com ordenação
-  const handleSort = (field: string) => {
+  // Função para lidar com ordenação - memoizada para evitar re-renders
+  const handleSort = useCallback((field: string) => {
     if (sortField === field) {
       const newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
       setSortDirection(newDirection);
@@ -155,7 +155,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       setSortField(field);
       setSortDirection('asc');
     }
-  };
+  }, [sortField, sortDirection]);
 
   // Função memoizada para ordenar tarefas - otimizada para evitar recálculos desnecessários
   const sortedTasks = useMemo(() => {
@@ -578,8 +578,8 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
 
   // --- Handlers de Interação (Eventos) ---
 
-  // Manipula a mudança de status via Dropdown
-  const handleStatusChange = async (taskId: number, newStatus: TaskStatus) => {
+  // Manipula a mudança de status via Dropdown - memoizado para performance
+  const handleStatusChange = useCallback(async (taskId: number, newStatus: TaskStatus) => {
     const currentTask = tasks.find(t => t.id === taskId);
     if (!currentTask) {
       toast.error('Tarefa não encontrada para atualizar status.');
@@ -609,10 +609,10 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       toast.error('Erro ao atualizar status. Revertendo alteração.');
       setTasks(originalTasks); // Reverte em caso de erro
     }
-  };
+  }, [tasks, updateTask, props.onTasksUpdated]);
 
-  // Manipula a mudança de prioridade via Dropdown
-  const handlePriorityChange = async (taskId: number, newPriority: TaskPriority) => {
+  // Manipula a mudança de prioridade via Dropdown - memoizado para performance
+  const handlePriorityChange = useCallback(async (taskId: number, newPriority: TaskPriority) => {
      const currentTask = tasks.find(t => t.id === taskId);
     if (!currentTask) {
       toast.error('Tarefa não encontrada para atualizar prioridade.');
@@ -642,10 +642,10 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       toast.error('Erro ao atualizar prioridade. Revertendo alteração.');
       setTasks(originalTasks); // Reverte em caso de erro
     }
-  };
+  }, [tasks, updateTask, props.onTasksUpdated]);
 
-  // Manipula a mudança de data de vencimento via Popover/Calendar
-  const handleDueDateChange = async (taskId: number, newDate: Date | undefined) => {
+  // Manipula a mudança de data de vencimento via Popover/Calendar - memoizado para performance
+  const handleDueDateChange = useCallback(async (taskId: number, newDate: Date | undefined) => {
     const currentTask = tasks.find(t => t.id === taskId);
     if (!currentTask) {
       toast.error('Tarefa não encontrada para atualizar data.');
@@ -678,10 +678,10 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       toast.error('Erro ao atualizar data. Revertendo alteração.');
       setTasks(originalTasks); // Reverte
     }
-  };
+  }, [tasks, updateTask, props.onTasksUpdated]);
 
-  // Manipula a atribuição de um usuário via Popover
-  const handleAssignUser = async (taskId: number, userId: number) => {
+  // Manipula a atribuição de um usuário via Popover - memoizado para performance
+  const handleAssignUser = useCallback(async (taskId: number, userId: number) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
@@ -726,10 +726,10 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       toast.error('Erro ao atribuir usuário. Revertendo alteração.');
       setTasks(originalTasks); // Reverte
     }
-  };
+  }, [tasks, users, updateTask, props.onTasksUpdated]);
 
-  // Manipula a remoção de um usuário via Popover
-  const handleRemoveUser = async (taskId: number, userId: number) => {
+  // Manipula a remoção de um usuário via Popover - memoizado para performance
+  const handleRemoveUser = useCallback(async (taskId: number, userId: number) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
@@ -763,19 +763,19 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       toast.error('Erro ao remover usuário. Revertendo alteração.');
       setTasks(originalTasks); // Reverte
     }
-  };
+  }, [tasks, users, updateTask, props.onTasksUpdated]);
 
-  // Abre o modal de detalhes da tarefa
-  const handleTaskClick = (taskId: number) => {
+  // Abre o modal de detalhes da tarefa - memoizado para performance
+  const handleTaskClick = useCallback((taskId: number) => {
     setSelectedTaskId(taskId);
     setIsTaskModalOpen(true);
-  };
+  }, []);
 
-  // Fecha o modal de detalhes da tarefa
-  const handleTaskModalClose = () => {
+  // Fecha o modal de detalhes da tarefa - memoizado para performance
+  const handleTaskModalClose = useCallback(() => {
     setIsTaskModalOpen(false);
     setSelectedTaskId(null);
-  };
+  }, []);
 
   // Chamado quando uma tarefa é atualizada dentro do modal
   const handleTaskUpdated = async () => {
