@@ -26,6 +26,7 @@ import { Project, Task, TaskStatus, User, TaskPriority, UpdateTaskRequest } from
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 import { Switch } from "@/components/ui/switch";
 import { usePermissions } from '@/hooks/usePermissions';
@@ -48,6 +49,7 @@ const Tasks = () => {
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null); // NOVO ESTADO PARA FILTRO DE USUÁRIO
   const [allUsers, setAllUsers] = useState<User[]>([]); // NOVO ESTADO PARA TODOS OS USUÁRIOS
+  const [searchTerm, setSearchTerm] = useState(''); // NOVO ESTADO PARA BUSCA DE TAREFAS
   const [viewMode, setViewMode] = useState<'status' | 'date'>('status');
   const [showCompleted, setShowCompleted] = useState(() => {
     const savedShowCompleted = localStorage.getItem('showCompletedTasksPage');
@@ -253,6 +255,13 @@ const Tasks = () => {
   const filteredTasks = useMemo(() => {
     let tasksToFilter = [...rawTasks];
 
+    // Apply search filter
+    if (searchTerm.trim()) {
+      tasksToFilter = tasksToFilter.filter(task =>
+        task.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
     // Apply project filter
     if (selectedProjectFilter !== null) {
       tasksToFilter = tasksToFilter.filter(task => {
@@ -296,7 +305,7 @@ const Tasks = () => {
     }
 
     return tasksToFilter;
-  }, [rawTasks, selectedProjectFilter, selectedPriorityFilter, selectedUserId, showCompleted, isUserMember, currentUserIdAuth]);
+  }, [rawTasks, searchTerm, selectedProjectFilter, selectedPriorityFilter, selectedUserId, showCompleted, isUserMember, currentUserIdAuth]);
 
   return (
     <AppLayout>
@@ -363,7 +372,14 @@ const Tasks = () => {
               </div>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <Input
+              type="text"
+              placeholder="Buscar tarefas..."
+              className="w-72"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
             {permissions.canCreateTasks && !permissions.isMember && (
               <Button variant="outline" className="gap-1" disabled={isLoading} onClick={() => setIsRecurringTasksDialogOpen(true)}>
                 <Repeat className="h-4 w-4" />
@@ -544,6 +560,7 @@ const Tasks = () => {
                 viewMode={viewMode}
                 forceUserFilter={isUserMember} // Mantendo a lógica de forçar filtro de usuário para membros
                 showCompleted={showCompleted}
+                showProject={true} // Forçar exibição da coluna de projeto
                 onTasksUpdated={async () => { await refetch(); }} // Callback para atualizar a lista principal
               />
             </div>

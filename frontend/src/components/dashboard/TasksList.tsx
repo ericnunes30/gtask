@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useImperativeHandle, forwardRef, useEffect } from 'react';
+import React, { useState, useCallback, useImperativeHandle, forwardRef, useEffect, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table"; // Componentes da tabela Shadcn/ui
 import { Badge } from "@/components/ui/badge"; // Componente Badge Shadcn/ui
 import { Button } from "@/components/ui/button"; // Componente Button Shadcn/ui
-import { Calendar, User, AlertCircle, Edit, Trash2, MoreHorizontal, Clock, Eye } from 'lucide-react'; // Ícones Lucide
+import { Calendar, User, AlertCircle, Edit, Trash2, MoreHorizontal, Clock, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'; // Ícones Lucide
 import { Link } from 'react-router-dom'; // Para links (se necessário, não usado diretamente na lista)
 import TaskDetailsModal from "@/components/tasks/TaskDetailsModal"; // Modal de detalhes da tarefa (assumindo que existe)
 import {
@@ -116,6 +116,7 @@ interface TasksListProps {
   onTasksUpdated?: () => Promise<void>; // Callback para notificar o componente pai sobre atualizações
   forceUserFilter?: boolean; // Força a filtragem pelo ID do usuário logado, mesmo que não seja membro
   showCompleted?: boolean; // Adicionado para controlar a exibição de tarefas concluídas
+  showProject?: boolean; // Controla a exibição da coluna de projeto
 }
 
 // --- Definição do Componente ---
@@ -128,7 +129,9 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
     selectedUserId,
     viewMode = 'status',
     priorityFilter,
-    forceUserFilter
+    forceUserFilter,
+    showCompleted = false,
+    showProject
   } = props;
 
   // --- Estados do Componente ---
@@ -136,10 +139,139 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   const [projects, setProjects] = useState<Record<number, string>>({}); // Mapa de ID de projeto para nome
   const [users, setUsers] = useState<Record<number, string>>({}); // Mapa de ID de usuário para nome
   const [error, setError] = useState<string | null>(null); // Estado de erro
+  const [sortField, setSortField] = useState<string | null>(null); // Campo de ordenação
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc'); // Direção da ordenação
 
   // Importar hooks de autenticação e permissões
   const { user } = useAuth();
   const permissions = usePermissions();
+
+  // Função para lidar com ordenação
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      const newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      setSortDirection(newDirection);
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Função memoizada para ordenar tarefas - otimizada para evitar recálculos desnecessários
+  const sortedTasks = useMemo(() => {
+    if (!sortField) {
+      return tasks;
+    }
+
+    const sorted = [...tasks].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'title':
+          aValue = a.title?.toLowerCase() || '';
+          bValue = b.title?.toLowerCase() || '';
+          break;
+        case 'project':
+          aValue = projects[a.project_id]?.toLowerCase() || '';
+          bValue = projects[b.project_id]?.toLowerCase() || '';
+          break;
+        case 'assignee':
+          aValue = a.users?.[0] ? (typeof a.users[0] === 'object' ? a.users[0].name : users[a.users[0]]) || '' : '';
+          bValue = b.users?.[0] ? (typeof b.users[0] === 'object' ? b.users[0].name : users[b.users[0]]) || '' : '';
+          aValue = aValue.toLowerCase();
+          bValue = bValue.toLowerCase();
+          break;
+        case 'priority':
+          const priorityOrder = { 'baixa': 1, 'media': 2, 'alta': 3, 'urgente': 4 };
+          aValue = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
+          bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
+          break;
+        case 'status':
+          aValue = getStatusLabel(a.status).toLowerCase();
+          bValue = getStatusLabel(b.status).toLowerCase();
+          break;
+        case 'date':
+          aValue = a.due_date ? new Date(a.due_date).getTime() : 0;
+          bValue = b.due_date ? new Date(b.due_date).getTime() : 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+    
+    return sorted;
+  }, [tasks, sortField, sortDirection, projects, users]);
+
+  // Função para ordenar um grupo específico de tarefas
+  const sortGroup = (group: Task[]) => {
+    if (!sortField) return group;
+    
+    return [...group].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'title':
+          aValue = a.title?.toLowerCase() || '';
+          bValue = b.title?.toLowerCase() || '';
+          break;
+        case 'project':
+          aValue = projects[a.project_id]?.toLowerCase() || '';
+          bValue = projects[b.project_id]?.toLowerCase() || '';
+          break;
+        case 'assignee':
+          aValue = a.users?.[0] ? (typeof a.users[0] === 'object' ? a.users[0].name : users[a.users[0]]) || '' : '';
+          bValue = b.users?.[0] ? (typeof b.users[0] === 'object' ? b.users[0].name : users[b.users[0]]) || '' : '';
+          aValue = aValue.toLowerCase();
+          bValue = bValue.toLowerCase();
+          break;
+        case 'priority':
+          const priorityOrder = { 'baixa': 1, 'media': 2, 'alta': 3, 'urgente': 4 };
+          aValue = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
+          bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
+          break;
+        case 'status':
+          aValue = getStatusLabel(a.status).toLowerCase();
+          bValue = getStatusLabel(b.status).toLowerCase();
+          break;
+        case 'date':
+          aValue = a.due_date ? new Date(a.due_date).getTime() : 0;
+          bValue = b.due_date ? new Date(b.due_date).getTime() : 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  // Componente para cabeçalho clicável
+  const SortableHeader = ({ field, children }: { field: string, children: React.ReactNode }) => {
+    const getSortIcon = () => {
+      if (sortField !== field) return <ArrowUpDown className="h-4 w-4" />;
+      return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
+    };
+
+    return (
+      <TableHead>
+        <button
+          onClick={() => handleSort(field)}
+          className="flex items-center gap-1 hover:text-primary transition-colors"
+        >
+          {children}
+          {getSortIcon()}
+        </button>
+      </TableHead>
+    );
+  };
 
   // Estados para modais e diálogos
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false); // Controla o modal de detalhes
@@ -787,7 +919,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   };
 
   // Componente interno para renderizar uma seção de tarefas
-  const TasksSection = ({ title, tasksToRender, color, showProject = !projectId }: { title?: string, tasksToRender: Task[], color?: string, showProject?: boolean }) => {
+  const TasksSection = ({ title, tasksToRender, color, showProjectColumn = showProject ?? !projectId }: { title?: string, tasksToRender: Task[], color?: string, showProjectColumn?: boolean }) => {
     // Sempre renderiza seções com título, mesmo que estejam vazias (para viewMode=date)
     if (tasksToRender.length === 0 && !title) return null; // Não renderiza seção vazia se for a lista geral
 
@@ -832,12 +964,12 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
             <Table>
             <TableHeader>
                 <TableRow>
-                <TableHead>Tarefa</TableHead>
-                {showProject && <TableHead>Projeto</TableHead>}
-                <TableHead>Responsável</TableHead>
-                <TableHead>Prioridade</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data</TableHead>
+                <SortableHeader field="title">Tarefa</SortableHeader>
+                {showProjectColumn && <SortableHeader field="project">Projeto</SortableHeader>}
+                <SortableHeader field="assignee">Responsável</SortableHeader>
+                <SortableHeader field="priority">Prioridade</SortableHeader>
+                <SortableHeader field="status">Status</SortableHeader>
+                <SortableHeader field="date">Data</SortableHeader>
                 <TableHead>Tempo</TableHead>
                 <TableHead className="text-right w-[80px]">Ações</TableHead>
                 </TableRow>
@@ -870,7 +1002,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                     </TableCell>
 
                     {/* Célula Projeto */}
-                    {showProject && (
+                    {showProjectColumn && (
                         <TableCell className="max-w-[150px] truncate" title={decodeText(projects[task.project_id])}>
                             {decodeText(projects[task.project_id]) || `Projeto ${task.project_id}`}
                         </TableCell>
@@ -1226,18 +1358,18 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                                     return (
                                         <div className="space-y-8">
                                             {/* Sempre renderiza todas as seções, mesmo que estejam vazias */}
-                                            <TasksSection title="Atrasadas" tasksToRender={groups.overdue} color="red" />
-                                            <TasksSection title="Hoje" tasksToRender={groups.today} color="blue" />
-                                            <TasksSection title="Amanhã" tasksToRender={groups.tomorrow} color="green" />
-                                            <TasksSection title="Próximas" tasksToRender={groups.future} color="purple" />
-                                            <TasksSection title="Sem Data" tasksToRender={groups.no_date} color="gray" />
+                                            <TasksSection title="Atrasadas" tasksToRender={sortGroup(groups.overdue)} color="red" />
+                                            <TasksSection title="Hoje" tasksToRender={sortGroup(groups.today)} color="blue" />
+                                            <TasksSection title="Amanhã" tasksToRender={sortGroup(groups.tomorrow)} color="green" />
+                                            <TasksSection title="Próximas" tasksToRender={sortGroup(groups.future)} color="purple" />
+                                            <TasksSection title="Sem Data" tasksToRender={sortGroup(groups.no_date)} color="gray" />
                                         </div>
                                     );
                                 })()}
                             </div>
                         ) : (
                             // Renderização por Status (ou padrão)
-                            <TasksSection tasksToRender={tasks} /> // Renderiza todas as tarefas (já ordenadas por status)
+                            <TasksSection tasksToRender={sortedTasks} /> // Renderiza todas as tarefas ordenadas
                         )}
                     </div>
                 )}
