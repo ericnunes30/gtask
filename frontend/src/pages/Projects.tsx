@@ -42,6 +42,7 @@ import { useBackendServices } from '@/hooks/useBackendServices';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
+import { Switch } from "@/components/ui/switch"; // Importar o componente Switch
 
 // Estendendo a interface Project para incluir campos adicionais usados na UI
 interface UIProject extends Project {
@@ -78,6 +79,7 @@ const Projects = () => {
   const { data, isLoading, isError } = projectsService.useGetProjects();
   const projects = data ?? [];
   const [searchTerm, setSearchTerm] = useState(''); // Adicionar estado para o termo de busca
+  const [showInactiveProjects, setShowInactiveProjects] = useState(false); // Adicionar estado para o filtro de projetos inativos
 
   // Efeito para verificar o estado das tarefas após o carregamento
   useEffect(() => {
@@ -420,6 +422,14 @@ const Projects = () => {
             />
           </div>
           <div className="flex gap-2">
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="show-inactive-projects">Mostrar Projetos Inativos</Label>
+              <Switch
+                id="show-inactive-projects"
+                checked={showInactiveProjects}
+                onCheckedChange={setShowInactiveProjects}
+              />
+            </div>
             {!permissions.isMember ? (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -495,10 +505,12 @@ const Projects = () => {
             ))
           ) : projects.length > 0 ? (
             projects
-            .filter((project) =>
-              project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              project.description.toLowerCase().includes(searchTerm.toLowerCase())
-            )
+            .filter((project) => {
+              const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    project.description.toLowerCase().includes(searchTerm.toLowerCase());
+              const matchesInactiveFilter = showInactiveProjects || project.status; // Se showInactiveProjects for true, mostra todos; caso contrário, só mostra projetos ativos (status true)
+              return matchesSearch && matchesInactiveFilter;
+            })
             .sort((a, b) => a.title.localeCompare(b.title)) // Ordenar por título alfabeticamente
             .map((project) => {
               // Obter membros do projeto (usando a propriedade users da API)
