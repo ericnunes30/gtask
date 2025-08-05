@@ -280,6 +280,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   const [timerRunningTaskId, setTimerRunningTaskId] = useState<string | null>(null); // ID da tarefa com timer em execução
 
   const { tasks: tasksService, users: usersService } = useBackendServices();
+  const userService = usersService.userService; // Estabiliza a referência
   const {
     data: allTasks = [],
     isLoading: allTasksLoading,
@@ -303,8 +304,8 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
 
   // --- Funções de Fetch e Manipulação de Dados ---
 
-  // Função para buscar tarefas da API
-  const fetchTasks = useCallback(async () => {
+  // Função para processar e filtrar tarefas (não faz fetch, apenas processa dados já carregados)
+  const processAndFilterTasks = useCallback(async () => {
     setError(null);
 
     try {
@@ -434,7 +435,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
               for (const userId of userIdsToFetch) {
                    if (!userMap[userId]) { // Verifica novamente caso tenha sido preenchido por outra tarefa
                        try {
-                         const userDetails = await usersService.userService.getUser(userId); // Usando getUser
+                         const userDetails = await userService.getUser(userId); // Usando getUser
                          userMap[userId] = userDetails?.name ?? `Usuário ${userId}`;
                        } catch (userError) {
                          console.error(`Erro ao buscar usuário ${userId}:`, userError);
@@ -462,27 +463,30 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       setError(`Não foi possível carregar as tarefas: ${err instanceof Error ? err.message : 'Erro desconhecido'}. Tente novamente mais tarde.`);
       setTasks([]); // Limpa tarefas em caso de erro
     }
-  }, [projectId, selectedTeamId, selectedUserId, viewMode, priorityFilter, forceUserFilter, permissions.isMember, allTasks, projectTasks, props.showCompleted, user, usersService]); // Dependências do useCallback
+  }, [projectId, selectedTeamId, selectedUserId, viewMode, priorityFilter, forceUserFilter, permissions.isMember, allTasks, projectTasks, props.showCompleted, user?.id, userService]); // Dependências do useCallback otimizadas
 
-  // Expõe fetchTasks para o componente pai via ref
+  // Expõe fetchTasks para o componente pai via ref (agora força re-fetch dos dados)
   useImperativeHandle(ref, () => ({
-    fetchTasks: () => {
-      return new Promise<void>((resolve, reject) => {
-        setTimeout(async () => { // Make the callback async
-          try {
-            await fetchTasks(); // Await the actual fetchTasks
-            resolve(); // Resolve the promise after fetch completes
-          } catch (error) {
-            reject(error); // Reject the promise if fetch fails
-          }
-        }, 300); // 300ms de delay
-      });
+    fetchTasks: async () => {
+      try {
+        // Força re-fetch dos dados do React Query
+        if (projectId) {
+          await refetchProjectTasks();
+        } else {
+          await refetchTasks();
+        }
+      } catch (error) {
+        console.error('Erro ao fazer re-fetch das tarefas:', error);
+      }
     }
   }));
 
+  // Processa tarefas sempre que os dados mudam
   useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+    if (!loading) {
+      processAndFilterTasks();
+    }
+  }, [processAndFilterTasks, loading]);
 
   // Efeito adicional para forçar a renderização quando o modo de visualização mudar
   // Removido pois fetchTasks já tem viewMode como dependência e re-executa
@@ -780,7 +784,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       await props.onTasksUpdated();
     }
 
-    fetchTasks(); // Rebusca as tarefas para refletir a atualização
+    // As tarefas serão atualizadas automaticamente via React Query
     handleTaskModalClose(); // Fecha o modal
   };
 
@@ -1089,12 +1093,14 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                     <TableCell>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                        <Badge
-                            variant={getPriorityColor(task.priority)}
-                            className="cursor-pointer hover:opacity-80"
-                        >
-                            {getPriorityLabel(task.priority)}
-                        </Badge>
+                        <button className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md">
+                          <Badge
+                              variant={getPriorityColor(task.priority)}
+                              className="cursor-pointer hover:opacity-80"
+                          >
+                              {getPriorityLabel(task.priority)}
+                          </Badge>
+                        </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
                         <DropdownMenuLabel>Alterar prioridade</DropdownMenuLabel>
@@ -1112,12 +1118,14 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                     <TableCell>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                        <Badge
-                            variant={getStatusColor(task.status)}
-                            className="cursor-pointer hover:opacity-80"
-                        >
-                            {getStatusLabel(task.status)}
-                        </Badge>
+                        <button className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md">
+                          <Badge
+                              variant={getStatusColor(task.status)}
+                              className="cursor-pointer hover:opacity-80"
+                          >
+                              {getStatusLabel(task.status)}
+                          </Badge>
+                        </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
                         <DropdownMenuLabel>Alterar status</DropdownMenuLabel>
