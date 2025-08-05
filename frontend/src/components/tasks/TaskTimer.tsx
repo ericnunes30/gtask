@@ -17,6 +17,7 @@ interface TaskTimerProps {
   initialTime?: number; // Tempo inicial do timer (do backend)
   compact?: boolean;
   isRunning?: boolean; // Estado externo do timer (para sincronização entre componentes)
+  disabled?: boolean; // TEMPORARIAMENTE DESABILITADO - não é prioridade corrigir bugs
 }
 
 export const TaskTimer: React.FC<TaskTimerProps> = ({
@@ -25,7 +26,8 @@ export const TaskTimer: React.FC<TaskTimerProps> = ({
   onTimerUpdate,
   initialTime = 0,
   compact = true,
-  isRunning: externalIsRunning
+  isRunning: externalIsRunning,
+  disabled = true // TEMPORARIAMENTE DESABILITADO POR PADRÃO - bugs não são prioridade
 }) => {
   // Se o estado externo do timer for fornecido, usá-lo; caso contrário, usar o estado local
   const [isRunningInternal, setIsRunningInternal] = useState(false);
@@ -219,6 +221,14 @@ export const TaskTimer: React.FC<TaskTimerProps> = ({
     e.stopPropagation(); // Impedir propagação do evento para o card
     e.preventDefault(); // Impedir comportamento padrão do botão
 
+    // TEMPORIZADOR DESABILITADO - não é prioridade corrigir bugs
+    if (disabled) {
+      toast.info("Temporizador temporariamente desabilitado", {
+        description: "Esta funcionalidade será habilitada em breve após correções"
+      });
+      return;
+    }
+
     // Primeiro, vamos determinar o novo estado
     const newRunningState = !isRunning;
 
@@ -305,9 +315,10 @@ export const TaskTimer: React.FC<TaskTimerProps> = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`h-4 w-4 p-0 opacity-70 hover:opacity-100 ${isRunning ? 'text-green-600' : ''}`}
+                  className={`h-4 w-4 p-0 ${disabled ? 'opacity-30 cursor-not-allowed' : 'opacity-70 hover:opacity-100'} ${isRunning ? 'text-green-600' : ''}`}
                   onClick={toggleTimer}
                   type="button"
+                  disabled={disabled}
                 >
                   {isRunning ? (
                     <Pause className="h-3 w-3" />
@@ -317,7 +328,7 @@ export const TaskTimer: React.FC<TaskTimerProps> = ({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isRunning ? 'Pausar' : 'Iniciar'} temporizador</p>
+                <p>{disabled ? 'Temporizador desabilitado temporariamente' : (isRunning ? 'Pausar' : 'Iniciar') + ' temporizador'}</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -336,9 +347,10 @@ export const TaskTimer: React.FC<TaskTimerProps> = ({
               <Button
                 variant="outline"
                 size="icon"
-                className={`h-8 w-8 ${isRunning ? 'bg-green-100 border-green-300' : ''}`}
+                className={`h-8 w-8 ${disabled ? 'opacity-30 cursor-not-allowed' : ''} ${isRunning ? 'bg-green-100 border-green-300' : ''}`}
                 onClick={toggleTimer}
                 type="button"
+                disabled={disabled}
               >
                 {isRunning ? (
                   <Pause className="h-4 w-4 text-green-600" />
@@ -348,7 +360,7 @@ export const TaskTimer: React.FC<TaskTimerProps> = ({
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{isRunning ? 'Pausar' : 'Iniciar'} temporizador</p>
+              <p>{disabled ? 'Temporizador desabilitado temporariamente' : (isRunning ? 'Pausar' : 'Iniciar') + ' temporizador'}</p>
             </TooltipContent>
           </Tooltip>
         </div>

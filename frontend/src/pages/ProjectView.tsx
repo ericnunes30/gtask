@@ -739,7 +739,9 @@ const ProjectView = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas as equipes</SelectItem>
-                    {projectOccupations.map((team) => (
+                    {projectOccupations
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((team) => (
                       <SelectItem key={team.id} value={String(team.id)}>
                         {team.name}
                       </SelectItem>
@@ -757,7 +759,9 @@ const ProjectView = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os responsáveis</SelectItem>
-                    {projectUsers.map((user) => (
+                    {projectUsers
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((user) => (
                       <SelectItem key={user.id} value={String(user.id)}>
                         {user.name}
                       </SelectItem>

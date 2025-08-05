@@ -1045,13 +1045,15 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                         taskId={String(task.id)}
                         initialTime={task.timer || 0}
                         isRunning={timerRunningTaskId === String(task.id)}
+                        disabled={true} // TEMPORIZADOR DESABILITADO - não é prioridade corrigir bugs
                         onStatusChange={(status) => {
+                          // TEMPORIZADOR DESABILITADO - não iniciar timer automaticamente
                           // Atualizar o estado do timer em execução
-                          if (status === "Em Andamento") {
-                            setTimerRunningTaskId(String(task.id));
-                          } else {
-                            setTimerRunningTaskId(null);
-                          }
+                          // if (status === "Em Andamento") {
+                          //   setTimerRunningTaskId(String(task.id));
+                          // } else {
+                          //   setTimerRunningTaskId(null);
+                          // }
 
                           // Atualizar o status da tarefa quando o temporizador é iniciado/pausado
                           const apiStatus = status === "Em Andamento" ? "em_andamento" : "a_fazer";

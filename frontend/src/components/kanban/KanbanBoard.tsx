@@ -312,6 +312,7 @@ const TaskCard = ({
               initialTime={task.timer || 0}
               isRunning={isTimerRunning}
               compact={true}
+              disabled={true} // TEMPORIZADOR DESABILITADO - não é prioridade corrigir bugs
               onStatusChange={(status) => {
                 // Atualizar o estado do timer em execução
                 if (status === "Em Andamento") {
@@ -860,9 +861,10 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
               await handleTimerUpdate(oldRunningTaskId, otherTaskTimerValue);
             }
           }
+          // TEMPORIZADOR DESABILITADO - não iniciar timer automaticamente
           // Iniciar timer para a tarefa movida (ou garantir que continue se já era ela e já estava em "em_andamento")
           // Se timerRunningTaskId já era taskToMoveIdStr, esta chamada não muda nada, o que é bom.
-          setTimerRunningTaskId(taskToMoveIdStr);
+          // setTimerRunningTaskId(taskToMoveIdStr);
         }
         // Não precisamos de um 'else' aqui para parar o timer da tarefa movida se ela NÃO VAI PARA 'em_andamento',
         // pois isso já foi tratado na Etapa 1.
@@ -945,7 +947,8 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
           await handleTimerUpdate(previousTimerRunningId, previousTimerValue);
         }
       }
-      setTimerRunningTaskId(taskIdStr);
+      // TEMPORIZADOR DESABILITADO - não iniciar timer automaticamente
+      // setTimerRunningTaskId(taskIdStr);
       // O useEffect de timerRunningTaskId pegará o valor de task.timer do processedTasksMap atualizado
       // para inicializar currentTimerValues[taskIdStr] se necessário.
     } else if (previousTimerRunningId === taskIdStr && previousTimerRunningId !== null) {

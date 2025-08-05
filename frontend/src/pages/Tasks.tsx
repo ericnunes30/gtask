@@ -139,7 +139,7 @@ const Tasks = () => {
       // setLoading(false); // O loading principal é para rawTasks
     };
     fetchProjectsAndRelatedData();
-  }, [projectId, rawTasks, error]); // Depender de rawTasks para atualizar projectsWithTasks
+  }, [projectId, rawTasks, error, projectsData]); // Depender de rawTasks e projectsData para atualizar projectsWithTasks
 
   const handleKanbanTaskStatusChange = async (
     task: KanbanTask,
@@ -459,7 +459,9 @@ const Tasks = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os projetos</SelectItem>
-                  {projectsWithTasks.map((project) => (
+                  {projectsWithTasks
+                    .sort((a, b) => a.title.localeCompare(b.title))
+                    .map((project) => (
                     <SelectItem key={project.id} value={String(project.id)}>
                       {project.title}
                     </SelectItem>
@@ -476,7 +478,9 @@ const Tasks = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os usuários</SelectItem>
-                    {allUsers.map((u) => (
+                    {allUsers
+                      .sort((a, b) => (a.name || `Usuário ${a.id}`).localeCompare(b.name || `Usuário ${b.id}`))
+                      .map((u) => (
                       <SelectItem key={u.id} value={u.id.toString()}>
                         {u.name || `Usuário ${u.id}`} {/* Fallback para nome de usuário */}
                       </SelectItem>

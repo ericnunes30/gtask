@@ -273,15 +273,15 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     // Verificar se o timer está em execução para esta tarefa
     const isTimerRunning = timerRunningTaskId === String(taskId);
 
+    // TEMPORIZADOR DESABILITADO - não iniciar timer automaticamente
     // Se a tarefa estiver em andamento, o timer não estiver em execução, e não foi pausado manualmente, iniciar o timer
     // Executamos isso apenas uma vez quando o modal é aberto, não em cada atualização do status
-    if (task.status === 'em_andamento' && !isTimerRunning && !manuallyPaused) {
-
-      // Iniciar o timer diretamente em vez de chamar onTaskUpdated
-      if (typeof setTimerRunningTaskId === 'function') {
-        setTimerRunningTaskId(String(taskId));
-      }
-    }
+    // if (task.status === 'em_andamento' && !isTimerRunning && !manuallyPaused) {
+    //   // Iniciar o timer diretamente em vez de chamar onTaskUpdated
+    //   if (typeof setTimerRunningTaskId === 'function') {
+    //     setTimerRunningTaskId(String(taskId));
+    //   }
+    // }
   }, [isOpen, taskId, task]); // Este efeito é executado apenas quando o modal é aberto ou a tarefa é carregada
 
   const fetchTaskDetails = async (id: number) => {
@@ -532,10 +532,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         // Resetar o estado de pausa manual
         setManuallyPaused(false);
 
+        // TEMPORIZADOR DESABILITADO - não iniciar timer automaticamente
         // Iniciar o timer
-        if (typeof setTimerRunningTaskId === 'function') {
-          setTimerRunningTaskId(String(task.id));
-        }
+        // if (typeof setTimerRunningTaskId === 'function') {
+        //   setTimerRunningTaskId(String(task.id));
+        // }
       } else if ((taskData.status && taskData.status !== 'em_andamento') ||
                 (preservedTask.status && preservedTask.status !== 'em_andamento' as TaskStatus)) {
         // Se o status foi alterado para algo diferente de "em_andamento", parar o timer
@@ -653,19 +654,20 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
       toast.success(`Status alterado para ${getStatusLabel(newStatus)}`);
 
+      // TEMPORIZADOR DESABILITADO - não gerenciar timer automaticamente
       // Gerenciar timer baseado no novo status
-      if (newStatus === 'em_andamento') {
-        // Se mudou para "em andamento", resetar pausa manual e iniciar timer
-        setManuallyPaused(false);
-        if (typeof setTimerRunningTaskId === 'function') {
-          setTimerRunningTaskId(String(task.id));
-        }
-      } else {
-        // Se mudou para qualquer outro status, parar o timer
-        if (typeof setTimerRunningTaskId === 'function' && timerRunningTaskId === String(task.id)) {
-          setTimerRunningTaskId(null);
-        }
-      }
+      // if (newStatus === 'em_andamento') {
+      //   // Se mudou para "em andamento", resetar pausa manual e iniciar timer
+      //   setManuallyPaused(false);
+      //   if (typeof setTimerRunningTaskId === 'function') {
+      //     setTimerRunningTaskId(String(task.id));
+      //   }
+      // } else {
+      //   // Se mudou para qualquer outro status, parar o timer
+      //   if (typeof setTimerRunningTaskId === 'function' && timerRunningTaskId === String(task.id)) {
+      //     setTimerRunningTaskId(null);
+      //   }
+      // }
 
       onTaskUpdated();
     } catch (err) {
@@ -1693,6 +1695,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         (currentTimerValues && currentTimerValues[String(task.id)]) || task.timer || 0
                       }
                       isRunning={timerRunningTaskId === String(task.id)}
+                      disabled={true} // TEMPORIZADOR DESABILITADO - não é prioridade corrigir bugs
                       onStatusChange={(status) => {
                         // Atualizar o status da tarefa quando o temporizador é iniciado/pausado
                         const apiStatus = status === "Em Andamento" ? "em_andamento" : "a_fazer";
