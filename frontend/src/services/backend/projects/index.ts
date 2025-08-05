@@ -16,7 +16,7 @@ const projectService = {
 
   async createProject(data: CreateProjectRequest): Promise<Project> {
     const response = await api.post('/project', data)
-    return response.data.map(transformApiProjectToFrontend)
+    return transformApiProjectToFrontend(response.data)
   },
 
   async updateProject(id: number, data: UpdateProjectRequest): Promise<Project> {
@@ -56,8 +56,13 @@ export const useCreateProject = () => {
       id
         ? projectService.updateProject(id, data as UpdateProjectRequest)
         : projectService.createProject(data as CreateProjectRequest),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: (result, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['project', id] })
+      }
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    },
   })
 }
 

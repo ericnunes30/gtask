@@ -67,9 +67,13 @@ const ProjectView = () => {
 
     try {
       const id = parseInt(projectId);
-      // Invalidar o cache antes de buscar para garantir dados frescos
+      // Invalidar o cache e buscar dados atualizados do projeto
       await queryClient.invalidateQueries({ queryKey: ['project', id] });
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      
+      // Aguardar um pequeno delay para evitar conflitos de queries
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Buscar dados atualizados do projeto, incluindo suas tarefas
       const currentProjectData = await queryClient.fetchQuery(
         getProjectQueryOptions(id)

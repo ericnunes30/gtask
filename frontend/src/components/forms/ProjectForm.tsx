@@ -10,7 +10,6 @@ import { Trash2 } from "lucide-react";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -290,24 +289,25 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
   };
 
   const onSubmit = (values: ProjectFormValues) => {
+    console.log('🚀 ProjectForm.onSubmit iniciado:', values);
     setError(null);
 
     try {
       // Verificar se usuários foram selecionados
       let selectedUsers = values.users || [];
+      console.log('📋 Usuários iniciais:', selectedUsers);
 
       // Se nenhum usuário foi selecionado, incluir todos os usuários das equipes selecionadas
-      if (selectedUsers.length === 0 && values.teams && values.teams.length > 0) { // Usar 'teams'
-
+      if (selectedUsers.length === 0 && values.teams && values.teams.length > 0) {
+        console.log('👥 Nenhum usuário selecionado, pegando das equipes:', values.teams);
+        console.log('🔍 Usuários filtrados disponíveis:', filteredUsers);
+        
         // Obter todos os usuários das equipes selecionadas
         selectedUsers = filteredUsers.map(user => user.id);
+        console.log('✅ Usuários selecionados das equipes:', selectedUsers);
       }
 
       // Preparar os dados do projeto com os usuários selecionados
-      // Garantir que as datas estejam no formato correto (YYYY-MM-DD)
-      // Preparar os dados do projeto com os usuários selecionados
-      // Garantir que as datas estejam no formato correto (YYYY-MM-DD)
-      // Explicitamente define the type to match the API request types
       const projectData: CreateProjectRequest | UpdateProjectRequest = {
         title: values.title,
         description: values.description,
@@ -319,23 +319,28 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
         teams: values.teams || [],
       };
 
-      // Verificar o formato das datas
+      console.log('📤 Dados do projeto preparados:', projectData);
+      console.log('🔄 Iniciando mutação com projectId:', projectId);
 
       mutate(
         { id: projectId, data: projectData },
         {
-          onSuccess: () => {
+          onSuccess: (result) => {
+            console.log('✅ Projeto salvo com sucesso:', result);
             toast.success(
               `Projeto "${values.title}" ${projectId ? 'atualizado' : 'criado'} com sucesso.`
             )
 
             if (onSuccess) {
+              console.log('🔄 Chamando callback onSuccess');
               onSuccess()
             } else {
+              console.log('🔄 Navegando para /projects');
               navigate('/projects')
             }
           },
-          onError: () => {
+          onError: (error) => {
+            console.error('❌ Erro ao salvar projeto:', error);
             setError('Ocorreu um erro ao salvar o projeto. Tente novamente.')
             toast.error(
               'Erro ao salvar projeto. Verifique os dados e tente novamente.'
@@ -344,6 +349,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
         }
       )
     } catch (error) {
+      console.error('❌ Erro no try/catch do onSubmit:', error);
       setError('Ocorreu um erro ao preparar o projeto.')
       toast.error('Erro ao preparar projeto. Verifique os dados.')
     }
@@ -600,10 +606,10 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
                     <CardDescription>
                       Selecione os usuários que participarão deste projeto.
                       {form.watch('teams')?.length > 0 && field.value?.length === 0 && (
-                        <p className="mt-2 text-xs text-amber-500">
+                        <span className="mt-2 text-xs text-amber-500 block">
                           <AlertTriangle className="h-3 w-3 inline mr-1" />
                           Se nenhum usuário for selecionado, todos os usuários das equipes selecionadas serão adicionados automaticamente.
-                        </p>
+                        </span>
                       )}
                     </CardDescription>
                   </CardHeader>
