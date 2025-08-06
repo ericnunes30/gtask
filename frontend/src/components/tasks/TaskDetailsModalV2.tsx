@@ -4,7 +4,6 @@ import { TaskDetails } from './TaskDetails';
 import { TaskComments } from './TaskComments';
 import { Task, User as ApiUser } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
-import { useTaskModalContext } from '@/contexts/TaskModalContext';
 import { toast } from 'sonner';
 
 interface TaskDetailsModalV2Props {

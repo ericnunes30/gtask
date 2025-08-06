@@ -60,7 +60,7 @@ export const TaskDetailsForm: React.FC<TaskDetailsFormProps> = ({
     }
   };
 
-  const isOverdue = task.due_date && isPast(parseISO(task.due_date)) && task.status !== 'Concluído';
+  const isOverdue = task.due_date && isPast(parseISO(task.due_date)) && task.status !== 'concluido';
 
   return (
     <div className="p-6 space-y-6">

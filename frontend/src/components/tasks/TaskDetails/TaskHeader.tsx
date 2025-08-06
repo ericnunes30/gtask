@@ -32,35 +32,36 @@ interface TaskHeaderProps {
 }
 
 const statusOptions: { value: TaskStatus; label: string; color: string }[] = [
-  { value: 'Backlog', label: 'Backlog', color: 'bg-gray-100 text-gray-800' },
-  { value: 'To Do', label: 'To Do', color: 'bg-blue-100 text-blue-800' },
-  { value: 'Em Andamento', label: 'Em Andamento', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'Pausado', label: 'Pausado', color: 'bg-orange-100 text-orange-800' },
-  { value: 'Em Revisão', label: 'Em Revisão', color: 'bg-purple-100 text-purple-800' },
-  { value: 'Concluído', label: 'Concluído', color: 'bg-green-100 text-green-800' }
+  { value: 'pendente', label: 'Pendente', color: 'bg-gray-100 text-gray-800' },
+  { value: 'a_fazer', label: 'A Fazer', color: 'bg-blue-100 text-blue-800' },
+  { value: 'em_andamento', label: 'Em Andamento', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'em_revisao', label: 'Em Revisão', color: 'bg-purple-100 text-purple-800' },
+  { value: 'aguardando_cliente', label: 'Aguardando Cliente', color: 'bg-orange-100 text-orange-800' },
+  { value: 'concluido', label: 'Concluído', color: 'bg-green-100 text-green-800' },
+  { value: 'cancelado', label: 'Cancelado', color: 'bg-red-100 text-red-800' }
 ];
 
 const priorityOptions: { value: TaskPriority; label: string; color: string; icon: React.ReactNode }[] = [
   { 
-    value: 'low', 
+    value: 'baixa', 
     label: 'Baixa', 
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: null
   },
   { 
-    value: 'medium', 
+    value: 'media', 
     label: 'Média', 
     color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     icon: null
   },
   { 
-    value: 'high', 
+    value: 'alta', 
     label: 'Alta', 
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     icon: <AlertCircle className="h-3 w-3" />
   },
   { 
-    value: 'urgent', 
+    value: 'urgente', 
     label: 'Urgente', 
     color: 'bg-red-100 text-red-800 border-red-200',
     icon: <AlertTriangle className="h-3 w-3" />
