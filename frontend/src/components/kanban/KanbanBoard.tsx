@@ -36,7 +36,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Task, TaskStatus, UpdateTaskRequest } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
-import TaskDetailsModal from "@/components/tasks/TaskDetailsModal";
+import { LazyTaskDetailsModal } from "@/components/tasks/LazyTaskDetailsModal"; // Nova arquitetura
+import { TaskModalProvider } from '@/contexts/TaskModalContext'; // Context provider
+import { useModal } from '@/hooks/useModal'; // Hook customizado
 import useProcessedKanbanData from '@/hooks/useProcessedKanbanData';
 import {
   KanbanTask, // Alterado de Task para KanbanTask
@@ -529,7 +531,8 @@ const Column = ({
   );
 };
 
-export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, ref) => {
+// Componente interno (sem provider)
+const KanbanBoardInternal = React.forwardRef<unknown, KanbanBoardProps>((props, ref) => {
   const {
     rawTasks,
     viewMode,
@@ -556,6 +559,19 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     filters,
     projectId: projectId !== undefined ? String(projectId) : undefined,
   });
+  
+  // Componente exportado com Provider
+  export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, ref) => {
+    return (
+      <TaskModalProvider>
+        <KanbanBoardInternal {...props} ref={ref} />
+      </TaskModalProvider>
+    );
+  });
+  
+  // Definir nomes de exibição
+  KanbanBoard.displayName = 'KanbanBoard';
+  KanbanBoardInternal.displayName = 'KanbanBoardInternal';
 
   // Hooks de autenticação e permissões
   const { user } = useAuth();
@@ -566,8 +582,8 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
   // const [activeTaskState, setActiveTaskState] = useState<KanbanTask | null>(null); // activeTask será derivado de processedTasksMap
 
   // Estados para o modal de detalhes da tarefa
-  const [isTaskDetailsModalOpen, setIsTaskDetailsModalOpen] = useState(false);
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<KanbanTask | null>(null);
+  const taskModal = useModal(); // Hook customizado para controle do modal
 
   // Estado para o diálogo de criação/edição de tarefa
   const [isCreateEditDialogOpen, setIsCreateEditDialogOpen] = useState(false);
@@ -884,12 +900,12 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
 
   const handleTaskClick = (task: KanbanTask) => {
     setSelectedTaskForModal(task);
-    setIsTaskDetailsModalOpen(true);
+    taskModal.open();
   };
 
   const handleTaskModalClose = () => {
-    setIsTaskDetailsModalOpen(false);
     setSelectedTaskForModal(null);
+    taskModal.close();
   };
 
   const handleTaskUpdated = async () => {
@@ -1121,18 +1137,17 @@ const handleTaskFormSuccess = async (newTaskFromForm: Task) => {
         </DragOverlay>
       </DndContext>
 
-      {selectedTaskForModal && typeof selectedTaskForModal.id === 'number' && ( // Garante que id é number
-        <TaskDetailsModal
-          isOpen={isTaskDetailsModalOpen}
-          onClose={handleTaskModalClose}
-          taskId={selectedTaskForModal.id}
-          onTaskUpdated={handleTaskUpdated}
-          timerRunningTaskId={timerRunningTaskId}
-          currentTimerValues={currentTimerValues}
-          setCurrentTimerValues={setCurrentTimerValues}
-          setTimerRunningTaskId={setTimerRunningTaskId}
-        />
-      )}
+      {/* Modal de detalhes com nova arquitetura */}
+      <LazyTaskDetailsModal
+        isOpen={taskModal.isOpen}
+        onClose={handleTaskModalClose}
+        taskId={selectedTaskForModal?.id || null}
+        onTaskUpdated={handleTaskUpdated}
+        timerRunningTaskId={timerRunningTaskId}
+        currentTimerValues={currentTimerValues}
+        setCurrentTimerValues={setCurrentTimerValues}
+        setTimerRunningTaskId={setTimerRunningTaskId}
+      />
 
       <Dialog 
         key={createTaskFormInstanceId || 'kanban-create-dialog'} 

@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge"; // Componente Badge Shadcn/ui
 import { Button } from "@/components/ui/button"; // Componente Button Shadcn/ui
 import { Calendar, User, AlertCircle, Edit, Trash2, MoreHorizontal, Clock, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'; // Ícones Lucide
 import { Link } from 'react-router-dom'; // Para links (se necessário, não usado diretamente na lista)
-import TaskDetailsModal from "@/components/tasks/TaskDetailsModal"; // Modal de detalhes da tarefa (assumindo que existe)
+import { LazyTaskDetailsModal } from "@/components/tasks/LazyTaskDetailsModal"; // Nova arquitetura
+import { TaskModalProvider } from '@/contexts/TaskModalContext'; // Context provider
+import { useModal } from '@/hooks/useModal'; // Hook customizado
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,9 +121,9 @@ interface TasksListProps {
   showProject?: boolean; // Controla a exibição da coluna de projeto
 }
 
-// --- Definição do Componente ---
+// --- Componente interno (sem provider) ---
 // Usa forwardRef para permitir que o componente pai chame fetchTasks
-export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksListProps>((props, ref) => {
+const TasksListInternal = forwardRef<{ fetchTasks: () => Promise<void> }, TasksListProps>((props, ref) => {
   const {
     projectId,
     teams,
@@ -292,10 +294,13 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   };
 
   // Estados para modais e diálogos
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false); // Controla o modal de detalhes
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null); // ID da tarefa selecionada para modal/diálogo
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // Controla o diálogo de confirmação de exclusão
   const [timerRunningTaskId, setTimerRunningTaskId] = useState<string | null>(null); // ID da tarefa com timer em execução
+  const [currentTimerValues, setCurrentTimerValues] = useState<Record<string, number>>({});
+
+  // Hook customizado para controle do modal
+  const taskModal = useModal();
 
   const { tasks: tasksService, users: usersService } = useBackendServices();
   const userService = usersService.userService; // Estabiliza a referência
@@ -786,14 +791,14 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   // Abre o modal de detalhes da tarefa - memoizado para performance
   const handleTaskClick = useCallback((taskId: number) => {
     setSelectedTaskId(taskId);
-    setIsTaskModalOpen(true);
-  }, []);
+    taskModal.open();
+  }, [taskModal]);
 
   // Fecha o modal de detalhes da tarefa - memoizado para performance
   const handleTaskModalClose = useCallback(() => {
-    setIsTaskModalOpen(false);
     setSelectedTaskId(null);
-  }, []);
+    taskModal.close();
+  }, [taskModal]);
 
   // Chamado quando uma tarefa é atualizada dentro do modal
   const handleTaskUpdated = async () => {
@@ -803,7 +808,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
     }
 
     // As tarefas serão atualizadas automaticamente via React Query
-    handleTaskModalClose(); // Fecha o modal
+    // Modal não fecha automaticamente para permitir múltiplas edições
   };
 
   // Manipula a exclusão da tarefa (chamado pelo Dialog de confirmação)
@@ -1221,50 +1226,10 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                           }
                         }}
                         onTimerUpdate={(seconds) => {
-                          // Atualizar o timer no backend quando o temporizador é pausado
-
-                          // Garantir que o valor seja um número válido
-                          const timerValue = Number(seconds);
-
-                          if (isNaN(timerValue)) {
-                            console.error('TasksList: Erro ao converter timer para número:', seconds);
-                            toast.error('Erro ao processar o tempo. Usando valor padrão.');
-                            return; // Não prosseguir com a atualização
-                          }
-
-
-                          // Obter o valor atual do timer da tarefa (pode ser 0 se não existir)
-                          const currentTimer = task.timer || 0;
-
-                          // Usar o valor recebido do componente TaskTimer
-                          // Este valor já representa o tempo total acumulado
-                          const newTimerValue = timerValue;
-
-                          // Atualização otimista do estado local
-                          const originalTasks = [...tasks];
-                          const updatedTasksOptimistic = tasks.map(t =>
-                            t.id === task.id ? { ...t, timer: newTimerValue } : t
-                          );
-                          setTasks(updatedTasksOptimistic);
-
-                          // Criar objeto de atualização explicitamente
-                          const updateData = {
-                            timer: newTimerValue
-                          };
-
-
-                          // Mostrar toast de informação
-                          toast.info('Atualizando tempo da tarefa...');
-
-                          updateTask({ id: task.id, data: updateData })
-                            .then(() => {
-                              toast.success('Tempo da tarefa atualizado com sucesso!');
-                            })
-                            .catch(err => {
-                              console.error('Erro ao atualizar timer da tarefa:', err);
-                              toast.error('Erro ao atualizar timer. Revertendo alteração.');
-                              setTasks(originalTasks); // Reverte em caso de erro
-                            });
+                          setCurrentTimerValues(prev => ({
+                            ...prev,
+                            [task.id.toString()]: seconds
+                          }));
                         }}
                       />
                     </TableCell>
@@ -1404,16 +1369,17 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
 
         {/* --- Modais e Diálogos (Renderizados fora do fluxo principal) --- */}
 
-        {/* Modal de Detalhes da Tarefa */}
-        {selectedTaskId && (
-            <TaskDetailsModal
-                taskId={selectedTaskId}
-                isOpen={isTaskModalOpen}
-                onClose={handleTaskModalClose}
-                onTaskUpdated={handleTaskUpdated}
-                timerRunningTaskId={timerRunningTaskId}
-            />
-        )}
+        {/* Modal de Detalhes da Tarefa com Nova Arquitetura */}
+        <LazyTaskDetailsModal
+            isOpen={taskModal.isOpen}
+            onClose={handleTaskModalClose}
+            taskId={selectedTaskId}
+            onTaskUpdated={handleTaskUpdated}
+            timerRunningTaskId={timerRunningTaskId}
+            currentTimerValues={currentTimerValues}
+            setCurrentTimerValues={setCurrentTimerValues}
+            setTimerRunningTaskId={setTimerRunningTaskId}
+        />
 
         {/* Diálogo de Confirmação de Exclusão */}
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -1441,7 +1407,17 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
 
     </div> // Fecha o div principal do componente
   ); // Fecha o parêntese do return
-}); // Fecha a chamada do forwardRef e a definição do componente TasksList
+}); // Fecha a chamada do forwardRef e a definição do componente TasksListInternal
 
-// Opcional: Definir um nome de exibição para o componente para facilitar a depuração
+// --- Componente exportado com Provider ---
+export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksListProps>((props, ref) => {
+  return (
+    <TaskModalProvider>
+      <TasksListInternal {...props} ref={ref} />
+    </TaskModalProvider>
+  );
+});
+
+// Definir nomes de exibição para os componentes
 TasksList.displayName = 'TasksList';
+TasksListInternal.displayName = 'TasksListInternal';
