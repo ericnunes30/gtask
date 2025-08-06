@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@/components/ui/visually-hidden";
 import { cn } from "@/utils/utils";
 
 export interface BaseModalProps {
@@ -62,12 +63,22 @@ export const BaseModal: React.FC<BaseModalProps> = ({
         onEscapeKeyDown={closeOnEscape ? undefined : (e) => e.preventDefault()}
         onPointerDownOutside={closeOnOverlayClick ? undefined : (e) => e.preventDefault()}
       >
-        {(title || description) && (
-          <DialogHeader>
-            {title && <DialogTitle>{title}</DialogTitle>}
-            {description && <DialogDescription>{description}</DialogDescription>}
-          </DialogHeader>
-        )}
+        <DialogHeader>
+          {title ? (
+            <DialogTitle>{title}</DialogTitle>
+          ) : (
+            <VisuallyHidden>
+              <DialogTitle>Modal</DialogTitle>
+            </VisuallyHidden>
+          )}
+          {description ? (
+            <DialogDescription>{description}</DialogDescription>
+          ) : (
+            <VisuallyHidden>
+              <DialogDescription>Modal content</DialogDescription>
+            </VisuallyHidden>
+          )}
+        </DialogHeader>
         
         <div className="overflow-y-auto flex-1">
           {children}

@@ -34,10 +34,12 @@ export const TaskDetailsModalV2: React.FC<TaskDetailsModalV2Props> = ({
   const [occupations, setOccupations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { tasks, users: usersService } = useBackendServices();
+  const { tasks, users: usersService, comments } = useBackendServices();
   const { data: taskData } = tasks.useGetTask(taskId || 0, { enabled: !!taskId && isOpen });
   const { data: usersData } = usersService.useGetUsers({ enabled: isOpen });
+  const { data: commentsData, refetch: refetchComments } = comments.useGetCommentsByTask(taskId || 0, { enabled: !!taskId && isOpen });
   const { mutateAsync: updateTask } = tasks.useUpdateTask();
+  const { mutateAsync: addComment } = comments.useCreateComment();
 
   useEffect(() => {
     if (taskData) {
@@ -101,6 +103,24 @@ export const TaskDetailsModalV2: React.FC<TaskDetailsModalV2Props> = ({
     }
   };
 
+  const handleAddComment = async (content: string) => {
+    if (!task) return;
+    
+    try {
+      await addComment({
+        task_id: task.id,
+        content,
+        type: 'comment'
+      });
+      await refetchComments();
+      toast.success('Comentário adicionado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao adicionar comentário:', error);
+      toast.error('Erro ao adicionar comentário');
+      throw error;
+    }
+  };
+
   if (!task) {
     return (
       <BaseModal
@@ -139,6 +159,12 @@ export const TaskDetailsModalV2: React.FC<TaskDetailsModalV2Props> = ({
         
         <TaskComments
           taskId={task.id}
+          comments={commentsData || []}
+          history={[]} // TODO: Implement task history
+          users={users}
+          onAddComment={handleAddComment}
+          onRefetch={refetchComments}
+          isSubmitting={isLoading}
         />
       </div>
     </BaseModal>

@@ -16,9 +16,9 @@ export type ActivityItem = (ApiComment | TaskHistoryItem) & {
 
 interface TaskCommentsProps {
   taskId: number;
-  comments: ApiComment[];
-  history: TaskHistoryItem[];
-  users: ApiUser[];
+  comments?: ApiComment[];
+  history?: TaskHistoryItem[];
+  users?: ApiUser[];
   onAddComment: (content: string) => Promise<void>;
   onRefetch: () => void;
   isSubmitting?: boolean;
@@ -28,9 +28,9 @@ type ActivityTab = 'all' | 'comments' | 'history';
 
 export const TaskComments: React.FC<TaskCommentsProps> = ({
   taskId,
-  comments,
-  history,
-  users,
+  comments = [],
+  history = [],
+  users = [],
   onAddComment,
   onRefetch,
   isSubmitting = false
