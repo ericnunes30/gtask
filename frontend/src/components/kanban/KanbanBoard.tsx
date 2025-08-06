@@ -559,19 +559,6 @@ const KanbanBoardInternal = React.forwardRef<unknown, KanbanBoardProps>((props, 
     filters,
     projectId: projectId !== undefined ? String(projectId) : undefined,
   });
-  
-  // Componente exportado com Provider
-  export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, ref) => {
-    return (
-      <TaskModalProvider>
-        <KanbanBoardInternal {...props} ref={ref} />
-      </TaskModalProvider>
-    );
-  });
-  
-  // Definir nomes de exibição
-  KanbanBoard.displayName = 'KanbanBoard';
-  KanbanBoardInternal.displayName = 'KanbanBoardInternal';
 
   // Hooks de autenticação e permissões
   const { user } = useAuth();
@@ -1209,3 +1196,16 @@ const handleTaskFormSuccess = async (newTaskFromForm: Task) => {
     </div>
   );
 });
+
+KanbanBoardInternal.displayName = 'KanbanBoardInternal';
+
+// Componente exportado com Provider
+export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, ref) => {
+  return (
+    <TaskModalProvider>
+      <KanbanBoardInternal {...props} ref={ref} />
+    </TaskModalProvider>
+  );
+});
+
+KanbanBoard.displayName = 'KanbanBoard';
