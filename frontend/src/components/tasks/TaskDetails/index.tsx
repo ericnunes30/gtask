@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Task, User as ApiUser } from '@/common/types';
 import { TaskHeader } from './TaskHeader';
 import { TaskDetailsForm } from './TaskDetailsForm';
+import { Button } from '@/components/ui/button';
 
 interface TaskDetailsProps {
   task: Task;
