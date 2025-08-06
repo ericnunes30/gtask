@@ -39,10 +39,11 @@ const commentService = {
 export const useGetComments = () =>
   useQuery({ queryKey: ['comments'], queryFn: commentService.getComments })
 
-export const useGetCommentsByTask = (taskId: number) =>
+export const useGetCommentsByTask = (taskId: number, options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: ['taskComments', taskId],
     queryFn: () => commentService.getCommentsByTask(taskId),
+    enabled: options?.enabled,
   })
 
 interface MutateCommentArgs {

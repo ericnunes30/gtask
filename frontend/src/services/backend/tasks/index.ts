@@ -37,10 +37,11 @@ const taskService = {
 export const useGetTasks = () =>
   useQuery({ queryKey: ['tasks'], queryFn: taskService.getTasks })
 
-export const useGetTask = (taskId: number) =>
+export const useGetTask = (taskId: number, options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: ['task', taskId],
     queryFn: () => taskService.getTask(taskId),
+    enabled: options?.enabled,
   })
 
 export const useGetTasksByProject = (projectId: number, enabled = true) =>

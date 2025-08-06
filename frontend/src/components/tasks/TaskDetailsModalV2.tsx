@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { BaseModal } from '@/components/common/BaseModal';
-import { TaskDetails } from './TaskDetails';
-import { TaskComments } from './TaskComments';
-import { Task, User as ApiUser } from '@/common/types';
+import { TaskDetails } from '@/components/tasks/TaskDetails';
+import { TaskComments } from '@/components/tasks/TaskComments';
+import { Task, User as ApiUser, Team } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { toast } from 'sonner';
 
@@ -31,13 +31,18 @@ export const TaskDetailsModalV2: React.FC<TaskDetailsModalV2Props> = ({
 }) => {
   const [task, setTask] = useState<Task | null>(null);
   const [users, setUsers] = useState<ApiUser[]>([]);
-  const [occupations, setOccupations] = useState<any[]>([]);
+  const [occupations, setOccupations] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { tasks, users: usersService, comments } = useBackendServices();
-  const { data: taskData } = tasks.useGetTask(taskId || 0, { enabled: !!taskId && isOpen });
+  const { tasks, users: usersService, comments, teams } = useBackendServices();
+
+  // Only fetch task-specific data when a taskId is available and the modal is open.
+  const isTaskQueryEnabled = !!taskId && isOpen;
+
+  const { data: taskData } = tasks.useGetTask(taskId!, { enabled: isTaskQueryEnabled });
   const { data: usersData } = usersService.useGetUsers({ enabled: isOpen });
-  const { data: commentsData, refetch: refetchComments } = comments.useGetCommentsByTask(taskId || 0, { enabled: !!taskId && isOpen });
+  const { data: occupationsData } = teams.useGetTeams({ enabled: isOpen });
+  const { data: commentsData, refetch: refetchComments } = comments.useGetCommentsByTask(taskId!, { enabled: isTaskQueryEnabled });
   const { mutateAsync: updateTask } = tasks.useUpdateTask();
   const { mutateAsync: addComment } = comments.useCreateComment();
 
@@ -53,12 +58,18 @@ export const TaskDetailsModalV2: React.FC<TaskDetailsModalV2Props> = ({
     }
   }, [usersData]);
 
+  useEffect(() => {
+    if (occupationsData) {
+      setOccupations(occupationsData);
+    }
+  }, [occupationsData]);
+
   const handleTaskUpdate = async (updates: Partial<Task>) => {
     if (!task) return;
 
     try {
       setIsLoading(true);
-      await updateTask({ id: task.id, data: updates });
+      await updateTask({ id: task.id, data: updates as any });
       
       // Atualizar o estado local
       setTask(prev => prev ? { ...prev, ...updates } : null);
@@ -109,8 +120,7 @@ export const TaskDetailsModalV2: React.FC<TaskDetailsModalV2Props> = ({
     try {
       await addComment({
         task_id: task.id,
-        content,
-        type: 'comment'
+        content
       });
       await refetchComments();
       toast.success('Comentário adicionado com sucesso!');
@@ -121,7 +131,7 @@ export const TaskDetailsModalV2: React.FC<TaskDetailsModalV2Props> = ({
     }
   };
 
-  if (!task) {
+  if (!task && taskId) {
     return (
       <BaseModal
         isOpen={isOpen}
@@ -134,6 +144,10 @@ export const TaskDetailsModalV2: React.FC<TaskDetailsModalV2Props> = ({
         </div>
       </BaseModal>
     );
+  }
+
+  if (!task) {
+    return null;
   }
 
   return (
@@ -163,7 +177,11 @@ export const TaskDetailsModalV2: React.FC<TaskDetailsModalV2Props> = ({
           history={[]} // TODO: Implement task history
           users={users}
           onAddComment={handleAddComment}
-          onRefetch={refetchComments}
+          onRefetch={() => {
+            refetchComments().catch((error) => {
+              console.error('Erro ao recarregar comentários:', error);
+            });
+          }}
           isSubmitting={isLoading}
         />
       </div>

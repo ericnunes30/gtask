@@ -51,8 +51,8 @@ const teamUserService = { // Renomeado occupationUserService para teamUserServic
   },
 }
 
-export const useGetTeams = () => // Renomeado useGetOccupations para useGetTeams
-  useQuery({ queryKey: ['teams'], queryFn: teamService.getTeams }) // Alterado queryKey para 'teams'
+export const useGetTeams = (options?: { enabled?: boolean }) => // Renomeado useGetOccupations para useGetTeams
+  useQuery({ queryKey: ['teams'], queryFn: teamService.getTeams, enabled: options?.enabled }) // Alterado queryKey para 'teams'
 
 export const useGetTeam = (teamId: number, enabled = true) => // Renomeado useGetOccupation para useGetTeam
   useQuery({

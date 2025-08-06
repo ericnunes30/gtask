@@ -24,8 +24,8 @@ export const userService = {
   },
 };
 
-export const useGetUsers = () =>
-  useQuery({ queryKey: ['users'], queryFn: userService.getUsers })
+export const useGetUsers = (options?: { enabled?: boolean }) =>
+  useQuery({ queryKey: ['users'], queryFn: userService.getUsers, enabled: options?.enabled })
 
 export const useGetUser = (userId: number) =>
   useQuery({
