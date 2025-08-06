@@ -476,7 +476,7 @@ const ProjectView = () => {
           <Card className="p-6 col-span-2">
             <h2 className="text-lg font-medium mb-4">Informações do Projeto</h2>
             {project.description && (
-              <p className="text-muted-foreground mb-4">{project.description}</p>
+              <div className="text-muted-foreground mb-4 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: project.description }} />
             )}
 
             <div className="space-y-4">

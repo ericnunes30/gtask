@@ -156,7 +156,7 @@ export const ProjectsList = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">{project.description}</p>
+                    <div className="text-sm text-muted-foreground mb-2 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: project.description || 'Sem descrição.' }} />
                     <div className="flex items-center justify-between">
                       <div className="w-full max-w-[180px]">
                         <div className="flex justify-between mb-1">

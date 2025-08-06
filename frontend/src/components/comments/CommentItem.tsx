@@ -176,7 +176,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
           <span className="text-xs text-muted-foreground">{formattedDate}</span>
         </div>
 
-        <div className="mt-1 text-sm">
+        <div className="mt-1 text-sm break-words" style={{ wordBreak: 'break-all' }}>
           {formatCommentContent(comment.content)}
         </div>
 
@@ -218,7 +218,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
               value={replyContent}
               onChange={(e) => setReplyContent(e.target.value)}
               placeholder="Escreva sua resposta..."
-              className="w-full p-2 border rounded-md text-sm" // Adicionado text-sm
+              className="w-full p-2 border rounded-md text-sm break-words" // Adicionado text-sm e break-words
               rows={2}
             />
             <div className="flex justify-end gap-2 mt-2">

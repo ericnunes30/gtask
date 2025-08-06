@@ -179,7 +179,8 @@ const Tasks = () => {
   const handleTaskFormSuccess = useCallback(async (taskData: any) => {
     const callbackId = successCallbackInstanceCounter.current;
     try {
-      const newTask = await createTask(taskData); // Salvar a nova tarefa
+      // taskData já é a tarefa criada pelo TaskForm, não precisa criar novamente
+      const newTask = taskData;
       
       setIsDialogOpen(false);
       toast.success('Tarefa criada com sucesso!');

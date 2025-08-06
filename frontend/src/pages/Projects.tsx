@@ -590,7 +590,7 @@ const Projects = () => {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">{project.description}</p>
+                      <div className="text-sm text-muted-foreground mb-2 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: project.description || 'Sem descrição.' }} />
 
                       <div className="mb-4">
                         <div className="flex justify-between mb-1">
@@ -759,7 +759,7 @@ const Projects = () => {
                       <ClipboardList className="h-4 w-4 mr-2 text-muted-foreground" />
                       Descrição
                     </h4>
-                    <p className="text-sm leading-relaxed">{selectedProject.description}</p>
+                    <div className="text-sm leading-relaxed prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedProject.description }} />
                   </div>
                 )}
 

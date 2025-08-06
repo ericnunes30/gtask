@@ -4,7 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@/components/ui/textarea"; // Manter por enquanto, pode ser removido depois
+import RichTextEditor from "@/components/ui/RichTextEditor";
 import {
   Form,
   FormControl,
@@ -460,8 +461,6 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
   };
 
   const onSubmit = (values: TaskFormValues) => {
-    
-
     if (!form.formState.isDirty && isEditMode) {
       toast.info("Nenhuma alteração foi feita");
       return;
@@ -472,8 +471,8 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
       ...values,
       start_date: values.start_date ? values.start_date.toISOString() : undefined,
       due_date: values.due_date ? values.due_date.toISOString() : undefined,
-      users: values.user_ids,
-      occupations: values.occupation_ids
+      users: values.user_ids?.filter(id => typeof id === 'number' && id > 0),
+      occupations: values.occupation_ids?.filter(id => typeof id === 'number' && id > 0)
     };
 
     // Se o usuário for um membro e estiver em modo de edição, permitir apenas atualizar status e comentário
@@ -516,7 +515,7 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
         onSuccess: (data) => {
           onSuccess(data);
         },
-        onError: () => {
+        onError: (error) => {
           toast.error('Erro ao processar formulário. Tente novamente.');
         },
       });
@@ -563,19 +562,15 @@ export const TaskForm = React.forwardRef<TaskFormRef, TaskFormProps>(
             <FormItem>
               <FormLabel>Descrição</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Descreva a tarefa em detalhes"
-                  className="min-h-[100px]"
-                  {...field}
-                  value={field.value || ""}
-                  disabled={permissions.isMember && isEditMode}
+                <RichTextEditor
+                  content={field.value || ""}
+                  onChange={field.onChange}
+                  editable={!permissions.isMember || !isEditMode} // Membros podem editar a descrição apenas se não estiverem em modo de edição
                 />
               </FormControl>
-              {permissions.isMember && isEditMode && (
-                <FormDescription className="text-xs text-muted-foreground mt-1">
-                  Como membro, você não pode alterar a descrição da tarefa.
-                </FormDescription>
-              )}
+              <FormDescription>
+                Detalhes completos da tarefa.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

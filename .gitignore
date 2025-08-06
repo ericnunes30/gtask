@@ -29,3 +29,6 @@ melhorias_arquitetura.md
 .aider.conf.yml
 .aider*
 .aider.chat.history.md
+
+.qwen/
+.qwen*

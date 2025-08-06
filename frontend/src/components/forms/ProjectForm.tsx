@@ -6,6 +6,8 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from '@/components/ui/RichTextEditor';
+import FullScreenEditorModal from '@/components/FullScreenEditorModal';
 import { Trash2 } from "lucide-react";
 import {
   Form,
@@ -89,6 +91,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<number[]>([]);
+  const [isFullScreenEditorOpen, setIsFullScreenEditorOpen] = useState(false);
 
   // Inicializar o formulário com valores padrão
   const form = useForm<ProjectFormValues>({
@@ -386,12 +389,11 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
             <FormItem>
               <FormLabel>Descrição</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Descreva o projeto..."
-                  {...field}
-                  value={field.value || ""}
-                  disabled={loading}
-                  className="h-20"
+                <RichTextEditor
+                  content={field.value || ''}
+                  onChange={field.onChange}
+                  editable={!loading}
+                  onExpand={() => setIsFullScreenEditorOpen(true)}
                 />
               </FormControl>
               <FormMessage />
@@ -678,6 +680,17 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
             {loading ? 'Salvando...' : projectId ? 'Atualizar Projeto' : 'Criar Projeto'}
           </Button>
         </div>
+
+        {/* Modal de Editor de Tela Cheia */}
+        <FullScreenEditorModal
+          isOpen={isFullScreenEditorOpen}
+          onClose={() => setIsFullScreenEditorOpen(false)}
+          content={form.watch('description') || ''}
+          onSave={(content) => {
+            form.setValue('description', content);
+            setIsFullScreenEditorOpen(false);
+          }}
+        />
       </form>
     </Form>
   );
