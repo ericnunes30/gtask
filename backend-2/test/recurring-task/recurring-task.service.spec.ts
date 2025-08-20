@@ -3,6 +3,9 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { RecurringTaskService } from '../../src/modules/recurring-task/services/recurring-task.service';
 import { RecurringTask } from '../../src/modules/recurring-task/entities/recurring-task.entity';
 import { Occupation } from '../../src/modules/occupation/entities/occupation.entity';
+import { OccupationEnhancer } from '../../src/modules/recurring-task/enhancers/occupation-enhancer';
+import { RecurringTaskCreationFactory } from '../../src/modules/recurring-task/factories/recurring-task-creation.factory';
+import { RecurringTaskUpdateFactory } from '../../src/modules/recurring-task/factories/recurring-task-update.factory';
 import { NotFoundException } from '@nestjs/common';
 import { 
   mockRecurringTaskFactory, 
@@ -31,6 +34,78 @@ describe('RecurringTaskService', () => {
         {
           provide: getRepositoryToken(Occupation),
           useValue: mockOccupationRepository,
+        },
+        {
+          provide: OccupationEnhancer,
+          useValue: {
+            enhance: jest.fn().mockImplementation(async (task) => {
+              if (task.templateData.occupation_ids?.length > 0) {
+                const occupations = await mockOccupationRepository.findByIds(task.templateData.occupation_ids);
+                (task.templateData as any).occupations = occupations;
+              }
+              return task;
+            }),
+            enhanceMany: jest.fn().mockImplementation(async (tasks) => {
+              const enhanced = [];
+              for (const task of tasks) {
+                if (task.templateData.occupation_ids?.length > 0) {
+                  const occupations = await mockOccupationRepository.findByIds(task.templateData.occupation_ids);
+                  (task.templateData as any).occupations = occupations;
+                }
+                enhanced.push(task);
+              }
+              return enhanced;
+            })
+          },
+        },
+        {
+          provide: RecurringTaskCreationFactory,
+          useValue: {
+            createRecurringTask: jest.fn().mockImplementation((dto, repository) => {
+              const task = repository.create({
+                name: dto.name,
+                templateData: {
+                  ...dto.templateData,
+                  occupation_ids: dto.templateData.occupation_ids,
+                },
+                next_due_date: dto.next_due_date ? new Date(dto.next_due_date) : new Date(),
+                is_active: dto.is_active ?? true,
+                schedule_type: dto.schedule_type,
+                frequency_interval: dto.frequency_interval,
+                frequency_cron: dto.frequency_cron,
+                userId: dto.userId,
+                projectId: dto.projectId,
+              });
+              return task;
+            })
+          },
+        },
+        {
+          provide: RecurringTaskUpdateFactory,
+          useValue: {
+            updateRecurringTask: jest.fn().mockImplementation((task, dto) => {
+              if (dto.next_due_date) {
+                task.next_due_date = new Date(dto.next_due_date);
+              }
+              if (dto.templateData) {
+                task.templateData = {
+                  ...task.templateData,
+                  ...dto.templateData,
+                  occupation_ids: dto.templateData.occupation_ids || task.templateData.occupation_ids,
+                };
+              }
+              Object.assign(task, {
+                name: dto.name || task.name,
+                is_active: dto.is_active ?? task.is_active,
+                schedule_type: dto.schedule_type || task.schedule_type,
+                frequency_interval: dto.frequency_interval || task.frequency_interval,
+                frequency_cron: dto.frequency_cron || task.frequency_cron,
+                userId: dto.userId || task.userId,
+                projectId: dto.projectId || task.projectId,
+              });
+              return task;
+            })
+          },
         },
       ],
     }).compile();

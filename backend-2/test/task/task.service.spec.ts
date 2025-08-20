@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { TaskService } from '../../src/modules/tasks/services/task.service';
+import { TaskStrategyFactory } from '../../src/modules/tasks/strategies/task-strategy.factory';
+import { TaskCreationFactory } from '../../src/modules/tasks/factories/task-creation.factory';
 // Attempting to correct the import path for TaskRepository. Common locations include:
 // - '../../src/modules/tasks/repositories/task.repository'
 // - '../../src/modules/tasks/typeorm/task.repository'
@@ -27,18 +30,84 @@ describe('TaskService', () => {
       providers: [
         TaskService,
         {
-          // NestJS typically injects repositories via a token.
-          // If TaskRepository is a TypeORM repository, it might be provided as 'DataSource.getRepository(Task)'
-          // or a custom token. For mocking purposes, we'll use a common token like 'TaskRepository'.
-          // If the actual provider token is different, this will need adjustment.
-          provide: 'TaskRepository',
+          provide: getRepositoryToken(Task),
           useValue: mockTaskRepository,
+        },
+        {
+          provide: TaskStrategyFactory,
+          useValue: {
+            getFindAllStrategy: jest.fn().mockReturnValue({
+              execute: jest.fn().mockImplementation(async (repository) => {
+                const repoAny = repository as any;
+                if (typeof repoAny.findAll === 'function') {
+                  return await repoAny.findAll();
+                }
+                return await repository.find({
+                  relations: ['project', 'reviewer', 'users', 'occupations'],
+                });
+              })
+            }),
+            getUpdateStrategy: jest.fn().mockReturnValue({
+              execute: jest.fn().mockImplementation(async (id, updateDto, repository) => {
+                const existing = await repository.findOne({ where: { id } });
+                if (!existing) {
+                  throw new NotFoundException(`Task with ID ${id} not found`);
+                }
+                const repoAny = repository as any;
+                if (typeof repoAny.update === 'function') {
+                  await repoAny.update(id, updateDto);
+                  return await repoAny.findOne({ where: { id } });
+                }
+                Object.assign(existing, updateDto);
+                return await repository.save(existing);
+              })
+            }),
+            getTimerUpdateStrategy: jest.fn().mockReturnValue({
+              execute: jest.fn().mockImplementation(async (id, timerValue, repository) => {
+                const repoAny = repository as any;
+                const existenceCheck = await repoAny.findOne({
+                  where: { id },
+                  relations: ['users'],
+                });
+                if (!existenceCheck) {
+                  throw new NotFoundException(`Task with ID ${id} not found`);
+                }
+                if (typeof repoAny.update === 'function') {
+                  await repoAny.update(id, { timer: timerValue });
+                  const updated = await repoAny.findOne({
+                    where: { id },
+                    relations: ['project', 'reviewer', 'users', 'occupations'],
+                  });
+                  updated.timer = timerValue;
+                  return updated;
+                }
+                const fullTask = await repoAny.findOne({
+                  where: { id },
+                  relations: ['project', 'reviewer', 'users', 'occupations'],
+                });
+                fullTask.timer = timerValue;
+                return await repository.save(fullTask);
+              })
+            })
+          },
+        },
+        {
+          provide: TaskCreationFactory,
+          useValue: {
+            createTask: jest.fn().mockImplementation((dto, repository) => {
+              const task = repository.create(dto);
+              if (task.timer == null) {
+                (task as any).timer = dto.timer ?? 0;
+              }
+              return task;
+            })
+          },
         },
       ],
     }).compile();
 
     service = module.get<TaskService>(TaskService);
-    taskRepository = module.get<any>('TaskRepository'); // Get the mocked repository using the token
+    taskRepository = module.get(getRepositoryToken(Task));
   });
 
   beforeEach(() => {

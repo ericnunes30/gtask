@@ -4,15 +4,18 @@ import { Repository } from 'typeorm';
 import { RecurringTask } from '../entities/recurring-task.entity';
 import { CreateRecurringTaskDto } from '../dto/create-recurring-task.dto';
 import { UpdateRecurringTaskDto } from '../dto/update-recurring-task.dto';
-import { Occupation } from '../../occupation/entities/occupation.entity';
+import { OccupationEnhancer } from '../enhancers/occupation-enhancer';
+import { RecurringTaskCreationFactory } from '../factories/recurring-task-creation.factory';
+import { RecurringTaskUpdateFactory } from '../factories/recurring-task-update.factory';
 
 @Injectable()
 export class RecurringTaskService {
   constructor(
     @InjectRepository(RecurringTask)
     private recurringTaskRepository: Repository<RecurringTask>,
-    @InjectRepository(Occupation)
-    private occupationRepository: Repository<Occupation>,
+    private occupationEnhancer: OccupationEnhancer,
+    private creationFactory: RecurringTaskCreationFactory,
+    private updateFactory: RecurringTaskUpdateFactory,
   ) {}
 
   async findAll(): Promise<RecurringTask[]> {
@@ -20,22 +23,7 @@ export class RecurringTaskService {
       relations: ['user', 'project'],
     });
 
-    const tasksWithOccupations = await Promise.all(
-      recurringTasks.map(async (task) => {
-        if (
-          task.templateData.occupation_ids &&
-          task.templateData.occupation_ids.length > 0
-        ) {
-          const occupations = await this.occupationRepository.findByIds(
-            task.templateData.occupation_ids
-          );
-          (task.templateData as any).occupations = occupations;
-        }
-        return task;
-      })
-    );
-
-    return tasksWithOccupations;
+    return await this.occupationEnhancer.enhanceMany(recurringTasks);
   }
 
   async findOne(id: number): Promise<RecurringTask> {
@@ -48,50 +36,17 @@ export class RecurringTaskService {
       throw new NotFoundException(`RecurringTask with ID ${id} not found`);
     }
 
-    if (
-      recurringTask.templateData.occupation_ids &&
-      recurringTask.templateData.occupation_ids.length > 0
-    ) {
-      const occupations = await this.occupationRepository.findByIds(
-        recurringTask.templateData.occupation_ids
-      );
-      (recurringTask.templateData as any).occupations = occupations;
-    }
-
-    return recurringTask;
+    return await this.occupationEnhancer.enhance(recurringTask);
   }
 
   async create(createRecurringTaskDto: CreateRecurringTaskDto): Promise<RecurringTask> {
-    const recurringTask = this.recurringTaskRepository.create({
-      name: createRecurringTaskDto.name,
-      templateData: {
-        ...createRecurringTaskDto.templateData,
-        occupation_ids: createRecurringTaskDto.templateData.occupation_ids,
-      },
-      next_due_date: createRecurringTaskDto.next_due_date
-        ? new Date(createRecurringTaskDto.next_due_date)
-        : new Date(),
-      is_active: createRecurringTaskDto.is_active ?? true,
-      schedule_type: createRecurringTaskDto.schedule_type,
-      frequency_interval: createRecurringTaskDto.frequency_interval,
-      frequency_cron: createRecurringTaskDto.frequency_cron,
-      userId: createRecurringTaskDto.userId,
-      projectId: createRecurringTaskDto.projectId,
-    });
+    const recurringTask = this.creationFactory.createRecurringTask(
+      createRecurringTaskDto, 
+      this.recurringTaskRepository
+    );
 
     const savedTask = await this.recurringTaskRepository.save(recurringTask);
-
-    if (
-      savedTask.templateData.occupation_ids &&
-      savedTask.templateData.occupation_ids.length > 0
-    ) {
-      const occupations = await this.occupationRepository.findByIds(
-        savedTask.templateData.occupation_ids
-      );
-      (savedTask.templateData as any).occupations = occupations;
-    }
-
-    return savedTask;
+    return await this.occupationEnhancer.enhance(savedTask);
   }
 
   async update(
@@ -99,44 +54,10 @@ export class RecurringTaskService {
     updateRecurringTaskDto: UpdateRecurringTaskDto,
   ): Promise<RecurringTask> {
     const recurringTask = await this.findOne(id);
-
-    if (updateRecurringTaskDto.next_due_date) {
-      recurringTask.next_due_date = new Date(updateRecurringTaskDto.next_due_date);
-    }
-
-    if (updateRecurringTaskDto.templateData) {
-      recurringTask.templateData = {
-        ...recurringTask.templateData,
-        ...updateRecurringTaskDto.templateData,
-        occupation_ids:
-          updateRecurringTaskDto.templateData.occupation_ids ||
-          recurringTask.templateData.occupation_ids,
-      };
-    }
-
-    Object.assign(recurringTask, {
-      name: updateRecurringTaskDto.name || recurringTask.name,
-      is_active: updateRecurringTaskDto.is_active ?? recurringTask.is_active,
-      schedule_type: updateRecurringTaskDto.schedule_type || recurringTask.schedule_type,
-      frequency_interval: updateRecurringTaskDto.frequency_interval || recurringTask.frequency_interval,
-      frequency_cron: updateRecurringTaskDto.frequency_cron || recurringTask.frequency_cron,
-      userId: updateRecurringTaskDto.userId || recurringTask.userId,
-      projectId: updateRecurringTaskDto.projectId || recurringTask.projectId,
-    });
-
-    const savedTask = await this.recurringTaskRepository.save(recurringTask);
-
-    if (
-      savedTask.templateData.occupation_ids &&
-      savedTask.templateData.occupation_ids.length > 0
-    ) {
-      const occupations = await this.occupationRepository.findByIds(
-        savedTask.templateData.occupation_ids
-      );
-      (savedTask.templateData as any).occupations = occupations;
-    }
-
-    return savedTask;
+    
+    const updatedTask = this.updateFactory.updateRecurringTask(recurringTask, updateRecurringTaskDto);
+    const savedTask = await this.recurringTaskRepository.save(updatedTask);
+    return await this.occupationEnhancer.enhance(savedTask);
   }
 
   async remove(id: number): Promise<void> {

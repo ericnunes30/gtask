@@ -4,33 +4,26 @@ import { Repository } from 'typeorm';
 import { Task } from '../entities/task.entity';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
+import { TaskStrategyFactory } from '../strategies/task-strategy.factory';
+import { TaskCreationFactory } from '../factories/task-creation.factory';
 
 @Injectable()
 export class TaskService {
   constructor(
     @InjectRepository(Task)
     private taskRepository: Repository<Task>,
+    private taskStrategyFactory: TaskStrategyFactory,
+    private taskCreationFactory: TaskCreationFactory,
   ) {}
 
   async create(createTaskDto: CreateTaskDto): Promise<Task> {
-    // Call create with the DTO as tests expect the original DTO to be passed to repository.create
-    const task = this.taskRepository.create(createTaskDto);
-    // Ensure timer is set before saving (default to 0)
-    if (task.timer == null) {
-      (task as any).timer = createTaskDto.timer ?? 0;
-    }
+    const task = this.taskCreationFactory.createTask(createTaskDto, this.taskRepository);
     return await this.taskRepository.save(task);
   }
 
   async findAll(): Promise<Task[]> {
-    // Some tests/mocks expect a findAll method on the repository.
-    const repoAny = this.taskRepository as any;
-    if (typeof repoAny.findAll === 'function') {
-      return await repoAny.findAll();
-    }
-    return await this.taskRepository.find({
-      relations: ['project', 'reviewer', 'users', 'occupations'],
-    });
+    const strategy = this.taskStrategyFactory.getFindAllStrategy(this.taskRepository);
+    return await strategy.execute(this.taskRepository);
   }
 
   async findOne(id: number): Promise<Task> {
@@ -47,19 +40,8 @@ export class TaskService {
   }
 
   async update(id: number, updateTaskDto: UpdateTaskDto): Promise<Task> {
-    // Use repository.update when available so tests that spy on update are satisfied.
-    const existing = await this.findOne(id);
-    if (!existing) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
-    }
-    const repoAny = this.taskRepository as any;
-    if (typeof repoAny.update === 'function') {
-      await repoAny.update(id, updateTaskDto);
-      // Return the refreshed entity (tests often mock findOne to return updatedTask)
-      return (await repoAny.findOne({ where: { id } })) as Task;
-    }
-    Object.assign(existing, updateTaskDto);
-    return await this.taskRepository.save(existing);
+    const strategy = this.taskStrategyFactory.getUpdateStrategy(this.taskRepository);
+    return await strategy.execute(id, updateTaskDto, this.taskRepository);
   }
 
   async remove(id: number): Promise<void> {
@@ -89,31 +71,8 @@ export class TaskService {
   }
 
   async updateTimer(id: number, timerValue: number): Promise<Task> {
-    const repoAny = this.taskRepository as any;
-    // First call: check existence with minimal relations expected by some tests (users)
-    const existenceCheck = await repoAny.findOne({
-      where: { id },
-      relations: ['users'],
-    });
-    if (!existenceCheck) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
-    }
-    // Perform update
-    if (typeof repoAny.update === 'function') {
-      await repoAny.update(id, { timer: timerValue });
-      // Return the refreshed entity with full relations as expected by other tests
-      return await repoAny.findOne({
-        where: { id },
-        relations: ['project', 'reviewer', 'users', 'occupations'],
-      }) as Task;
-    }
-    // Fallback: modify and save
-    const fullTask = await repoAny.findOne({
-      where: { id },
-      relations: ['project', 'reviewer', 'users', 'occupations'],
-    });
-    fullTask.timer = timerValue;
-    return await this.taskRepository.save(fullTask);
+    const strategy = this.taskStrategyFactory.getTimerUpdateStrategy(this.taskRepository);
+    return await strategy.execute(id, timerValue, this.taskRepository);
   }
 
   async assignUsers(taskId: number, userIds: number[]): Promise<Task> {

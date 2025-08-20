@@ -8,6 +8,10 @@ import { AuthService } from './services/auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { UserModule } from '../user/user.module';
+import { PasswordVerificationFactory } from './strategies/password/password-verification.factory';
+import { TokenPayloadFactory } from './factories/token-payload.factory';
+import { AuthResponseFactory } from './factories/auth-response.factory';
+import { UserValidationFactory } from './factories/user-validation.factory';
 
 @Module({
   imports: [
@@ -23,7 +27,15 @@ import { UserModule } from '../user/user.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy],
+  providers: [
+    AuthService, 
+    JwtStrategy, 
+    LocalStrategy, 
+    PasswordVerificationFactory,
+    TokenPayloadFactory,
+    AuthResponseFactory,
+    UserValidationFactory
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

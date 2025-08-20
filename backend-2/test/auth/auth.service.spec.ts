@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from '../../src/modules/auth/services/auth.service';
 import { UserService } from '../../src/modules/user/services/user.service';
 import { JwtService } from '@nestjs/jwt';
+import { TokenPayloadFactory } from '../../src/modules/auth/factories/token-payload.factory';
+import { AuthResponseFactory } from '../../src/modules/auth/factories/auth-response.factory';
+import { UserValidationFactory } from '../../src/modules/auth/factories/user-validation.factory';
 import { mockUserService, mockLoginDtoFactory, mockCreateUserDtoFactory, mockUserFactory } from '../mocks/factory';
 import { UnauthorizedException } from '@nestjs/common';
 
@@ -23,6 +26,40 @@ describe('AuthService', () => {
           useValue: {
             sign: jest.fn(),
             verify: jest.fn() // Add verify mock
+          },
+        },
+        {
+          provide: TokenPayloadFactory,
+          useValue: {
+            createPayload: jest.fn().mockImplementation((user) => ({
+              email: user.email,
+              sub: user.id,
+            }))
+          },
+        },
+        {
+          provide: AuthResponseFactory,
+          useValue: {
+            createLoginResponse: jest.fn().mockImplementation((accessToken, user) => ({
+              access_token: accessToken,
+              user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+              },
+            }))
+          },
+        },
+        {
+          provide: UserValidationFactory,
+          useValue: {
+            validateUser: jest.fn().mockImplementation(async (email, password) => {
+              const user = await mockUserService.findByEmail(email);
+              if (user && password === user.password) {
+                return user;
+              }
+              return null;
+            })
           },
         },
       ],
