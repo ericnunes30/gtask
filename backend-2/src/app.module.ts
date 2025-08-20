@@ -8,6 +8,10 @@ import { ProjectModule } from './modules/project/project.module';
 import { TaskModule } from './modules/tasks/task.module';
 import { RoleModule } from './modules/role/role.module';
 import { OccupationModule } from './modules/occupation/occupation.module';
+import { RecurringTaskModule } from './modules/recurring-task/recurring-task.module';
+import { ActivityLogModule } from './modules/activity-log/activity-log.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -34,7 +38,11 @@ import { OccupationModule } from './modules/occupation/occupation.module';
     TaskModule,
     RoleModule,
     OccupationModule,
+    RecurringTaskModule,
+    ActivityLogModule,
     CommentModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}

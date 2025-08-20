@@ -33,7 +33,7 @@ export class RecurringTask {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'varchar' })
   name: string;
 
   @Column({ type: 'jsonb' })
@@ -42,7 +42,7 @@ export class RecurringTask {
   @Column({ type: 'timestamp' })
   next_due_date: Date;
 
-  @Column({ default: true })
+  @Column({ default: true, type: 'boolean' })
   is_active: boolean;
 
   @Column({
@@ -51,16 +51,16 @@ export class RecurringTask {
   })
   schedule_type: ScheduleType;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'varchar' })
   frequency_interval: string | null;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'varchar' })
   frequency_cron: string | null;
 
-  @Column({ name: 'user_id' })
+  @Column({ name: 'user_id', type: 'integer' })
   userId: number;
 
-  @Column({ name: 'project_id' })
+  @Column({ name: 'project_id', type: 'integer' })
   projectId: number;
 
   @CreateDateColumn()

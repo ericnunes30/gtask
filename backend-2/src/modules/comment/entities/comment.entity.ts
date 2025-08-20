@@ -26,7 +26,7 @@ export class Comment {
   task_id: number;
 
   @Column({ name: 'user_id' })
-  user_id: number;
+  userId: number;
 
   @Column({ name: 'parent_id', nullable: true })
   parentId: number | null;

@@ -5,22 +5,24 @@ import {
   CreateDateColumn, 
   ManyToOne,
   JoinColumn,
-  Unique
+  Unique,
+  AfterInsert,
+  AfterRemove
 } from 'typeorm';
 import { Comment } from './comment.entity';
 import { User } from '../../user/entities/user.entity';
 
 @Entity('comment_likes')
-@Unique(['comment_id', 'user_id'])
+@Unique(['commentId', 'userId'])
 export class CommentLike {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ name: 'comment_id' })
-  comment_id: number;
+  commentId: number;
 
   @Column({ name: 'user_id' })
-  user_id: number;
+  userId: number;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -32,4 +34,16 @@ export class CommentLike {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @AfterInsert()
+  async incrementCommentLikes() {
+    // Hook será implementado no service se necessário
+    // Para evitar problemas de circular dependency
+  }
+
+  @AfterRemove()
+  async decrementCommentLikes() {
+    // Hook será implementado no service se necessário
+    // Para evitar problemas de circular dependency
+  }
 }
