@@ -23,14 +23,33 @@ comment/
 
 ```typescript
 Comment {
-  id: number           # ID único
-  content: string      # Conteúdo do comentário
-  userId: number       # ID do usuário autor
-  taskId: number       # ID da tarefa comentada
-  user: User          # Relacionamento com autor
-  task: Task          # Relacionamento com tarefa
-  createdAt: Date     # Data de criação
-  updatedAt: Date     # Data de atualização
+  id: number               # ID único
+  content: string          # Conteúdo do comentário
+  task_id: number         # ID da tarefa comentada
+  userId: number          # ID do usuário autor
+  parentId?: number       # ID do comentário pai (para respostas)
+  likesCount: number      # Contador de likes
+  user: User             # Relacionamento com autor
+  task: Task             # Relacionamento com tarefa
+  parentComment?: Comment # Comentário pai
+  replies: Comment[]      # Respostas ao comentário
+  likes: CommentLike[]    # Likes do comentário
+  mentionedUsers: User[]  # Usuários mencionados
+  createdAt: Date        # Data de criação
+  updatedAt: Date        # Data de atualização
+}
+```
+
+## 👍 Entidade CommentLike
+
+```typescript
+CommentLike {
+  id: number         # ID único
+  commentId: number  # ID do comentário
+  userId: number     # ID do usuário que curtiu
+  comment: Comment   # Relacionamento com comentário
+  user: User        # Relacionamento com usuário
+  createdAt: Date   # Data de criação
 }
 ```
 
@@ -68,5 +87,43 @@ npm test -- --testPathPatterns="comment"
 
 ## 🔗 Relacionamentos
 
-- **user**: Many-to-One (autor)
+### Comment Entity
+- **user**: Many-to-One (autor do comentário)
 - **task**: Many-to-One (tarefa comentada)
+- **parentComment**: Many-to-One (comentário pai para hierarquia)
+- **replies**: One-to-Many (respostas/comentários filhos)
+- **likes**: One-to-Many (likes do comentário)
+- **mentionedUsers**: Many-to-Many (usuários mencionados)
+
+### CommentLike Entity  
+- **comment**: Many-to-One (comentário curtido)
+- **user**: Many-to-One (usuário que curtiu)
+
+## ✨ Funcionalidades Avançadas
+
+### Sistema Hierárquico de Comentários
+- **Comentários Principais**: `parentId = null`
+- **Respostas**: `parentId` aponta para comentário pai
+- **Getter `repliesCount`**: Conta respostas automaticamente
+
+### Sistema de Likes
+- **Tabela `comment_likes`**: Relacionamento único por user/comment
+- **Campo `likesCount`**: Contador automático (incrementado por hooks)
+- **Constraint Unique**: Impede likes duplicados
+
+### Menções de Usuários
+- **Tabela pivot**: `comment_user_mentions`
+- **Relacionamento Many-to-Many**: Comentário ↔ Usuários mencionados
+- **Notificações**: Base para sistema de notificações
+
+## ⚡ Performance e Otimizações
+
+### Database
+- **Indexes**: Criados automaticamente em foreign keys
+- **Constraints**: Unique em comment_likes para evitar duplicatas
+- **Cascade Operations**: Delete em cascade para relacionamentos
+
+### TypeORM Features
+- **Auto-increment**: Hooks para atualizar `likesCount`
+- **Relations Loading**: Eager/lazy loading conforme necessário
+- **Query Optimization**: Relations específicas por endpoint
