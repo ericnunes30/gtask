@@ -18,13 +18,13 @@ export class Project {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'varchar' })
   title: string;
 
   @Column({ nullable: true, type: 'text' })
   description: string | null;
 
-  @Column()
+  @Column({ type: 'boolean' })
   status: boolean;
 
   @Column({

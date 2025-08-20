@@ -13,7 +13,7 @@ export class Role {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'varchar' })
   name: string;
 
   @Column({ nullable: true, type: 'text' })
