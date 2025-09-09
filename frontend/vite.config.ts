@@ -7,7 +7,7 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   cacheDir: 'node_modules/.vite_custom_cache', // Adiciona um diretório de cache customizado para o Vite
   server: {
-    host: "::",
+    host: "127.0.0.1",
     port: 8080,
     fs: {
       strict: false, // Pode ajudar a evitar problemas de HMR em alguns sistemas
