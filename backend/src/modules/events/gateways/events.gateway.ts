@@ -1,6 +1,5 @@
 import { Logger, Injectable, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import * as fs from 'fs';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -225,24 +224,17 @@ export class EventsGateway
         const notificationPayload = { ...payload, userId };
         this.logger.log(`🚀 Notification payload: ${JSON.stringify(notificationPayload, null, 2)}`);
         
-        // Log detalhado no arquivo server.log
-        const timestamp = new Date().toISOString();
-        const gatewayLog = `[${timestamp}] GATEWAY: Creating notification for user ${userId}, Event: ${eventName}\n`;
-        fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', gatewayLog);
+        this.logger.log(`GATEWAY: Creating notification for user ${userId}, Event: ${eventName}`);
         
         const savedNotification = await this.notificationService.create(notificationPayload);
         this.logger.log(`✅ Notification created successfully for user ${userId} with ID ${savedNotification.id}`);
         
-        // Log de sucesso no arquivo server.log
-        const successLog = `[${timestamp}] GATEWAY: Notification created successfully - ID: ${savedNotification.id}, User: ${userId}, Event: ${eventName}\n`;
-        fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', successLog);
+        this.logger.log(`GATEWAY: Notification created successfully - ID: ${savedNotification.id}, User: ${userId}, Event: ${eventName}`);
         
         this.server.to(`user_${userId}`).emit('new_structured_notification', savedNotification);
         this.logger.log(`🚀 WebSocket notification sent to user_${userId}`);
         
-        // Log de WebSocket no arquivo server.log
-        const wsLog = `[${timestamp}] GATEWAY: WebSocket notification sent to user_${userId}\n`;
-        fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', wsLog);
+        this.logger.log(`GATEWAY: WebSocket notification sent to user_${userId}`);
         
         this.debugLogger.logNotificationEvent('structured_notification_sent', {
           userId,
@@ -250,10 +242,7 @@ export class EventsGateway
           notificationId: savedNotification.id,
         }, userId);
       } catch (error) {
-        // Log de erro detalhado no arquivo server.log
-        const timestamp = new Date().toISOString();
-        const errorLog = `[${timestamp}] GATEWAY ERROR: Failed to create notification for user ${userId}, Event: ${eventName}, Error: ${error.message}\n`;
-        fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', errorLog);
+        this.logger.error(`GATEWAY ERROR: Failed to create notification for user ${userId}, Event: ${eventName}, Error: ${error.message}`);
         
         this.logger.error(`❌ Failed to create or send structured notification for user ${userId}:`, error);
         this.logger.error(`❌ Error details: ${error.message}`);
