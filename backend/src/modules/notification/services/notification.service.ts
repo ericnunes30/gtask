@@ -9,7 +9,6 @@ import {
 } from '../interfaces/notification.types';
 import { NotificationFactory } from '../factories/notification.factory';
 import { DebugLoggerService } from './debug-logger.service';
-import * as fs from 'fs';
 
 @Injectable()
 export class NotificationService {
@@ -29,18 +28,13 @@ export class NotificationService {
         throw new Error('Invalid notification data');
       }
 
-      // Log detalhado antes de salvar
-      const timestamp = new Date().toISOString();
-      const logMessage = `[${timestamp}] CREATING NOTIFICATION: User ${notification.userId}, Type ${notification.type}, Priority ${notification.priority}\n`;
-      fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', logMessage);
+      this.logger.log(`CREATING NOTIFICATION: User ${notification.userId}, Type ${notification.type}, Priority ${notification.priority}`);
 
       // Converter para entidade e salvar
       const entity = StructuredNotificationEntity.fromDomain(notification as StructuredNotification);
       const savedEntity = await this.repository.save(entity);
       
-      // Log de sucesso
-      const successLog = `[${timestamp}] NOTIFICATION CREATED SUCCESSFULLY: ID ${savedEntity.id}, User ${notification.userId}, Type ${notification.type}\n`;
-      fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', successLog);
+      this.logger.log(`NOTIFICATION CREATED SUCCESSFULLY: ID ${savedEntity.id}, User ${notification.userId}, Type ${notification.type}`);
       
       this.logger.log(`Notification created successfully for user ${notification.userId} with ID ${savedEntity.id}`);
       this.debugLogger.logNotificationEvent('notification_created', {
@@ -52,10 +46,7 @@ export class NotificationService {
       
       return savedEntity.toDomain();
     } catch (error) {
-      // Log de erro detalhado
-      const timestamp = new Date().toISOString();
-      const errorLog = `[${timestamp}] NOTIFICATION CREATION FAILED: User ${notification.userId}, Type ${notification.type}, Error: ${error.message}\n`;
-      fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', errorLog);
+      this.logger.error(`NOTIFICATION CREATION FAILED: User ${notification.userId}, Type ${notification.type}, Error: ${error.message}`);
       
       this.logger.error(`Failed to create notification for user ${notification.userId}:`, error);
       this.debugLogger.logError(error, `Notification creation failed for user ${notification.userId}`);
