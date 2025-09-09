@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/backend/api'
+import { ROUTES } from '@/services/backend/routes'
 import {
   RecurringTask,
   CreateRecurringTaskRequest,
@@ -8,19 +9,19 @@ import {
 
 const recurringTaskService = {
   async getRecurringTasks(): Promise<RecurringTask[]> {
-    const response = await api.get('/recurring-tasks')
+    const response = await api.get(ROUTES.recurringTasks)
     return response.data
   },
 
   async getRecurringTask(id: number): Promise<RecurringTask> {
-    const response = await api.get(`/recurring-tasks/${id}`)
+    const response = await api.get(`${ROUTES.recurringTasks}/${id}`)
     return response.data
   },
 
   async createRecurringTask(
     data: CreateRecurringTaskRequest,
   ): Promise<RecurringTask> {
-    const response = await api.post('/recurring-tasks', data)
+    const response = await api.post(ROUTES.recurringTasks, data)
     return response.data
   },
 
@@ -28,12 +29,12 @@ const recurringTaskService = {
     id: number,
     data: UpdateRecurringTaskRequest,
   ): Promise<RecurringTask> {
-    const response = await api.put(`/recurring-tasks/${id}`, data)
+    const response = await api.put(`${ROUTES.recurringTasks}/${id}`, data)
     return response.data
   },
 
   async deleteRecurringTask(id: number): Promise<void> {
-    await api.delete(`/recurring-tasks/${id}`)
+    await api.delete(`${ROUTES.recurringTasks}/${id}`)
   },
 }
 

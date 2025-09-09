@@ -20,19 +20,19 @@ const roleService = {
     return response.data as any;
   },
   async getRole(roleId: number): Promise<Role> {
-    const response = await api.get(`/role/${roleId}`)
+    const response = await api.get(`${ROUTES.roles}/${roleId}`)
     return response.data
   },
   async createRole(data: CreateRoleRequest): Promise<Role> {
-    const response = await api.post('/role', data)
+    const response = await api.post(ROUTES.roles, data)
     return response.data
   },
   async updateRole(id: number, data: UpdateRoleRequest): Promise<Role> {
-    const response = await api.put(`/role/${id}`, data)
+    const response = await api.put(`${ROUTES.roles}/${id}`, data)
     return response.data
   },
   async deleteRole(id: number): Promise<void> {
-    await api.delete(`/role/${id}`)
+    await api.delete(`${ROUTES.roles}/${id}`)
   },
 }
 
