@@ -28,8 +28,8 @@ export interface Team { // Renomeado de Occupation para Team
   id: number;
   name: string;
   description?: string; // Tornar opcional
-  created_at?: string;
-  updated_at?: string;
+  createdAt?: string; // API retorna createdAt, não created_at
+  updatedAt?: string; // API retorna updatedAt, não updated_at
   users?: User[]; // Adicionado para incluir usuários associados à equipe
 }
 
@@ -49,6 +49,7 @@ export interface User {
   updated_at?: string;
   updatedAt?: string; // Suporte para formato camelCase
   roles?: Role[] | number[];
+  permissions?: string[]; // Adicionado para permissões granulares
   occupation?: {
     id: number;
     name: string;
@@ -88,9 +89,9 @@ export interface LoginCredentials {
 }
 
 export interface AuthResponse {
-  token: string;
-  user_id: number;
-  name: string;
+  accessToken: string;
+  refreshToken: string;
+  user: User;
 }
 
 // =====================================================
@@ -168,7 +169,6 @@ export interface Task {
   startDate?: string; // Campo usado pela API
   dueDate?: string; // Campo usado pela API
   project_id?: number; // Campo interno no frontend
-  projectId?: number; // Campo usado pela API
   order?: number;
   timer?: number; // Tempo em segundos
   task_reviewer_id?: number; // Campo interno no frontend
@@ -186,6 +186,34 @@ export interface Task {
   occupations?: Team[]; // Renomeado de Occupation[] para Team[]
   project?: Project; // Usar a interface Project importada
   comments?: Comment[]; // Adicionado para incluir comentários pré-carregados
+  activityLogs?: ActivityLog[]; // Adicionado para incluir logs de atividade pré-carregados
+}
+
+export interface ActivityLog {
+  id: number;
+  taskId: number | null;
+  task_id?: number | null; // Suporte para formato snake_case
+  userId: number | null;
+  user_id?: number | null; // Suporte para formato snake_case
+  actionType: string;
+  action_type?: string; // Suporte para formato snake_case
+  changedField: string | null;
+  changed_field?: string | null; // Suporte para formato snake_case
+  oldValue: string | null;
+  old_value?: string | null; // Suporte para formato snake_case
+  newValue: string | null;
+  new_value?: string | null; // Suporte para formato snake_case
+  referenceId: number | null;
+  reference_id?: number | null; // Suporte para formato snake_case
+  details: Record<string, any> | null;
+  createdAt: string;
+  created_at?: string; // Suporte para formato snake_case
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    avatar?: string;
+  };
 }
 
 export interface CreateTaskRequest {
@@ -198,7 +226,6 @@ export interface CreateTaskRequest {
   startDate?: string; // Campo usado pela API
   dueDate?: string; // Campo usado pela API
   project_id?: number; // Campo interno no frontend
-  projectId?: number; // Campo usado pela API
   order?: number;
   timer?: number; // Tempo em segundos
   task_reviewer_id?: number; // Campo interno no frontend
@@ -221,7 +248,6 @@ export interface UpdateTaskRequest {
   startDate?: string; // Campo usado pela API
   dueDate?: string; // Campo usado pela API
   project_id?: number; // Campo interno no frontend
-  projectId?: number; // Campo usado pela API
   order?: number;
   timer?: number; // Tempo em segundos
   task_reviewer_id?: number; // Campo interno no frontend
@@ -316,7 +342,9 @@ export interface RecurringTaskTemplateData {
   description: string;
   priority: TaskPriority;
   assignee_ids: number[];
-  occupations?: number[];
+  occupation_ids?: number[]; // Added to match backend response
+  occupations?: Team[]; // Added to match backend response
+  task_reviewer_id?: number; // Added to match backend DTO
 }
 
 export interface RecurringTask {
@@ -383,3 +411,17 @@ export interface Paginator<T> {
 
 // Function types for utility functions
 export type ConvertApiTaskToFrontend = (taskData: Task) => Task;
+
+// =====================================================
+// NOTIFICATION INTERFACES
+// =====================================================
+
+export interface Notification {
+  id: number;
+  userId: number;
+  message: string;
+  link?: string;
+  isRead: boolean;
+  createdAt: string;
+  user?: User;
+}

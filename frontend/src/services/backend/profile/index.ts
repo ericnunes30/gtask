@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { UpdateUserRequest, User } from '@/common/types'
-import { userService } from '@/services/backend/users' // Importar o userService
+import { api } from '@/services/backend/api' // Importar o userService
 
 const profileService = {
   async updateProfile(userId: number, data: UpdateUserRequest): Promise<User> {

@@ -1,38 +1,44 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '@/services/backend/api'
+import { api } from '@/services/backend/api'
+import { ROUTES } from '@/services/backend/routes'
 import { CreateCommentRequest, UpdateCommentRequest, Comment } from '@/common/types'
 
 const commentService = {
   async getComments(): Promise<Comment[]> {
-    const response = await api.get('/comment')
+    const response = await api.get(ROUTES.comments)
     return response.data
   },
 
   async getCommentsByTask(taskId: number): Promise<Comment[]> {
-    const response = await api.get(`/comment/task/${taskId}`)
+    // backend-2 doesn't expose /comments/task/:id; map to query param ?task=
+    const response = await api.get(`${ROUTES.comments}?task=${taskId}`)
     return response.data
   },
 
   async createComment(data: CreateCommentRequest): Promise<Comment> {
-    const response = await api.post('/comment', data)
-    return response.data
+    console.log('Sending create comment request with data:', data);
+    const response = await api.post(ROUTES.comments, data);
+    console.log('Received create comment response (raw):', response); // Log da resposta completa
+    console.log('Received create comment response (data):', response.data); // Log de response.data
+    console.log('Received create comment response (data.data):', response.data.data); // Log de response.data.data
+            return response.data.data; // <-- CORRIGIDO
   },
 
   async updateComment(id: number, data: UpdateCommentRequest): Promise<Comment> {
-    const response = await api.put(`/comment/${id}`, data)
+    const response = await api.put(`${ROUTES.comments}/${id}`, data)
     return response.data
   },
 
   async deleteComment(id: number): Promise<void> {
-    await api.delete(`/comment/${id}`)
+    await api.delete(`${ROUTES.comments}/${id}`)
   },
 
   async likeComment(id: number): Promise<void> {
-    await api.post(`/comment/${id}/like`, {})
+    await api.post(`${ROUTES.comments}/${id}/like`, {})
   },
 
   async unlikeComment(id: number): Promise<void> {
-    await api.delete(`/comment/${id}/like`)
+    await api.delete(`${ROUTES.comments}/${id}/like`)
   },
 }
 
@@ -54,9 +60,13 @@ export const useCreateComment = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (data: CreateCommentRequest) => commentService.createComment(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments'] })
-      queryClient.invalidateQueries({ queryKey: ['taskComments'] })
+    onSuccess: (newComment) => {
+      console.log('Comment created successfully:', newComment);
+      queryClient.invalidateQueries({ queryKey: ['comments'] });
+      queryClient.invalidateQueries({ queryKey: ['taskComments'] });
+    },
+    onError: (error) => {
+      console.error('Error creating comment:', error);
     },
   })
 }

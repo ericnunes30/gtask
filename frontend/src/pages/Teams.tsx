@@ -15,7 +15,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Team, UserOccupation, User } from '@/common/types';
+import { Team, User } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
 
 const TeamsPage = () => {
@@ -44,7 +43,7 @@ const TeamsPage = () => {
   const [editingOccupation, setEditingOccupation] = useState<Team | null>(null);
   const [occupationToDelete, setOccupationToDelete] = useState<Team | null>(null);
 
-  const { users: usersService, teams: teamsService } = useBackendServices();
+  const { users: usersService, teams: teamsService, occupations: occupationsService } = useBackendServices();
   const {
     data: teamsQueryData = [],
     isLoading: teamsLoading,
@@ -56,22 +55,77 @@ const TeamsPage = () => {
   const { mutateAsync: createTeamMutate } = teamsService.useCreateTeam();
   const { mutateAsync: updateTeamMutate } = teamsService.useUpdateTeam();
   const { mutateAsync: deleteTeamMutate } = teamsService.useDeleteTeam();
-  const { data: usersQueryData = [] } = usersService.useGetUsers();
+  const {
+    data: usersQueryData,
+    isLoading: usersLoading
+  } = usersService.useGetUsers();
+  
+  const { mutateAsync: addUserToTeamMutate } = teamsService.useAddUserToTeam();
+  const { mutateAsync: removeUserFromTeamMutate } = teamsService.useRemoveUserFromTeam();
 
-  // Since the API endpoint doesn't exist, we'll derive team users from the main team data
+  // Build a map of teamId -> users:
+  // - Prefer using `team.users` when backend provides it (array of User or ids)
+  // - Fallback: derive users from the global usersQueryData by checking user.occupations / user.occupation_id / user.occupation
   const derivedTeamUsers = React.useMemo(() => {
     const map: Record<number, User[]> = {};
-    if (Array.isArray(teamsQueryData)) {
-      teamsQueryData.forEach((team) => {
-        // Use the users preloaded in the team data
-        map[team.id] = team.users || [];
-      });
-    }
+    if (!Array.isArray(teamsQueryData)) return map;
+
+    // Helper to normalize a user entry (could be number or object)
+    const normalizeUser = (u: any): User | null => {
+      if (!u) return null;
+      if (typeof u === 'number') return { id: u, name: `Usuário ${u}`, email: '', createdAt: undefined } as User;
+      return u as User;
+    };
+
+    teamsQueryData.forEach((team) => {
+      const usersFromTeam: User[] = [];
+
+        // 1) If API returns team.users, use it (normalize entries)
+      if (team.users && Array.isArray(team.users) && team.users.length > 0) {
+        team.users.forEach((rawUser: any) => {
+          const u = normalizeUser(rawUser);
+          if (u) usersFromTeam.push(u);
+        });
+      } else {
+        // 2) Fallback: derive from global users list by matching occupation relations
+        usersQueryData.forEach((user) => {
+          // user.occupations can be array of ids or objects
+          const hasOccupation = (() => {
+            if (user.occupations && Array.isArray(user.occupations)) {
+              return user.occupations.some((occ: any) => {
+                const occId = typeof occ === 'number' ? occ : (occ && occ.id);
+                return occId === team.id;
+              });
+            }
+            // single occupation id fields
+            if (user.occupation_id && (user.occupation_id === team.id)) return true;
+            if (user.occupationId && (user.occupationId === team.id)) return true;
+            // occupation object
+            if (user.occupation && ((typeof user.occupation === 'number' && user.occupation === team.id) || (user.occupation.id === team.id))) return true;
+            return false;
+          })();
+
+          if (hasOccupation) usersFromTeam.push(user);
+        });
+      }
+
+      map[team.id] = usersFromTeam;
+    });
+
     return map;
-  }, [teamsQueryData]);
+  }, [teamsQueryData, usersQueryData]);
  
   const loading = teamsLoading;
   const error = teamsIsError ? 'Não foi possível carregar as equipes.' : (teamsError as any)?.message || null;
+
+  // Ordenar equipes alfabeticamente pelo nome para exibição consistente
+  const sortedTeams = Array.isArray(teamsQueryData)
+    ? [...teamsQueryData].sort((a, b) => {
+        const an = (a?.name || '').toString();
+        const bn = (b?.name || '').toString();
+        return an.localeCompare(bn, 'pt-BR', { sensitivity: 'base' });
+      })
+    : [];
 
 
   const handleAddOccupation = async () => {
@@ -80,7 +134,13 @@ const TeamsPage = () => {
       return;
     }
     try {
-      await createTeamMutate({ name: occupationName, description: '' });
+      const payload = { name: occupationName, description: '' };
+      // Debug: log payload being sent to backend (remover em produção)
+      if (process.env.NODE_ENV !== 'production' && console.debug) {
+        // eslint-disable-next-line no-console
+        console.debug('Creating team - payload:', payload);
+      }
+      await createTeamMutate(payload);
       setOccupationName('');
       setIsDialogOpen(false);
       toast.success('Equipe criada com sucesso!');
@@ -91,41 +151,42 @@ const TeamsPage = () => {
     }
   };
 
-  // Commented out as backend API doesn't support these operations
-  // const handleAddUserToOccupation = async () => {
-  //   if (!selectedUserId || !selectedOccupationIdForUser) {
-  //     toast.error('Por favor, selecione um usuário e uma ocupação');
-  //     return;
-  //   }
-  //   try {
-  //     const userId = parseInt(selectedUserId);
-  //     const teamId = selectedOccupationIdForUser;
-  //     await addUserToTeamMutate({
-  //       teamId: teamId,
-  //       userId: userId,
-  //     });
-  //     setSelectedUserId('');
-  //     setAddUserDialogOpen(false);
-  //     setSelectedOccupationIdForUser(null);
-  //     toast.success('Usuário adicionado à equipe com sucesso!');
-  //     queryClient.invalidateQueries({ queryKey: ['teamUsers', teamId] });
-  //   } catch (err) {
-  //     toast.error((err as Error).message || 'Não foi possível adicionar o usuário à equipe. Tente novamente.');
-  //   }
-  // };
+  const handleAddUserToOccupation = async () => {
+    if (!selectedUserId || !selectedOccupationIdForUser) {
+      toast.error('Por favor, selecione um usuário e uma ocupação');
+      return;
+    }
+    try {
+      const userId = parseInt(selectedUserId);
+      const occupationId = selectedOccupationIdForUser;
+      await addUserToTeamMutate({
+        teamId: occupationId,
+        userId: userId,
+      });
+      setSelectedUserId('');
+      setAddUserDialogOpen(false);
+      setSelectedOccupationIdForUser(null);
+      toast.success('Usuário adicionado à equipe com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    } catch (err) {
+      console.error('Erro ao adicionar usuário à equipe:', err);
+      toast.error((err as Error).message || 'Não foi possível adicionar o usuário à equipe. Tente novamente.');
+    }
+  };
 
-  // const handleRemoveUserFromTeam = async (teamId: number, userId: number) => {
-  //   if (!confirm('Tem certeza que deseja remover este usuário da equipe?')) {
-  //     return;
-  //   }
-  //   try {
-  //     await removeUserFromTeamMutate({ teamId, userId });
-  //     toast.success('Usuário removido da equipe com sucesso!');
-  //     queryClient.invalidateQueries({ queryKey: ['teamUsers', teamId] });
-  //   } catch (err) {
-  //     toast.error((err as Error).message || 'Não foi possível remover o usuário da equipe. Tente novamente.');
-  //   }
-  // };
+  const handleRemoveUserFromTeam = async (teamId: number, userId: number) => {
+    if (!confirm('Tem certeza que deseja remover este usuário da equipe?')) {
+      return;
+    }
+    try {
+      await removeUserFromTeamMutate({ teamId, userId });
+      toast.success('Usuário removido da equipe com sucesso!');
+    } catch (err) {
+      console.error('Erro ao remover usuário da equipe:', err);
+      toast.error((err as Error).message || 'Não foi possível remover o usuário da equipe. Tente novamente.');
+    }
+  };
 
   const handleEditOccupationStart = (team: Team) => {
     setEditingOccupation(team);
@@ -304,8 +365,8 @@ const TeamsPage = () => {
         )}
 
         <div className="grid grid-cols-1 gap-6">
-          {Array.isArray(teamsQueryData) && teamsQueryData.length > 0 ? ( // Alterado occupationsQueryData para teamsQueryData
-            teamsQueryData.map((team) => ( // Renomeado de 'occupation' para 'team'
+          {sortedTeams.length > 0 ? (
+            sortedTeams.map((team) => (
               <Card key={team.id} className="overflow-hidden">
                 <CardContent className="p-0">
                   <div className="p-6">
@@ -317,10 +378,10 @@ const TeamsPage = () => {
                             <Users className="h-3.5 w-3.5 mr-1" />
                             {derivedTeamUsers[team.id]?.length || 0} usuários 
                           </div>
-                           {team.created_at && (
+                           {team.createdAt && (
                             <div className="flex items-center">
                               <Calendar className="h-3.5 w-3.5 mr-1" />
-                              Criado em {new Date(team.created_at).toLocaleDateString('pt-BR')}
+                              Criado em {new Date(team.createdAt).toLocaleDateString('pt-BR')}
                             </div>
                           )}
                         </div>
@@ -356,6 +417,8 @@ const TeamsPage = () => {
                                 Selecione um usuário para adicionar a esta equipe.
                               </DialogDescription>
                             </DialogHeader>
+                            {/* Debug logs: remover em produção */}
+                            {process.env.NODE_ENV !== 'production' && (console.debug && (console.debug('Teams Modal Debug:', { teamId: team.id, teamUsers: team.users, derivedTeamUsers: derivedTeamUsers[team.id], usersQueryData }), null))}
                             <div className="grid gap-4 py-4">
                               <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="user-select" className="text-right">
@@ -369,13 +432,25 @@ const TeamsPage = () => {
                                     <SelectValue placeholder="Selecione um usuário" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {Array.isArray(usersQueryData) ? usersQueryData.filter(user =>
-                                      !derivedTeamUsers[team.id]?.find(ou => ou.id === user.id) // Alterado derivedOccupationUsers para derivedTeamUsers
-                                    ).map((user) => (
-                                      <SelectItem key={user.id} value={user.id.toString()}>
-                                        {user.name} ({user.email})
-                                      </SelectItem>
-                                    )) : []}
+                                    {usersQueryData && usersQueryData.length > 0 ? (
+                                      usersQueryData
+                                        .filter(user => {
+                                          // Extrai os IDs dos usuários já na equipe diretamente da resposta da API
+                                          const teamUsersIds = team.users?.map(u => u.id) || []
+                                          return !teamUsersIds.includes(user.id)
+                                        })
+                                        .map(user => (
+                                          <SelectItem key={user.id} value={String(user.id)}>
+                                            {user.name} ({user.email})
+                                          </SelectItem>
+                                        ))
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground p-2">
+                                        {usersQueryData ?
+                                          "Nenhum usuário disponível para adicionar" :
+                                          "Carregando lista de usuários..."}
+                                      </div>
+                                    )}
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -388,12 +463,7 @@ const TeamsPage = () => {
                               }} className="mr-2">
                                 Cancelar
                               </Button>
-                              <Button type="submit" onClick={() => {
-                                toast.error('Funcionalidade não disponível - API não implementada');
-                                setAddUserDialogOpen(false);
-                                setSelectedOccupationIdForUser(null);
-                                setSelectedUserId('');
-                              }}>Adicionar</Button>
+                              <Button type="submit" onClick={handleAddUserToOccupation}>Adicionar</Button>
                             </DialogFooter>
                           </DialogContent>
                         </Dialog>
@@ -450,7 +520,7 @@ const TeamsPage = () => {
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
-                                onClick={() => toast.error('Funcionalidade não disponível - API não implementada')}
+                                onClick={() => handleRemoveUserFromTeam(team.id, user.id)}
                                 title="Remover usuário da equipe"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />

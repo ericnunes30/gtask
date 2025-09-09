@@ -98,11 +98,12 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
       const commentData = {
         content: replyContent,
         task_id: parentTaskId, // Usar o ID da tarefa pai passado como prop
-        parentId: isReply ? comment.parentId : comment.id // Se for resposta, usa o parentId do pai, senão o id do comentário atual
+        parentId: comment.parentId || comment.id // Se o comentário atual já tem um parentId (é uma resposta), usa ele. Senão, usa o id do comentário atual.
       };
 
       console.log('CommentItem - Enviando dados da resposta:', commentData);
       const newReply = await createComment(commentData);
+      console.log('CommentItem - newReply from API:', newReply); // Adicionado log
 
       // Enriquecer a resposta com dados do usuário
       const replyWithUser: ApiComment = {
@@ -115,8 +116,9 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
         likesCount: 0, // Nova resposta come��a com 0 curtidas
         repliesCount: 0, // Nova resposta começa com 0 sub-respostas
       };
+      console.log('CommentItem - replyWithUser (after enrichment):', replyWithUser); // Adicionado log
 
-      // setLocalReplies(prev => [replyWithUser, ...prev]); // Remover atualização otimista local
+      setLocalReplies(prev => [replyWithUser, ...prev]); // Adicionar atualização otimista local
       setReplyContent('');
       setIsReplying(false);
       if (onReplySuccessfullyAdded) {
@@ -259,7 +261,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
                   key={reply.id}
                   comment={reply}
                   parentTaskId={parentTaskId} // Passar o taskId da tarefa original
-                  isReply={true}
+                                    isReply={!!reply.parentId} // Se reply.parentId existe, é uma resposta
                   onReplySuccessfullyAdded={onReplySuccessfullyAdded} // Passar o callback para as respostas
                 />
               ))

@@ -1,26 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '@/services/backend/api'
+import { api } from '@/services/backend/api'
+import { ROUTES } from '@/services/backend/routes'
 import { CreateTeamRequest, UpdateTeamRequest, Team, UserOccupation } from '@/common/types'
 
 const teamService = { // Renomeado occupationService para teamService
   async getTeams(): Promise<Team[]> {
-    const response = await api.get('/occupation')
-    return response.data
+    const response = await api.get(ROUTES.occupations)
+    return response.data.data
   },
   async getTeam(teamId: number): Promise<Team> {
-    const response = await api.get(`/occupation/${teamId}`)
-    return response.data
+    const response = await api.get(`${ROUTES.occupations}/${teamId}`)
+    return response.data.data
   },
   async createTeam(data: CreateTeamRequest): Promise<Team> {
-    const response = await api.post('/occupation', data)
-    return response.data
+    const response = await api.post(ROUTES.occupations, data)
+    return response.data.data
   },
   async updateTeam(id: number, data: UpdateTeamRequest): Promise<Team> {
-    const response = await api.put(`/occupation/${id}`, data)
-    return response.data
+    const response = await api.put(`${ROUTES.occupations}/${id}`, data)
+    return response.data.data
   },
   async deleteTeam(id: number): Promise<void> {
-    await api.delete(`/occupation/${id}`)
+    await api.delete(`${ROUTES.occupations}/${id}`)
   },
 }
 
@@ -30,24 +31,24 @@ const teamUserService = { // Renomeado occupationUserService para teamUserServic
     userId: number,
   ): Promise<Team> {
     const response = await api.post(
-      `/occupation/${teamId}/users`,
+      `${ROUTES.occupations}/${teamId}/users`,
       { userId }
     )
-    return response.data
+    return response.data.data
   },
 
   async removeUserFromTeam(
     teamId: number,
     userId: number,
   ): Promise<void> {
-    await api.delete(`/occupation/${teamId}/users/${userId}`)
+    await api.delete(`${ROUTES.occupations}/${teamId}/users/${userId}`)
   },
 
   async getTeamUsers(teamId: number): Promise<UserOccupation[]> {
     const response = await api.get(
-      `/occupation/${teamId}/users`
+      `${ROUTES.occupations}/${teamId}/users`
     )
-    return response.data
+    return response.data.data
   },
 }
 
@@ -106,21 +107,19 @@ export const useAddUserToTeam = () => { // Renomeado useAddUserToOccupation para
   })
 }
 
-export const useRemoveUserFromTeam = () => { // Renomeado useRemoveUserFromOccupation para useRemoveUserFromTeam
+export const useRemoveUserFromTeam = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
-      teamId, // Renomeado occupationId para teamId
+      teamId,
       userId,
     }: {
-      teamId: number // Renomeado occupationId para teamId
+      teamId: number
       userId: number
-    }) => teamUserService.removeUserFromTeam(teamId, userId), // Renomeado occupationUserService.removeUserFromOccupation
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] }) // Alterado queryKey para 'teams'
-      queryClient.invalidateQueries({
-        queryKey: ['teamUsers', variables.teamId], // Alterado queryKey para 'teamUsers' e variables.occupationId para variables.teamId
-      })
+    }) => teamUserService.removeUserFromTeam(teamId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+      queryClient.invalidateQueries({ queryKey: ['users'] })
     },
   })
 }

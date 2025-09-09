@@ -1,15 +1,19 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User } from '@/common/types';
 import { useBackendServices } from '../hooks/useBackendServices';
 import { toast } from 'sonner';
+import { api } from '@/services/backend/api'; // Import api instance
 
 interface AuthContextType {
   user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshAuthToken: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,87 +24,113 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const navigate = useNavigate();
   const location = useLocation();
-
   const services = useBackendServices();
   const loginMutation = services.auth.useLogin();
   const logoutMutation = services.auth.useLogout();
-  const { isAuthenticated: authStatus } = services.auth.useAuthStatus();
-  const { data: currentUser, isLoading: userLoading, refetch: refetchUser } = services.auth.useGetCurrentUser(authStatus);
+  const refreshMutation = services.auth.useRefreshToken();
 
-  const isLoading = loginMutation.isPending || userLoading;
+  const logout = useCallback(() => {
+    api.defaults.headers.common['Authorization'] = '';
+    setUser(null);
+    setAccessToken(null);
+    setRefreshToken(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    navigate('/login');
+    toast.info('Sua sessão expirou. Por favor, faça login novamente.');
+  }, [navigate]);
 
-  // Sincroniza o estado local com os dados do usuário
   useEffect(() => {
-    if (currentUser) {
-      setUser(currentUser);
-      setIsAuthenticated(true);
-    } else if (authStatus) {
-      setIsAuthenticated(true);
-      setUser(null);
-    } else {
-      setIsAuthenticated(false);
-      setUser(null);
-    }
-  }, [currentUser, authStatus]);
+    const storedAccessToken = localStorage.getItem('accessToken');
+    const storedRefreshToken = localStorage.getItem('refreshToken');
+    const storedUser = localStorage.getItem('user');
 
-  // Função de login
+    if (storedAccessToken && storedRefreshToken && storedUser) {
+      setAccessToken(storedAccessToken);
+      setRefreshToken(storedRefreshToken);
+      setUser(JSON.parse(storedUser));
+      api.defaults.headers.common['Authorization'] = `Bearer ${storedAccessToken}`;
+    }
+    setIsLoading(false);
+  }, []);
+
   const login = async (email: string, password: string) => {
     try {
       const response = await loginMutation.mutateAsync({ email, password });
-
-      // Verifica se o token foi recebido corretamente
-      if (!response || !response.token) {
-        throw new Error('Token de autenticação não recebido');
+      console.log('AuthContext - login - response from mutateAsync:', response);
+      if (!response || !response.accessToken || !response.refreshToken || !response.user) {
+        console.log('AuthContext - login - response.accessToken:', response.accessToken);
+        console.log('AuthContext - login - response.refreshToken:', response.refreshToken);
+        console.log('AuthContext - login - response.user:', response.user);
+        throw new Error('Resposta de autenticação inválida do servidor');
       }
 
-      // Recarrega os dados do usuário após o login
-      const userResult = await refetchUser();
+      const { accessToken: newAccessToken, refreshToken: newRefreshToken, user: newUser } = response;
+
+      localStorage.setItem('accessToken', newAccessToken);
+      localStorage.setItem('refreshToken', newRefreshToken);
+      localStorage.setItem('user', JSON.stringify(newUser));
+
+      setAccessToken(newAccessToken);
+      setRefreshToken(newRefreshToken);
+      setUser(newUser);
+
+      api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
       
-      if (userResult.data) {
-        setUser(userResult.data);
-        setIsAuthenticated(true);
-      } else {
-        setIsAuthenticated(true);
-        setUser(null);
-      }
-
-      // Redireciona para a página anterior ou para a home
       const origin = location.state?.from?.pathname || '/';
       navigate(origin);
 
       toast.success('Login realizado com sucesso!');
     } catch (error: any) {
       console.error('Erro ao fazer login:', error);
-      toast.error(
-        error.response?.data?.message ||
-        'Erro ao fazer login. Verifique suas credenciais.'
-      );
-      setIsAuthenticated(false);
-      setUser(null);
+      toast.error(error.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.');
+      logout();
     }
   };
 
-  // Função de logout
-  const logout = () => {
-    logoutMutation.mutate(undefined, {
-      onSuccess: () => {
-        setUser(null);
-        setIsAuthenticated(false);
-        navigate('/login');
-        toast.success('Logout realizado com sucesso!');
+  const refreshAuthToken = useCallback(async (): Promise<boolean> => {
+    const storedRefreshToken = localStorage.getItem('refreshToken');
+    if (!storedRefreshToken) {
+      logout();
+      return false;
+    }
+
+    try {
+      const response = await refreshMutation.mutateAsync({ refreshToken: storedRefreshToken });
+      console.log('AuthContext - refreshAuthToken - response from mutateAsync:', response);
+      if (!response || !response.accessToken) {
+        console.log('AuthContext - refreshAuthToken - response.accessToken:', response.accessToken);
+        throw new Error('Invalid refresh token response');
       }
-    });
-  };
+
+      const newAccessToken = response.accessToken;
+      localStorage.setItem('accessToken', newAccessToken);
+      setAccessToken(newAccessToken);
+      api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+      return true;
+    } catch (error) {
+      console.error('Failed to refresh token', error);
+      logout();
+      return false;
+    }
+  }, [logout, refreshMutation]);
 
   const value = {
     user,
-    isAuthenticated,
-    isLoading,
+    accessToken,
+    refreshToken,
+    isAuthenticated: !!accessToken,
+    isLoading: isLoading || loginMutation.isPending,
     login,
-    logout
+    logout,
+    refreshAuthToken,
   };
 
   return (
@@ -110,7 +140,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-// Hook personalizado para usar o contexto de autenticação
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

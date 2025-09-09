@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationIcon } from "../notifications/NotificationIcon";
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -49,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Ícone de notificações removido conforme solicitado */}
+          <NotificationIcon />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

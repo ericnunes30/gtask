@@ -1,6 +1,6 @@
 // frontend/src/utils/apiTransformers.ts
 
-import { Task, Project } from '@/common/types';
+import { Task, Project, Comment, Notification } from '@/common/types';
 
 /**
  * Transforma um objeto de tarefa vindo da API para o formato esperado pelo frontend.
@@ -10,7 +10,7 @@ import { Task, Project } from '@/common/types';
  * @returns A tarefa transformada para o formato do frontend.
  */
 export const transformApiTaskToFrontend = (apiTask: any): Task => {
-  const transformedTask: Task = { ...apiTask };
+  const transformedTask: any = { ...apiTask };
 
   if (apiTask.startDate !== undefined) {
     transformedTask.start_date = apiTask.startDate;
@@ -70,6 +70,38 @@ export const transformApiTaskToFrontend = (apiTask: any): Task => {
  * @param apiProject O projeto recebido da API.
  * @returns O projeto transformado para o formato do frontend.
  */
+export const transformApiCommentToFrontend = (apiComment: any): Comment => {
+  const transformedComment: any = { ...apiComment };
+
+  if (apiComment.created_at !== undefined) {
+    transformedComment.createdAt = apiComment.created_at;
+    delete transformedComment.created_at;
+  }
+  if (apiComment.updated_at !== undefined) {
+    transformedComment.updatedAt = apiComment.updated_at;
+    delete transformedComment.updated_at;
+  }
+  if (apiComment.user_id !== undefined) {
+    transformedComment.user_id = apiComment.user_id;
+    delete transformedComment.user_id;
+  }
+  if (apiComment.parent_id !== undefined) {
+    transformedComment.parentId = apiComment.parent_id;
+    delete transformedComment.parent_id;
+  }
+  if (apiComment.likes_count !== undefined) {
+    transformedComment.likesCount = apiComment.likes_count;
+    delete transformedComment.likes_count;
+  }
+
+  // Recursivamente transformar replies se existirem
+  if (apiComment.replies && Array.isArray(apiComment.replies)) {
+    transformedComment.replies = apiComment.replies.map((reply: any) => transformApiCommentToFrontend(reply));
+  }
+
+  return transformedComment;
+};
+
 export const transformApiProjectToFrontend = (apiProject: any): Project => {
   const transformedProject: Project = { ...apiProject };
 
@@ -88,4 +120,86 @@ export const transformApiProjectToFrontend = (apiProject: any): Project => {
   }
 
   return transformedProject;
+};
+
+/**
+ * Transforma uma notificação do backend (StructuredNotification) para o formato esperado pelo frontend.
+ * @param backendNotification A notificação recebida do backend.
+ * @returns A notificação transformada para o formato do frontend.
+ */
+export const transformBackendNotificationToFrontend = (backendNotification: any): Notification => {
+  // Verificar se é uma notificação no novo formato (com data e metadata)
+  if (backendNotification.data && backendNotification.metadata) {
+    const { id, userId, isRead, createdAt } = backendNotification;
+    const { data, type } = backendNotification;
+    
+    // Gerar mensagem com base no tipo de notificação
+    let message = '';
+    let link = '';
+    
+    switch (type) {
+      case 'task.created':
+        message = `${data.actorName} criou a tarefa "${data.taskTitle}"` + 
+                  (data.projectTitle ? ` no projeto "${data.projectTitle}"` : '');
+        // Para simplificar, vamos usar um link genérico para tarefas
+        link = '/tasks';
+        break;
+        
+      case 'task.status.changed':
+        message = `${data.actorName} alterou o status da tarefa "${data.taskTitle}" de "${data.oldStatus}" para "${data.newStatus}"`;
+        link = '/tasks';
+        break;
+        
+      case 'comment.created':
+        message = `${data.actorName} comentou na tarefa "${data.taskTitle}": "${data.commentSnippet}"`;
+        link = '/tasks';
+        break;
+        
+      case 'task.updated':
+        const fieldNames: Record<string, string> = {
+          'title': 'título',
+          'description': 'descrição',
+          'priority': 'prioridade',
+          'status': 'status'
+        };
+        
+        if (data.changedFields && data.changedFields.length > 0) {
+          const firstField = data.changedFields[0];
+          const fieldName = fieldNames[firstField.field] || firstField.field;
+          message = `${data.actorName} atualizou o(a) ${fieldName} da tarefa "${data.taskTitle}"`;
+        } else {
+          message = `${data.actorName} atualizou a tarefa "${data.taskTitle}"`;
+        }
+        link = '/tasks';
+        break;
+        
+      case 'timer.started':
+      case 'timer.paused':
+        // Para notificações de timer, vamos usar o formato antigo por enquanto
+        message = data.changes?.timer?.newValue?.status === 'running' 
+          ? `Timer iniciado para a tarefa`
+          : `Timer pausado para a tarefa`;
+        link = '/tasks';
+        break;
+        
+      default:
+        // Para tipos desconhecidos ou formato antigo
+        message = 'Você tem uma nova notificação';
+        link = '/';
+        break;
+    }
+    
+    return {
+      id,
+      userId,
+      message,
+      link,
+      isRead,
+      createdAt: createdAt.toString() // Converter para string se necessário
+    };
+  }
+  
+  // Se não for uma notificação no novo formato, retornar como está
+  // (pode ser uma notificação já no formato do frontend ou em formato antigo)
+  return backendNotification;
 };

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreHorizontal, AlertCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, AlertCircle, Edit, Trash2, Eye } from 'lucide-react'; // Adicionado Eye
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { RecurringTask } from '@/common/types';
+import { RecurringTask, User } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { usePermissions } from '@/hooks/usePermissions';
 import { RecurringTaskForm } from '@/components/forms/RecurringTaskForm';
@@ -46,25 +46,32 @@ export function RecurringTasksList() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false); // Novo estado para o modal de visualização
   const [selectedTask, setSelectedTask] = useState<RecurringTask | null>(null);
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<number | null>(null);
   
   const permissions = usePermissions();
-  const { recurringTasks: recurringTasksService, projects: projectsService } = useBackendServices();
+  const { recurringTasks: recurringTasksService, projects: projectsService, users: usersService } = useBackendServices();
   
   const { data: rawRecurringTasks = [], isLoading, isError } = recurringTasksService.useGetRecurringTasks();
   const { data: projects = [] } = projectsService.useGetProjects();
+  const { data: users = [] } = usersService.useGetUsers(); // Buscar usuários
   const { mutateAsync: deleteRecurringTaskMutation } = recurringTasksService.useDeleteRecurringTask();
 
+  const getUserName = (userId: number) => {
+    const user = users.find((u: User) => u.id === userId);
+    return user ? user.name : `ID ${userId}`;
+  };
+
   const getScheduleDescription = (task: RecurringTask) => {
-    const scheduleType = (task as any).scheduleType ?? task.schedule_type;
-    const frequencyInterval = (task as any).frequencyInterval ?? task.frequency_interval;
-    const frequencyCron = (task as any).frequencyCron ?? task.frequency_cron;
+    const scheduleType = task.schedule_type;
+    const frequencyInterval = task.frequency_interval;
+    const frequencyCron = task.frequency_cron;
 
     if (scheduleType === 'interval') {
       if (frequencyInterval === '1 day') return 'Diariamente';
       if (frequencyInterval === '7 days') return 'Semanalmente';
-      if (frequencyInterval === '1 month') return 'Mensalmente'; // Mensalmente (qualquer dia)
+      if (frequencyInterval === '1 month') return 'Mensalmente';
       return `Intervalo: ${frequencyInterval}`;
     }
     if (scheduleType === 'cron' && frequencyCron) {
@@ -103,29 +110,23 @@ export function RecurringTasksList() {
     }
   };
 
-  // Normalize API data (camelCase) to frontend format (snake_case) and apply filters
   const recurringTasks = useMemo(() => {
-    const normalizedTasks = (rawRecurringTasks as any[]).map((task) => ({
-      ...task,
-      is_active: task.isActive ?? task.is_active,
-      next_due_date: task.nextDueDate ?? task.next_due_date,
-      schedule_type: task.scheduleType ?? task.schedule_type,
-      frequency_interval: task.frequencyInterval ?? task.frequency_interval,
-      frequency_cron: task.frequencyCron ?? task.frequency_cron,
-    }));
-
-    // Apply project filter
+    const tasksToFilter = Array.isArray(rawRecurringTasks?.data) ? rawRecurringTasks.data : [];
     if (selectedProjectFilter !== null) {
-      return normalizedTasks.filter(task => task.projectId === selectedProjectFilter);
+      return tasksToFilter.filter(task => task.projectId === selectedProjectFilter);
     }
-
-    return normalizedTasks;
+    return tasksToFilter;
   }, [rawRecurringTasks, selectedProjectFilter]);
 
   const handleFormSuccess = () => {
     setIsCreateDialogOpen(false);
     setIsEditDialogOpen(false);
     setSelectedTask(null);
+  };
+
+  const openViewDialog = (task: RecurringTask) => {
+    setSelectedTask(task);
+    setIsViewDialogOpen(true);
   };
 
   const openEditDialog = (task: RecurringTask) => {
@@ -148,7 +149,6 @@ export function RecurringTasksList() {
 
   const handleDelete = async () => {
     if (!selectedTask) return;
-
     try {
       await deleteRecurringTaskMutation(selectedTask.id);
       toast.success('Regra de recorrência removida com sucesso!');
@@ -203,7 +203,6 @@ export function RecurringTasksList() {
             </div>
         </div>
 
-
         {isError && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -257,6 +256,10 @@ export function RecurringTasksList() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => openViewDialog(task)}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        <span>Visualizar</span>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => openEditDialog(task)}>
                                         <Edit className="mr-2 h-4 w-4" />
                                         <span>Editar</span>
@@ -281,6 +284,69 @@ export function RecurringTasksList() {
                 </TableBody>
             </Table>
         </div>
+
+      {/* View Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes da Regra de Recorrência</DialogTitle>
+            <DialogDescription>{selectedTask?.name}</DialogDescription>
+          </DialogHeader>
+          {selectedTask && (
+            <div className="py-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Projeto</h4>
+                  <p>{getProjectName(selectedTask.projectId)}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Status</h4>
+                  <Badge variant={selectedTask.is_active ? 'default' : 'outline'}>
+                    {selectedTask.is_active ? 'Ativa' : 'Inativa'}
+                  </Badge>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Frequência</h4>
+                  <p>{getScheduleDescription(selectedTask)}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Próxima Execução</h4>
+                  <p>{selectedTask.next_due_date ? format(new Date(selectedTask.next_due_date), 'PPP p', { locale: ptBR }) : 'N/A'}</p>
+                </div>
+              </div>
+              <div className="pt-4 border-t">
+                <h4 className="font-semibold mb-2">Dados do Template da Tarefa</h4>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <h5 className="font-medium">Título</h5>
+                        <p>{selectedTask.templateData.title}</p>
+                    </div>
+                    <div>
+                        <h5 className="font-medium">Prioridade</h5>
+                        <p className="capitalize">{selectedTask.templateData.priority}</p>
+                    </div>
+                    <div className="col-span-2">
+                        <h5 className="font-medium">Descrição</h5>
+                        <p>{selectedTask.templateData.description || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <h5 className="font-medium">Responsáveis</h5>
+                        <p>{selectedTask.templateData.assignee_ids?.map(id => getUserName(id)).join(', ') || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <h5 className="font-medium">Revisor</h5>
+                        <p>{selectedTask.templateData.task_reviewer_id ? getUserName(selectedTask.templateData.task_reviewer_id) : 'N/A'}</p>
+                    </div>
+                    <div>
+                        <h5 className="font-medium">Equipes</h5>
+                        <p>{selectedTask.templateData.occupation_ids?.map(id => selectedTask.templateData.occupations?.find(o => o.id === id)?.name || `ID ${id}`).join(', ') || 'N/A'}</p>
+                    </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

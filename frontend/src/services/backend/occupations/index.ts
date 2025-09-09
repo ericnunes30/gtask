@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '@/services/backend/api'
+import { api } from '@/services/backend/api'
+import { ROUTES } from '@/services/backend/routes'
 import { Team } from '@/common/types'
 
 interface CreateOccupationRequest {
@@ -20,23 +21,29 @@ interface UserOccupation {
 
 const occupationService = {
   async getOccupations(): Promise<Team[]> {
-    const response = await api.get('/occupation')
-    return response.data
+    const response = await api.get(ROUTES.occupations)
+    if (response?.data && Array.isArray(response.data)) {
+      return response.data as Team[];
+    }
+    if (response?.data && response.data.data && Array.isArray(response.data.data)) {
+      return response.data.data as Team[];
+    }
+    return response.data as any;
   },
   async getOccupation(occupationId: number): Promise<Team> {
-    const response = await api.get(`/occupation/${occupationId}`)
-    return response.data
+    const response = await api.get(`${ROUTES.occupations}/${occupationId}`)
+    return response.data.data
   },
   async createOccupation(data: CreateOccupationRequest): Promise<Team> {
-    const response = await api.post('/occupation', data)
-    return response.data
+    const response = await api.post(ROUTES.occupations, data)
+    return response.data.data
   },
   async updateOccupation(id: number, data: UpdateOccupationRequest): Promise<Team> {
-    const response = await api.put(`/occupation/${id}`, data)
-    return response.data
+    const response = await api.put(`${ROUTES.occupations}/${id}`, data)
+    return response.data.data
   },
   async deleteOccupation(id: number): Promise<void> {
-    await api.delete(`/occupation/${id}`)
+    await api.delete(`${ROUTES.occupations}/${id}`)
   },
 }
 
@@ -46,29 +53,46 @@ const occupationUserService = {
     userId: number,
   ): Promise<Team> {
     const response = await api.post(
-      `/occupation/${occupationId}/users`,
+      `${ROUTES.occupations}/${occupationId}/users`,
       { userId }
     )
-    return response.data
+    // Support APIs that return either response.data or response.data.data
+    if (response?.data && response.data.data) {
+      return response.data.data;
+    }
+    return response.data;
   },
 
   async removeUserFromOccupation(
     occupationId: number,
     userId: number,
   ): Promise<void> {
-    await api.delete(`/occupation/${occupationId}/users/${userId}`)
+    await api.delete(`${ROUTES.occupations}/${occupationId}/users/${userId}`)
   },
 
   async getOccupationUsers(occupationId: number): Promise<UserOccupation[]> {
     const response = await api.get(
-      `/occupation/${occupationId}/users`
+      `${ROUTES.occupations}/${occupationId}/users`
     )
-    return response.data
+    return response.data.data
   },
 }
 
 export const useGetOccupations = () =>
-  useQuery({ queryKey: ['occupations'], queryFn: occupationService.getOccupations })
+  useQuery({ 
+    queryKey: ['occupations'], 
+    queryFn: async () => {
+      console.log('Fetching occupations from API...');
+      try {
+        const occupations = await occupationService.getOccupations();
+        console.log('Occupations fetched successfully:', occupations);
+        return occupations;
+      } catch (error) {
+        console.error('Error fetching occupations:', error);
+        throw error;
+      }
+    }
+  })
 
 export const useGetOccupation = (occupationId: number, enabled = true) =>
   useQuery({

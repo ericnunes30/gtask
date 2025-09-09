@@ -1,11 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CreateRoleRequest, UpdateRoleRequest, Role } from '@/common/types'
-import api from '@/services/backend/api'
+import { api } from '@/services/backend/api'
+
+import { ROUTES } from '@/services/backend/routes'
 
 const roleService = {
   async getRoles(): Promise<Role[]> {
-    const response = await api.get('/role')
-    return response.data
+    const response = await api.get(ROUTES.roles)
+    // Support APIs that return either:
+    //  - an array directly in response.data, or
+    //  - a paginated wrapper { data: [...] } in response.data.data
+    if (response?.data && Array.isArray(response.data)) {
+      return response.data as Role[];
+    }
+    if (response?.data && response.data.data && Array.isArray(response.data.data)) {
+      return response.data.data as Role[];
+    }
+    // Fallback to whatever the endpoint returned (could be a single object)
+    return response.data as any;
   },
   async getRole(roleId: number): Promise<Role> {
     const response = await api.get(`/role/${roleId}`)
@@ -25,7 +37,20 @@ const roleService = {
 }
 
 export const useGetRoles = () =>
-  useQuery({ queryKey: ['roles'], queryFn: roleService.getRoles })
+  useQuery({ 
+    queryKey: ['roles'], 
+    queryFn: async () => {
+      console.log('Fetching roles from API...');
+      try {
+        const roles = await roleService.getRoles();
+        console.log('Roles fetched successfully:', roles);
+        return roles;
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+        throw error;
+      }
+    }
+  })
 
 export const useGetRole = (roleId: number, enabled = true) =>
   useQuery({

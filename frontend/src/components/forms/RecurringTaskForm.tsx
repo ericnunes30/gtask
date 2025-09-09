@@ -62,6 +62,7 @@ const recurringTaskFormSchema = z.object({
     priority: z.enum(['baixa', 'media', 'alta', 'urgente']),
     assignee_ids: z.array(z.number()).min(1, "Selecione ao menos um responsável."),
     occupation_ids: z.array(z.number()).optional(),
+    task_reviewer_id: z.number({ required_error: "O revisor da tarefa é obrigatório." }),
   })
 }).refine(data => {
     if (data.schedule_type === 'weekly' && !data.day_of_week) {
@@ -114,13 +115,13 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
         if (data.schedule_type === 'cron' && data.frequency_cron === '0 9 * * 1-5') {
             result.schedule_type = 'daily';
         } else if (data.schedule_type === 'cron' && data.frequency_cron) {
-            const dayOfWeekMatch = data.frequency_cron.match(/^0 9 \* \* (\d)$/);
+            const dayOfWeekMatch = data.frequency_cron.match(/^0 9 * * (\d)$/);
             if (dayOfWeekMatch?.[1]) {
                 result.schedule_type = 'weekly';
                 result.day_of_week = dayOfWeekMatch[1];
             }
 
-            const dayOfMonthMatch = data.frequency_cron.match(/^0 9 (\d+|L) \* \*$/);
+            const dayOfMonthMatch = data.frequency_cron.match(/^0 9 (\d+|L) * *$/);
             if (dayOfMonthMatch?.[1]) {
                 result.schedule_type = 'monthly';
                 result.day_of_month = dayOfMonthMatch[1];
@@ -147,7 +148,7 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
         return {
             name: initialData.name,
             projectId: initialData.projectId,
-            is_active: initialData.is_active,
+            is_active: typeof initialData.is_active === 'boolean' ? initialData.is_active : true,
             next_due_date: initialData.next_due_date ? format(new Date(initialData.next_due_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
             schedule_type: scheduleValues.schedule_type || 'weekly',
             day_of_week: scheduleValues.day_of_week || null,
@@ -328,12 +329,18 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
         frequencyIntervalForApi = '7 days';
     }
 
-    const requestData: CreateRecurringTaskRequest | UpdateRecurringTaskRequest = {
-        ...values,
+    const requestData: Omit<CreateRecurringTaskRequest, 'userId'> = {
+        name: values.name,
+        projectId: values.projectId,
+        is_active: values.is_active,
+        next_due_date: values.next_due_date,
         schedule_type: scheduleTypeForApi,
         frequency_interval: frequencyIntervalForApi,
         frequency_cron: frequencyCronForApi,
-        userId: currentUser?.id || parseInt(localStorage.getItem('user_id') || '1'),
+        templateData: {
+            ...values.templateData,
+            occupations: undefined, // Ensure occupations is not sent
+        },
     };
 
     if (recurringTaskId) {
@@ -670,6 +677,34 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
                                 ))}
                             </div>
                         </ScrollArea>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="templateData.task_reviewer_id"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Revisor da Tarefa</FormLabel>
+                        <Select
+                            value={field.value?.toString()}
+                            onValueChange={(value) => field.onChange(value ? Number(value) : null)}
+                            disabled={loading}
+                        >
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione um revisor" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {usersData.map((user: User) => (
+                                    <SelectItem key={user.id} value={user.id.toString()}>
+                                        {user.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <FormMessage />
                     </FormItem>
                 )}

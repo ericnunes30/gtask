@@ -1,201 +1,100 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
+import { Role } from '@/common/types'; // Import Role interface
 
-// Definição dos tipos de permissões
-export type UserRole = 'Administrador' | 'Gerente' | 'Membro' | 'Convidado';
-
-// Interface para as permissões
+// Definimos a interface para o objeto de permissões que o hook retornará
 export interface Permissions {
-  // Projetos
-  canViewAllProjects: boolean;
-  canEditProjects: boolean;
-  canCreateProjects: boolean;
-  canDeleteProjects: boolean;
-  
-  // Tarefas
-  canViewAllTasks: boolean;
-  canCreateTasks: boolean;
-  canEditAllTaskFields: boolean;
-  canEditTaskStatus: boolean;
-  canEditTaskComments: boolean;
-  canAssignTasks: boolean;
-  canDeleteTasks: boolean;
-  
-  // Usuários
-  canManageUsers: boolean;
-  
-  // Equipes
-  canManageTeams: boolean;
-  
-  // Função para verificar o papel do usuário
-  userRole: UserRole | null;
-  isMember: boolean;
+  // userPermissions será um objeto onde a chave é o nome da permissão e o valor é boolean (true se tiver, false se não)
+  // Por enquanto, vamos derivar as permissões dos nomes dos papéis
+  userPermissions: { [key: string]: boolean };
+  // Função principal para verificar se o usuário tem uma permissão específica
+  can: (permission: string) => boolean;
+  // Flags de papel (ainda úteis para lógica de UI mais genérica, mas derivadas dos papéis)
   isAdmin: boolean;
   isManager: boolean;
+  isMember: boolean;
   isGuest: boolean;
+  isLoading: boolean; // Adicionado para indicar se as permissões ainda estão sendo calculadas
 }
 
 export const usePermissions = (): Permissions => {
-  const { user } = useAuth();
-  const [permissions, setPermissions] = useState<Permissions>({
-    // Valores padrão (sem permissões)
-    canViewAllProjects: false,
-    canEditProjects: false,
-    canCreateProjects: false,
-    canDeleteProjects: false,
-    
-    canViewAllTasks: false,
-    canCreateTasks: false,
-    canEditAllTaskFields: false,
-    canEditTaskStatus: false,
-    canEditTaskComments: false,
-    canAssignTasks: false,
-    canDeleteTasks: false,
-    
-    canManageUsers: false,
-    canManageTeams: false,
-    
-    userRole: null,
-    isMember: false,
+  const { user } = useAuth(); // Obtém o objeto do usuário do contexto de autenticação
+
+  // Estado interno para armazenar as permissões processadas
+  const [processedPermissions, setProcessedPermissions] = useState<Permissions>({
+    userPermissions: {},
+    can: () => false, // Função padrão que sempre retorna false
     isAdmin: false,
     isManager: false,
+    isMember: false,
     isGuest: false,
+    isLoading: true, // Inicialmente true
   });
 
   useEffect(() => {
-    if (!user || !user.roles || !Array.isArray(user.roles) || user.roles.length === 0) {
-      // Se não há usuário ou papéis, retorna as permissões padrão (tudo false)
-      // Isso pode estar acontecendo se user.roles estiver vazio ou não for um array
-      setPermissions({
-        canViewAllProjects: false,
-        canEditProjects: false,
-        canCreateProjects: false,
-        canDeleteProjects: false,
-        canViewAllTasks: false,
-        canCreateTasks: false,
-        canEditAllTaskFields: false,
-        canEditTaskStatus: false,
-        canEditTaskComments: false,
-        canAssignTasks: false,
-        canDeleteTasks: false,
-        canManageUsers: false,
-        canManageTeams: false,
-        userRole: null,
-        isMember: false,
-        isAdmin: false,
-        isManager: false,
-        isGuest: false,
-      });
-      return;
-    }
+    const newPermissions: { [key: string]: boolean } = {};
+    let isAdmin = false;
+    let isManager = false;
+    let isMember = false;
+    let isGuest = false;
 
-    // Dados do usuário devem ser válidos neste ponto
+    if (user) {
+      // Derivar flags de papel a partir dos papéis do usuário
+      // E também definir permissões baseadas nos papéis (se não houver permissões granulares diretas)
+      if (user.roles && Array.isArray(user.roles)) {
+        const roleNames = user.roles.map((role: Role | number) => typeof role === 'object' ? role.name : null).filter(Boolean) as string[];
 
-    // Obter o papel do usuário
-    let roleName: UserRole | null = null;
-    const firstRole = user.roles[0]; // Pega o primeiro papel do array
+        isAdmin = roleNames.includes('Administrador');
+        isManager = roleNames.includes('Gerente');
+        isMember = roleNames.includes('Membro');
+        isGuest = roleNames.includes('Convidado');
 
-    // Verifica se o primeiro papel existe e tem a propriedade 'name'
-    if (firstRole && typeof firstRole === 'object' && firstRole.name) {
-      const potentialRoleName = firstRole.name as UserRole;
-      // Valida se o nome do papel é um dos UserRole esperados
-      if (['Administrador', 'Gerente', 'Membro', 'Convidado'].includes(potentialRoleName)) {
-        roleName = potentialRoleName;
+        // Mapeamento de papéis para permissões (se o backend não enviar permissões granulares)
+        // Esta é uma lógica de fallback/transição
+        if (isAdmin) {
+          newPermissions['task:create'] = true;
+          newPermissions['task:edit:all'] = true;
+          newPermissions['task:delete'] = true;
+          newPermissions['project:create'] = true;
+          newPermissions['project:edit'] = true;
+          newPermissions['project:delete'] = true;
+          newPermissions['user:manage'] = true;
+          newPermissions['team:manage'] = true;
+          // Adicione outras permissões de administrador aqui
+        } else if (isManager) {
+          newPermissions['task:create'] = true;
+          newPermissions['task:edit:all'] = true; // Gerente pode editar todas as tarefas
+          newPermissions['project:create'] = true;
+          newPermissions['project:edit'] = true;
+          newPermissions['user:manage'] = true; // Gerente pode gerenciar usuários
+          newPermissions['team:manage'] = true;
+          // Adicione outras permissões de gerente aqui
+        } else if (isMember) {
+          newPermissions['task:edit:status'] = true;
+          newPermissions['task:add:comment'] = true;
+          // Adicione outras permissões de membro aqui
+        } else if (isGuest) {
+          newPermissions['task:add:comment'] = true;
+          // Adicione outras permissões de convidado aqui
+        }
       }
     }
 
-    // Definir permissões com base no papel
-    const newPermissions: Permissions = {
-      // Valores padrão (sem permissões)
-      canViewAllProjects: false,
-      canEditProjects: false,
-      canCreateProjects: false,
-      canDeleteProjects: false,
-      
-      canViewAllTasks: false,
-      canCreateTasks: false,
-      canEditAllTaskFields: false,
-      canEditTaskStatus: false,
-      canEditTaskComments: false,
-      canAssignTasks: false,
-      canDeleteTasks: false,
-      
-      canManageUsers: false,
-      canManageTeams: false,
-      
-      userRole: roleName,
-      isMember: roleName === 'Membro',
-      isAdmin: roleName === 'Administrador',
-      isManager: roleName === 'Gerente',
-      isGuest: roleName === 'Convidado',
-    };
+    // A função 'can' verifica se uma permissão está no objeto newPermissions
+    const canFunction = (permission: string) => newPermissions[permission] === true;
 
-    // Definir permissões específicas com base no papel
-    if (roleName === 'Administrador') {
-      // Administrador tem todas as permissões
-      newPermissions.canViewAllProjects = true;
-      newPermissions.canEditProjects = true;
-      newPermissions.canCreateProjects = true;
-      newPermissions.canDeleteProjects = true;
-      
-      newPermissions.canViewAllTasks = true;
-      newPermissions.canCreateTasks = true;
-      newPermissions.canEditAllTaskFields = true;
-      newPermissions.canEditTaskStatus = true;
-      newPermissions.canEditTaskComments = true;
-      newPermissions.canAssignTasks = true;
-      newPermissions.canDeleteTasks = true;
-      
-      newPermissions.canManageUsers = true;
-      newPermissions.canManageTeams = true;
-    } else if (roleName === 'Gerente') {
-      // Gerente tem permissões para gerenciar projetos e equipes
-      newPermissions.canViewAllProjects = true;
-      newPermissions.canEditProjects = true;
-      newPermissions.canCreateProjects = true;
-      newPermissions.canDeleteProjects = true;
-      
-      newPermissions.canViewAllTasks = true;
-      newPermissions.canCreateTasks = true;
-      newPermissions.canEditAllTaskFields = true;
-      newPermissions.canEditTaskStatus = true;
-      newPermissions.canEditTaskComments = true;
-      newPermissions.canAssignTasks = true;
-      newPermissions.canDeleteTasks = true;
-      
-      newPermissions.canManageTeams = true;
-    } else if (roleName === 'Membro') {
-      // Membro tem permissões limitadas
-      newPermissions.canViewAllProjects = false; // Só pode ver projetos em que participa
-      newPermissions.canEditProjects = false;
-      newPermissions.canCreateProjects = false;
-      newPermissions.canDeleteProjects = false;
-      
-      newPermissions.canViewAllTasks = false; // Só pode ver tarefas vinculadas a ele
-      newPermissions.canCreateTasks = false;
-      newPermissions.canEditAllTaskFields = false;
-      newPermissions.canEditTaskStatus = true; // Pode editar status
-      newPermissions.canEditTaskComments = true; // Pode adicionar comentários
-      newPermissions.canAssignTasks = false;
-      newPermissions.canDeleteTasks = false;
-    } else if (roleName === 'Convidado') {
-      // Convidado tem apenas permissões de visualização
-      newPermissions.canViewAllProjects = false; // Só pode ver projetos em que participa
-      newPermissions.canEditProjects = false;
-      newPermissions.canCreateProjects = false;
-      newPermissions.canDeleteProjects = false;
-      
-      newPermissions.canViewAllTasks = false; // Só pode ver tarefas vinculadas a ele
-      newPermissions.canCreateTasks = false;
-      newPermissions.canEditAllTaskFields = false;
-      newPermissions.canEditTaskStatus = false;
-      newPermissions.canEditTaskComments = true; // Pode adicionar comentários
-      newPermissions.canAssignTasks = false;
-      newPermissions.canDeleteTasks = false;
-    }
+    setProcessedPermissions({
+      userPermissions: newPermissions,
+      can: canFunction,
+      isAdmin,
+      isManager,
+      isMember,
+      isGuest,
+      isLoading: false, // Permissões calculadas
+    });
+    
 
-    setPermissions(newPermissions);
-  }, [user]);
+  }, [user]); // Re-calcula as permissões sempre que o objeto 'user' muda
 
-  return permissions;
+  return processedPermissions;
 };

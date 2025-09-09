@@ -77,7 +77,7 @@ const Users = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
-  const { users: usersService, roles: rolesService, occupations: occupationsService } = useBackendServices();
+  const { users: usersService, roles: rolesService, occupations: occupationsService, teams: teamsService } = useBackendServices();
   const {
     data: usersQueryData,
     isLoading: usersLoading,
@@ -85,6 +85,14 @@ const Users = () => {
     error: usersError,
     refetch,
   } = usersService.useGetUsers();
+
+  const { mutateAsync: addUserToTeamMutate } = teamsService.useAddUserToTeam();
+  const { mutateAsync: removeUserFromTeamMutate } = teamsService.useRemoveUserFromTeam();
+
+  console.log('usersQueryData:', usersQueryData);
+  console.log('usersLoading:', usersLoading);
+  console.log('usersIsError:', usersIsError);
+  console.log('usersError:', usersError);
   const {
     data: rolesQueryData,
     isLoading: rolesLoading,
@@ -92,6 +100,10 @@ const Users = () => {
     error: rolesError,
     refetch: refetchRoles,
   } = rolesService.useGetRoles();
+  console.log('rolesQueryData:', rolesQueryData);
+  console.log('rolesLoading:', rolesLoading);
+  console.log('rolesIsError:', rolesIsError);
+  console.log('rolesError:', rolesError);
   const {
     data: occupationsQueryData,
     isLoading: occupationsLoading,
@@ -195,29 +207,29 @@ const Users = () => {
     }
 
     try {
-      // Criar objeto de usuário para a API
-      const userData: CreateUserRequest = {
+      // Criar objeto de usuário básico para o backend-2
+      const userData = {
         name: newUser.name,
         email: newUser.email,
         password: newUser.password,
       };
 
-      // Adicionar occupation_id se estiver definido
-      if (newUser.occupation_id) {
-        userData.occupation_id = parseInt(newUser.occupation_id);
-      }
-
-      // Adicionar occupations se houver
-      if (newUser.occupations && newUser.occupations.length > 0) {
-        userData.occupations = newUser.occupations;
-      }
-
-      // Adicionar roles se houver
-      if (newUser.roles && newUser.roles.length > 0) {
-        userData.roles = newUser.roles;
-      }
-
       const createdUser = await mutateUser({ data: userData });
+
+      // Depois de criar o usuário, tentar atribuir roles se houver
+      if (newUser.roles && newUser.roles.length > 0) {
+        try {
+          await usersService.userService.assignRoles(createdUser.id, newUser.roles);
+          console.log('Roles atribuídas com sucesso:', newUser.roles);
+        } catch (roleError) {
+          console.error('Erro ao atribuir roles:', roleError);
+          toast({
+            variant: "destructive",
+            title: "Aviso",
+            description: "Usuário criado, mas houve erro ao atribuir nível de permissão.",
+          });
+        }
+      }
 
       // Resetar o formulário
       setNewUser({
@@ -235,6 +247,9 @@ const Users = () => {
         title: "Usuário adicionado",
         description: `${createdUser.name} foi adicionado com sucesso.`,
       });
+
+      // Recarregar lista de usuários
+      await refetch();
 
     } catch (err) {
       console.error('Erro ao criar usuário:', err);
@@ -312,37 +327,50 @@ const Users = () => {
     }
 
     try {
-      // Criar objeto de usuário para a API
-      const userData: UpdateUserRequest = {
+      // Criar objeto de usuário básico para o backend-2
+      const userData = {
         name: newUser.name,
         email: newUser.email,
       };
 
       // Adicionar senha se estiver definida
-      if (newUser.password) {
+      if (newUser.password && newUser.password.trim()) {
         userData.password = newUser.password;
       }
 
-      // Adicionar occupation_id se estiver definido
-      if (newUser.occupation_id) {
-        userData.occupation_id = parseInt(newUser.occupation_id);
-      }
-
-      // Adicionar teams se houver
-      if (newUser.occupations && newUser.occupations.length > 0) {
-        userData.teams = newUser.occupations;
-      }
-
-      // Adicionar roles se houver
-      if (newUser.roles && newUser.roles.length > 0) {
-        userData.roles = newUser.roles;
-      }
-
       const updatedUser = await mutateUser({ id: editingUser.id, data: userData });
+
+      // Depois de atualizar o usuário, tentar atribuir roles se houver
+      if (newUser.roles && newUser.roles.length > 0) {
+        try {
+          await usersService.userService.assignRoles(editingUser.id, newUser.roles);
+          console.log('Roles atualizadas com sucesso:', newUser.roles);
+        } catch (roleError) {
+          console.error('Erro ao atribuir roles:', roleError);
+          toast({
+            variant: "destructive",
+            title: "Aviso", 
+            description: "Usuário atualizado, mas houve erro ao atribuir nível de permissão.",
+          });
+        }
+      }
+
+      const originalOccupationIds = editingUser.occupations?.map(o => o.id) || [];
+      const newOccupationIds = newUser.occupations || [];
+
+      const occupationsToAdd = newOccupationIds.filter(id => !originalOccupationIds.includes(id));
+      const occupationsToRemove = originalOccupationIds.filter(id => !newOccupationIds.includes(id));
+
+      await Promise.all([
+        ...occupationsToAdd.map(teamId => addUserToTeamMutate({ teamId, userId: editingUser.id })),
+        ...occupationsToRemove.map(teamId => removeUserFromTeamMutate({ teamId, userId: editingUser.id }))
+      ]);
+
       toast({
         title: "Usuário atualizado",
         description: `${updatedUser.name} foi atualizado com sucesso.`,
       });
+      
       // Resetar o formulário
       setNewUser({
         name: '',
@@ -354,6 +382,9 @@ const Users = () => {
       });
       setEditingUser(null);
       setIsEditDialogOpen(false);
+
+      // Recarregar lista de usuários
+      await refetch();
 
     } catch (err) {
       console.error('Erro ao atualizar usuário:', err);

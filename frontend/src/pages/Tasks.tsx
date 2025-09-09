@@ -404,13 +404,13 @@ const Tasks = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            {permissions.canCreateTasks && !permissions.isMember && (
+            {permissions.can('task:create') && !permissions.isMember && (
               <Button variant="outline" className="gap-1" disabled={isLoading} onClick={() => setIsRecurringTasksDialogOpen(true)}>
                 <Repeat className="h-4 w-4" />
                 Tarefas Recorrentes
               </Button>
             )}
-            {permissions.canCreateTasks && !permissions.isMember && (
+            {permissions.can('task:create') && !permissions.isMember && (
               <Button className="gap-1" disabled={isLoading} onClick={() => {
                 const newKey = taskFormKey + 1;
                 setTaskFormKey(newKey);

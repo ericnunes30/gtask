@@ -989,6 +989,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                 <SortableHeader field="title">Tarefa</SortableHeader>
                 {showProjectColumn && <SortableHeader field="project">Projeto</SortableHeader>}
                 <SortableHeader field="assignee">Responsável</SortableHeader>
+                <SortableHeader field="reviewer">Revisor</SortableHeader> {/* Added Revisor header */}
                 <SortableHeader field="priority">Prioridade</SortableHeader>
                 <SortableHeader field="status">Status</SortableHeader>
                 <SortableHeader field="date">Data</SortableHeader>
@@ -999,8 +1000,8 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
             <TableBody>
                 {tasksToRender.map((task) => (
                 <TableRow key={task.id} className="hover:bg-muted/50">
-                    {/* Célula Título */}
                     <TableCell className="font-medium max-w-[250px] truncate">
+                    {/* Célula Título */}
                     <button
                         onClick={() => handleTaskClick(task.id)}
                         className="hover:text-primary transition-colors text-left w-full truncate"
@@ -1023,15 +1024,15 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                     </button>
                     </TableCell>
 
-                    {/* Célula Projeto */}
                     {showProjectColumn && (
                         <TableCell className="max-w-[150px] truncate" title={decodeText(projects[task.project_id])}>
+                            {/* Célula Projeto */}
                             {decodeText(projects[task.project_id]) || `Projeto ${task.project_id}`}
                         </TableCell>
                     )}
 
-                    {/* Célula Responsável */}
                     <TableCell className="max-w-[150px] truncate">
+                    {/* Célula Responsável */}
                     <Popover>
                         <PopoverTrigger asChild>
                         <div className="flex items-center gap-2 cursor-pointer hover:text-foreground truncate" title={task.users?.map(u => typeof u === 'object' ? decodeText(u.name) : decodeText(users[u]) ?? `Usuário ${u}`).join(', ') ?? 'Não atribuído'}>
@@ -1107,8 +1108,20 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                     </Popover>
                     </TableCell>
 
-                    {/* Célula Prioridade */}
+                    <TableCell className="max-w-[150px] truncate">
+                        {/* Célula Revisor */}
+                        {task.reviewer ? (
+                            <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <span className="truncate">{decodeText(task.reviewer.name) || `Revisor ${task.reviewer.id}`}</span>
+                            </div>
+                        ) : (
+                            <span className="text-muted-foreground italic">Não atribuído</span>
+                        )}
+                    </TableCell>
+
                     <TableCell>
+                    {/* Célula Prioridade */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                         <button className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md">
@@ -1132,8 +1145,8 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                     </DropdownMenu>
                     </TableCell>
 
-                    {/* Célula Status */}
                     <TableCell>
+                    {/* Célula Status */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                         <button className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md">
@@ -1157,8 +1170,8 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                     </DropdownMenu>
                     </TableCell>
 
-                    {/* Célula Data */}
                     <TableCell>
+                    {/* Célula Data */}
                     <Popover>
                         <PopoverTrigger asChild>
                         <div className={cn(
@@ -1197,8 +1210,8 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                     </Popover>
                     </TableCell>
 
-                    {/* Célula Temporizador */}
                     <TableCell>
+                    {/* Célula Temporizador */}
                       <TaskTimer
                         taskId={String(task.id)}
                         initialTime={task.timer || 0}
@@ -1269,8 +1282,8 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
                       />
                     </TableCell>
 
-                    {/* Célula Ações */}
                     <TableCell className="text-right">
+                    {/* Célula Ações */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">

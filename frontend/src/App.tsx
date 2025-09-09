@@ -1,21 +1,44 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
-import './styles/tiptap.css'; // Importa os estilos do TipTap
-import 'prosemirror-view/style/prosemirror.css'; // Importa os estilos base do ProseMirror
+import './styles/tiptap.css';
+import 'prosemirror-view/style/prosemirror.css';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { SocketProvider } from '@/contexts/SocketContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
+import { setupAuthInterceptor } from '@/services/backend/api';
 import AppRoutes from "@/routes";
+
+// Helper component to setup the interceptor, since it needs access to auth context
+const AuthInterceptorSetup = () => {
+  const { refreshAuthToken, logout } = useAuth();
+
+  useEffect(() => {
+    setupAuthInterceptor(refreshAuthToken, logout);
+  }, [refreshAuthToken, logout]);
+
+  return null; // This component does not render anything
+};
 
 const App = () => {
   return (
     <React.StrictMode>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AppRoutes />
-      </TooltipProvider>
+      <BrowserRouter>
+        <TooltipProvider>
+          <AuthProvider>
+            <SocketProvider>
+              <NotificationProvider>
+                <AuthInterceptorSetup />
+                <Toaster />
+                <Sonner />
+                <AppRoutes />
+              </NotificationProvider>
+            </SocketProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </BrowserRouter>
     </React.StrictMode>
   );
 };
