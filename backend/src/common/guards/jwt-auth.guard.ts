@@ -13,11 +13,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   handleRequest(err, user, info) {
-    this.logger.log(`JwtAuthGuard: handleRequest called. User: ${JSON.stringify(user)}, Error: ${JSON.stringify(err)}, Info: ${JSON.stringify(info)}`);
-    // You can throw an exception based on error or user status
     if (err || !user) {
+      this.logger.error(`Authentication Error: ${info?.message || 'No user found'}`, err?.stack);
       throw err || new Error('Unauthorized');
     }
+    this.logger.log(`User authenticated: ${user.username}`);
     return user;
   }
 }

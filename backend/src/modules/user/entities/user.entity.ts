@@ -27,11 +27,6 @@ export class User {
   updatedAt: Date;
 
   @ManyToMany(() => Occupation, (occupation) => occupation.users)
-  @JoinTable({
-    name: 'users_occupations',
-    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'occupation_id', referencedColumnName: 'id' },
-  })
   occupations: Occupation[];
 
   @ManyToMany(() => Role, (role) => role.users)

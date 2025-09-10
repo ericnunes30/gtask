@@ -1,3 +1,4 @@
+import { corsConfig } from './config/cors.config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, HttpStatus, BadRequestException } from '@nestjs/common';
 import { AppModule } from './app.module';
@@ -14,27 +15,7 @@ async function bootstrap() {
   app.useWebSocketAdapter(new AuthenticatedSocketAdapter(app));
 
   // Enable CORS
-  app.enableCors({
-    origin: [
-      process.env.FRONTEND_URL || 'http://localhost:8080',
-      'http://localhost:8081',
-      'http://localhost:8082', // Frontend principal
-      'http://localhost:3000',
-      'http://localhost:5173',
-    ],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Origin',
-      'X-Requested-With',
-      'Content-Type',
-      'Accept',
-      'Authorization',
-      'Cache-Control',
-    ],
-    credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  });
+  app.enableCors(corsConfig);
 
   // Global prefix
   app.setGlobalPrefix(process.env.API_PREFIX || 'api/v1');

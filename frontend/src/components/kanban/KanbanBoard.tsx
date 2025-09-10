@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { PlusCircle, MoreHorizontal, Calendar, AlertCircle, Briefcase, Timer, Copy } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Calendar, AlertCircle, Briefcase, Timer, Copy, Play, Pause } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -106,11 +106,15 @@ const TaskCard = ({
   onClick,
   onDuplicateTask,
   timerRunningTaskId,
+  onStartTimer,
+  onPauseTimer,
 }: {
   task: KanbanTask, 
   onClick: () => void,
   onDuplicateTask?: (task: KanbanTask) => void, 
   timerRunningTaskId: string | null,
+  onStartTimer: (task: KanbanTask) => void,
+  onPauseTimer: (task: KanbanTask) => void,
 }) => {
 
   const formatDate = (dateString?: string) => {
@@ -222,13 +226,40 @@ const TaskCard = ({
             {priorityMap[task.priority]?.label || 'Média'}
           </Badge>
 
-          <div className="flex-shrink-0">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <TaskTimer
               taskId={String(task.id)}
               initialTime={task.timer || 0}
               isRunning={isTimerRunning}
               compact={true}
             />
+            {isTimerRunning ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                title="Pausar timer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPauseTimer(task);
+                }}
+              >
+                <Pause className="h-3 w-3" />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                title="Iniciar timer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStartTimer(task);
+                }}
+              >
+                <Play className="h-3 w-3" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -242,12 +273,16 @@ const SortableTaskCard = ({
   onClick,
   onDuplicateTask,
   timerRunningTaskId,
+  onStartTimer,
+  onPauseTimer,
 }: {
   id: string,
   task: KanbanTask,
   onClick: () => void,
   onDuplicateTask?: (task: KanbanTask) => void,
   timerRunningTaskId: string | null,
+  onStartTimer: (task: KanbanTask) => void,
+  onPauseTimer: (task: KanbanTask) => void,
 }) => {
   const {
     attributes,
@@ -278,6 +313,8 @@ const SortableTaskCard = ({
         onClick={onClick}
         onDuplicateTask={onDuplicateTask}
         timerRunningTaskId={timerRunningTaskId}
+        onStartTimer={onStartTimer}
+        onPauseTimer={onPauseTimer}
       />
     </div>
   );
@@ -309,6 +346,8 @@ const Column = ({
   id,
   timerRunningTaskId,
   boardMode,
+  onStartTimer,
+  onPauseTimer,
 }: {
   column: ProcessedKanbanColumn,
   tasks: KanbanTask[],
@@ -318,6 +357,8 @@ const Column = ({
   id: string,
   timerRunningTaskId: string | null,
   boardMode: BoardMode;
+  onStartTimer: (task: KanbanTask) => void,
+  onPauseTimer: (task: KanbanTask) => void,
 }) => {
   const permissions = usePermissions();
   const showAddTaskButton = !(permissions.isMember && (boardMode === 'tasks-view' || boardMode === 'project-view'));
@@ -361,6 +402,8 @@ const Column = ({
               onClick={() => onTaskClick(task)}
               onDuplicateTask={onDuplicateTask}
               timerRunningTaskId={timerRunningTaskId}
+              onStartTimer={onStartTimer}
+              onPauseTimer={onPauseTimer}
             />
           ))}
         </SortableContext>
@@ -466,9 +509,7 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     };
 
     const handleTimerPaused = (data: { taskId: number; userId: number; seconds: number }) => {
-      if (timerRunningTaskId === String(data.taskId)) {
-        setTimerRunningTaskId(null);
-      }
+      setTimerRunningTaskId((prev) => (prev === String(data.taskId) ? null : prev));
       if (onGenericTaskUpdate) {
         onGenericTaskUpdate();
       }
@@ -481,22 +522,39 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       socket.off('timer.started', handleTimerStarted);
       socket.off('timer.paused', handleTimerPaused);
     };
-  }, [socket, isConnected, timerRunningTaskId, onGenericTaskUpdate]);
+  }, [socket, isConnected, onGenericTaskUpdate]);
 
+  // Robust room membership: join new task rooms, leave removed ones, avoid churn
+  const joinedRoomsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-    const taskIds = Object.keys(processedTasksMap);
-    
-    taskIds.forEach(taskId => {
-      socket.emit('join-task-room', taskId);
+    const next = new Set(Object.keys(processedTasksMap));
+    const prev = joinedRoomsRef.current;
+
+    // Join new rooms
+    next.forEach((id) => {
+      if (!prev.has(id)) {
+        socket.emit('join-task-room', id);
+        prev.add(id);
+      }
+    });
+
+    // Leave removed rooms
+    Array.from(prev).forEach((id) => {
+      if (!next.has(id)) {
+        socket.emit('leave-task-room', id);
+        prev.delete(id);
+      }
     });
 
     return () => {
-      if (socket) {
-        taskIds.forEach(taskId => {
-          socket.emit('leave-task-room', taskId);
+      // On disconnect/unmount, leave all
+      if (!isConnected) {
+        Array.from(prev).forEach((id) => {
+          socket.emit('leave-task-room', id);
         });
+        prev.clear();
       }
     };
   }, [socket, isConnected, processedTasksMap]);
@@ -589,6 +647,7 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
 
       if (timerRunningTaskId === taskToMoveIdStr && finalDestStatus !== 'em_andamento') {
         socket.emit('timer.pause', { taskId: taskToMove.id });
+        setTimerRunningTaskId(null); // optimistic UI to avoid stale state
       }
 
       if (statusChanged || orderChanged) {
@@ -610,6 +669,7 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
           socket.emit('timer.pause', { taskId: parseInt(timerRunningTaskId) });
         }
         socket.emit('timer.start', { taskId: taskToMove.id });
+        setTimerRunningTaskId(taskToMoveIdStr); // optimistic start for UI
       }
 
     } catch (err) {
@@ -617,6 +677,41 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
       toast.error('Erro ao mover tarefa.');
     } finally {
       setActiveId(null);
+    }
+  };
+
+  // WS helpers to align status with timer actions
+  const handleStartTimer = async (task: KanbanTask) => {
+    try {
+      // Ensure only one running timer per user
+      if (timerRunningTaskId && timerRunningTaskId !== String(task.id)) {
+        socket?.emit('timer.pause', { taskId: parseInt(timerRunningTaskId) });
+      }
+      // Move task to Em Andamento if needed
+      if (task.status !== 'em_andamento') {
+        await updateTask({ id: Number(task.id), data: { status: 'em_andamento' } });
+        if (onGenericTaskUpdate) await onGenericTaskUpdate();
+      }
+      socket?.emit('timer.start', { taskId: Number(task.id) });
+      setTimerRunningTaskId(String(task.id)); // optimistic UI
+    } catch (e) {
+      console.error('Falha ao iniciar timer:', e);
+      toast.error('Não foi possível iniciar o timer.');
+    }
+  };
+
+  const handlePauseTimer = async (task: KanbanTask) => {
+    try {
+      socket?.emit('timer.pause', { taskId: Number(task.id) });
+      // Move task para A Fazer quando usuário pausa manualmente
+      if (task.status !== 'a_fazer') {
+        await updateTask({ id: Number(task.id), data: { status: 'a_fazer' } });
+        if (onGenericTaskUpdate) await onGenericTaskUpdate();
+      }
+      setTimerRunningTaskId((prev) => (prev === String(task.id) ? null : prev)); // optimistic UI
+    } catch (e) {
+      console.error('Falha ao pausar timer:', e);
+      toast.error('Não foi possível pausar o timer.');
     }
   };
 
@@ -745,6 +840,8 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
                 onTaskClick={handleTaskClick}
                 onDuplicateTask={handleDuplicateTask}
                 timerRunningTaskId={timerRunningTaskId}
+                onStartTimer={handleStartTimer}
+                onPauseTimer={handlePauseTimer}
               />
             );
           })}
@@ -758,6 +855,8 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
                 timerRunningTaskId={timerRunningTaskId}
                 onDuplicateTask={handleDuplicateTask}
                 task={activeTask}
+                onStartTimer={handleStartTimer}
+                onPauseTimer={handlePauseTimer}
               />
             </div>
           ) : null}

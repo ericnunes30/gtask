@@ -89,7 +89,10 @@ export class StructuredNotificationEntity {
   // Método estático para criar entidade a partir de domain object
   static fromDomain(domain: StructuredNotification): StructuredNotificationEntity {
     const entity = new StructuredNotificationEntity();
-    entity.id = domain.id;
+    // Evita forçar inserção com id=0 (deixe o banco gerar o ID)
+    if (typeof domain.id === 'number' && domain.id > 0) {
+      entity.id = domain.id;
+    }
     entity.userId = domain.userId;
     entity.type = domain.type;
     entity.priority = domain.priority;

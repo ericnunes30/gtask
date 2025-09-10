@@ -42,6 +42,7 @@ import { useBackendServices } from '@/hooks/useBackendServices';
 import { toast } from "sonner"; // Biblioteca para notificações (toast)
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSocket } from '@/contexts/SocketContext';
 
 // --- Funções Auxiliares para Estilização e Labels ---
 
@@ -145,6 +146,7 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
   // Importar hooks de autenticação e permissões
   const { user } = useAuth();
   const permissions = usePermissions();
+  const { socket } = useSocket();
 
   // Função para lidar com ordenação - memoizada para evitar re-renders
   const handleSort = useCallback((field: string) => {
@@ -616,6 +618,13 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       const updateData = { status: newStatus };
       await updateTask({ id: taskId, data: updateData });
       toast.success(`Status da tarefa atualizado para ${getStatusLabel(newStatus)}`);
+
+      // Inicia/Pausa o timer conforme mudança de status
+      if (newStatus === 'em_andamento') {
+        socket?.emit('timer.start', { taskId });
+      } else if (currentTask.status === 'em_andamento' && newStatus !== 'em_andamento') {
+        socket?.emit('timer.pause', { taskId });
+      }
 
       // Notificar o componente pai sobre a atualização das tarefas
       if (props.onTasksUpdated) {

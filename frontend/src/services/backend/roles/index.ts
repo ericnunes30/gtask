@@ -1,23 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CreateRoleRequest, UpdateRoleRequest, Role } from '@/common/types'
 import { api } from '@/services/backend/api'
-
 import { ROUTES } from '@/services/backend/routes'
 
 const roleService = {
   async getRoles(): Promise<Role[]> {
-    const response = await api.get(ROUTES.roles)
-    // Support APIs that return either:
-    //  - an array directly in response.data, or
-    //  - a paginated wrapper { data: [...] } in response.data.data
-    if (response?.data && Array.isArray(response.data)) {
-      return response.data as Role[];
+    const response = await api.get<Role[] | { data: Role[] } | Role>(ROUTES.roles)
+    const data = response.data
+
+    if (Array.isArray(data)) {
+      return data
     }
-    if (response?.data && response.data.data && Array.isArray(response.data.data)) {
-      return response.data.data as Role[];
+
+    if (
+      typeof data === 'object' &&
+      data !== null &&
+      'data' in data &&
+      Array.isArray((data as { data: Role[] }).data)
+    ) {
+      return (data as { data: Role[] }).data
     }
-    // Fallback to whatever the endpoint returned (could be a single object)
-    return response.data as any;
+
+    return [data as Role]
   },
   async getRole(roleId: number): Promise<Role> {
     const response = await api.get(`${ROUTES.roles}/${roleId}`)
@@ -37,19 +41,9 @@ const roleService = {
 }
 
 export const useGetRoles = () =>
-  useQuery({ 
-    queryKey: ['roles'], 
-    queryFn: async () => {
-      console.log('Fetching roles from API...');
-      try {
-        const roles = await roleService.getRoles();
-        console.log('Roles fetched successfully:', roles);
-        return roles;
-      } catch (error) {
-        console.error('Error fetching roles:', error);
-        throw error;
-      }
-    }
+  useQuery({
+    queryKey: ['roles'],
+    queryFn: () => roleService.getRoles(),
   })
 
 export const useGetRole = (roleId: number, enabled = true) =>

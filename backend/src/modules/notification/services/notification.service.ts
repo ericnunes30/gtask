@@ -70,6 +70,7 @@ export class NotificationService {
     userId: number,
     options: NotificationQueryOptions = {},
   ): Promise<NotificationPagination> {
+    this.debugLogger.logNotificationEvent('notifications_query_start', { options }, userId);
     const { limit = 20, offset = 0 } = options;
 
     const queryBuilder = this.repository.createQueryBuilder('notification');
@@ -86,7 +87,7 @@ export class NotificationService {
 
     const notifications = items.map((entity) => entity.toDomain());
 
-    return {
+    const result = {
       items: notifications,
       total,
       page: Math.floor(offset / limit) + 1,
@@ -94,6 +95,8 @@ export class NotificationService {
       hasNext: offset + limit < total,
       hasPrevious: offset > 0,
     };
+    this.debugLogger.logNotificationEvent('notifications_query_end', { total: result.total, page: result.page, pageSize: result.pageSize }, userId);
+    return result;
   }
 
   private applyFilters(queryBuilder: any, options: NotificationQueryOptions) {
@@ -146,6 +149,7 @@ export class NotificationService {
         readAt: new Date()
       }
     );
+    this.debugLogger.logNotificationEvent('notification_marked_as_read', { id }, userId);
   }
 
   async markAllAsRead(userId: number): Promise<void> {
@@ -156,10 +160,12 @@ export class NotificationService {
         readAt: new Date()
       }
     );
+    this.debugLogger.logNotificationEvent('notifications_marked_all_read', {}, userId);
   }
 
   async delete(id: number, userId: number): Promise<void> {
     await this.repository.delete({ id, userId });
+    this.debugLogger.logNotificationEvent('notification_deleted', { id }, userId);
   }
 
   async deleteExpired(): Promise<void> {
@@ -168,6 +174,7 @@ export class NotificationService {
       .delete()
       .where('expiresAt < :now', { now: new Date() })
       .execute();
+    this.debugLogger.logNotificationEvent('notifications_deleted_expired', {}, 0);
   }
 
   async getUnreadCount(userId: number): Promise<number> {
@@ -229,7 +236,9 @@ export class NotificationService {
       .andWhere('isRead = true')
       .execute();
 
-    return result.affected || 0;
+    const deleted = result.affected || 0;
+    this.debugLogger.logNotificationEvent('notifications_cleanup_old', { daysToKeep, deleted }, 0);
+    return deleted;
   }
 
   // Método para buscar notificações com filtros avançados

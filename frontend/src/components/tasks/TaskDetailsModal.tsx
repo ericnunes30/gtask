@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useTaskDetails } from '@/hooks/useTaskDetails';
 import { useTaskComments } from '@/hooks/useTaskComments';
-import TaskDetailsHeader from './TaskDetails/TaskDetailsHeader';
+import TaskDetailsHeader from '@/components/tasks/TaskDetails/TaskDetailsHeader';
 import TaskDescription from './TaskDetails/TaskDescription';
 import TaskProperties from './TaskDetails/TaskProperties';
 import TaskAssignments from './TaskDetails/TaskAssignments';
@@ -123,15 +123,15 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-[1100px] max-h-[90vh] flex flex-col overflow-y-auto p-0">
           <DialogTitle className="sr-only">{task.title}</DialogTitle>
-          <div className="flex h-[90vh]">
-            <div className="w-1/2 border-r overflow-y-auto p-6">
+          <div className="flex h-[90vh] overflow-y-hidden">
+            <div className="w-1/2 border-r overflow-y-auto p-6 bg-card text-card-foreground">
               <TaskDetailsHeader
                 task={task}
                 isEditMode={isEditMode}
-                editedTask={editedTask}
+                editedTask={editedTask || {}}
                 isDeleteDialogOpen={isDeleteDialogOpen}
                 onFieldChange={handleFieldChange}
-                onToggleComplete={saveChanges}
+                onToggleComplete={saveChanges} // This is fine as saveChanges will persist the whole editedTask
                 onDuplicateTask={onDuplicateTask}
                 onSaveChanges={saveChanges}
                 onCancelEditMode={cancelEditMode}
@@ -139,17 +139,15 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 onDeleteTask={deleteTask}
                 setIsDeleteDialogOpen={setIsDeleteDialogOpen}
                 onTaskUpdated={onTaskUpdated}
-                updateTask={updateTask}
-                setTask={setTask}
+                updateTask={updateTask as any}
+                setTask={setTask as any}
               />
               <TaskDescription
                 task={task}
                 isEditMode={isEditMode}
                 editedTask={editedTask}
                 onFieldChange={handleFieldChange}
-                isFullScreenEditorOpen={isFullScreenEditorOpen}
                 setIsFullScreenEditorOpen={setIsFullScreenEditorOpen}
-                handleSaveFullScreenContent={handleSaveFullScreenContent}
               />
               <Separator className="my-4" />
               <div className="space-y-5 mt-4">
@@ -158,9 +156,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   isEditMode={isEditMode}
                   editedTask={editedTask}
                   onFieldChange={handleFieldChange}
-                  updateTask={updateTask}
+                  updateTask={updateTask as any}
                   onTaskUpdated={onTaskUpdated}
-                  setTask={setTask}
+                  setTask={setTask as any}
                 />
                 <TaskDetailedFields
                   task={task}
@@ -190,7 +188,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <TaskActivity
               task={task}
               comments={comments}
-              history={task?.activityLogs || []}
+              history={task.activityLogs || []}
               activityTab={activityTab}
               setActivityTab={setActivityTab}
               comment={comment}
@@ -201,7 +199,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               mentionQuery={mentionQuery}
               showMentionsList={showMentionsList}
               onMentionUser={handleMentionUser}
-              getFilteredUsers={getFilteredUsers}
+              getFilteredUsers={() => getFilteredUsers(mentionQuery)}
+              onReplySuccessfullyAdded={refetchTaskDetails}
             />
           </div>
         </DialogContent>

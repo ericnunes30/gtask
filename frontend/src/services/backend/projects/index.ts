@@ -33,11 +33,11 @@ const projectService = {
 export const useGetProjects = () =>
   useQuery({ queryKey: ['projects'], queryFn: projectService.getProjects })
 
-export const useGetProject = (projectId: number, enabled = true) =>
+export const useGetProject = (projectId?: number | null) =>
   useQuery({
     queryKey: ['project', projectId],
-    queryFn: () => projectService.getProject(projectId),
-    enabled,
+    queryFn: () => projectService.getProject(projectId!),
+    enabled: typeof projectId === 'number' && projectId > 0,
   })
 
 export const getProjectQueryOptions = (projectId: number) => ({

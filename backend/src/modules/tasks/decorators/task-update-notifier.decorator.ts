@@ -17,19 +17,20 @@ export class TaskUpdateNotifierDecorator extends TaskUpdater {
   async update(id: number, updateTaskDto: UpdateTaskDto, userId: number): Promise<Task> {
     const oldTask = await this.taskService.findOne(id);
     const updatedTask = await this.taskService.update(id, updateTaskDto, userId);
+    const fullTask = await this.taskService.findOne(id);
 
-    this.eventEmitter.emit('task.updated', { 
-      task: updatedTask, 
+    this.eventEmitter.emit('task.updated', {
+      task: fullTask,
       updatedBy: userId,
-      changedFields: this.getChangedFields(updateTaskDto, oldTask)
+      changedFields: this.getChangedFields(updateTaskDto, oldTask),
     });
 
     if (updateTaskDto.status && oldTask.status !== updateTaskDto.status) {
-      this.eventEmitter.emit('task.status.changed', { 
-        task: updatedTask, 
+      this.eventEmitter.emit('task.status.changed', {
+        task: fullTask,
         updatedBy: userId,
         oldStatus: oldTask.status,
-        newStatus: updateTaskDto.status
+        newStatus: updateTaskDto.status,
       });
     }
 

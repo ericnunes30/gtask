@@ -1,6 +1,45 @@
 // frontend/src/utils/apiTransformers.ts
 
-import { Task, Project, Comment, Notification } from '@/common/types';
+import { Task, Project, Comment, Notification, ActivityLog } from '@/common/types';
+
+export const transformApiActivityLogToFrontend = (apiActivityLog: any): ActivityLog => {
+  const transformedActivityLog: any = { ...apiActivityLog };
+
+  if (apiActivityLog.task_id !== undefined) {
+    transformedActivityLog.taskId = apiActivityLog.task_id;
+    delete transformedActivityLog.task_id;
+  }
+  if (apiActivityLog.user_id !== undefined) {
+    transformedActivityLog.userId = apiActivityLog.user_id;
+    delete transformedActivityLog.user_id;
+  }
+  if (apiActivityLog.action_type !== undefined) {
+    transformedActivityLog.actionType = apiActivityLog.action_type;
+    delete transformedActivityLog.action_type;
+  }
+  if (apiActivityLog.changed_field !== undefined) {
+    transformedActivityLog.changedField = apiActivityLog.changed_field;
+    delete transformedActivityLog.changed_field;
+  }
+  if (apiActivityLog.old_value !== undefined) {
+    transformedActivityLog.oldValue = apiActivityLog.old_value;
+    delete transformedActivityLog.old_value;
+  }
+  if (apiActivityLog.new_value !== undefined) {
+    transformedActivityLog.newValue = apiActivityLog.new_value;
+    delete transformedActivityLog.new_value;
+  }
+  if (apiActivityLog.reference_id !== undefined) {
+    transformedActivityLog.referenceId = apiActivityLog.reference_id;
+    delete transformedActivityLog.reference_id;
+  }
+  if (apiActivityLog.created_at !== undefined) {
+    transformedActivityLog.createdAt = apiActivityLog.created_at;
+    delete transformedActivityLog.created_at;
+  }
+
+  return transformedActivityLog;
+}
 
 /**
  * Transforma um objeto de tarefa vindo da API para o formato esperado pelo frontend.
@@ -58,6 +97,10 @@ export const transformApiTaskToFrontend = (apiTask: any): Task => {
     transformedTask.occupations = apiTask.occupations; // Manter os objetos Occupation completos
   } else if (apiTask.occupations === null) {
     transformedTask.occupations = [];
+  }
+
+  if (apiTask.activityLogs && Array.isArray(apiTask.activityLogs)) {
+    transformedTask.activityLogs = apiTask.activityLogs.map(transformApiActivityLogToFrontend);
   }
 
   return transformedTask;

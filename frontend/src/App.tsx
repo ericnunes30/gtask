@@ -11,6 +11,8 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { setupAuthInterceptor } from '@/services/backend/api';
 import AppRoutes from "@/routes";
 
+import { useTimerSocket } from '@/hooks/useTimerSocket';
+
 // Helper component to setup the interceptor, since it needs access to auth context
 const AuthInterceptorSetup = () => {
   const { refreshAuthToken, logout } = useAuth();
@@ -22,6 +24,11 @@ const AuthInterceptorSetup = () => {
   return null; // This component does not render anything
 };
 
+const TimerSocketSetup = () => {
+  useTimerSocket();
+  return null;
+};
+
 const App = () => {
   return (
     <React.StrictMode>
@@ -31,6 +38,7 @@ const App = () => {
             <SocketProvider>
               <NotificationProvider>
                 <AuthInterceptorSetup />
+                <TimerSocketSetup />
                 <Toaster />
                 <Sonner />
                 <AppRoutes />

@@ -1,8 +1,10 @@
 import { Logger, Injectable, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -14,6 +16,7 @@ import { NotificationService } from '../../notification/services/notification.se
 import { NotificationFactory } from '../../notification/factories/notification.factory';
 import { DebugLoggerService } from '../../notification/services/debug-logger.service';
 import { TimerService } from '../../tasks/services/timer.service';
+import { UserService } from '../../user/services/user.service';
 
 @WebSocketGateway({
   cors: {
@@ -22,7 +25,7 @@ import { TimerService } from '../../tasks/services/timer.service';
 })
 @Injectable()
 export class EventsGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit
+  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleInit
 {
   private readonly logger = new Logger(EventsGateway.name);
 
@@ -34,12 +37,31 @@ export class EventsGateway
     private readonly notificationFactory: NotificationFactory,
     private readonly timerService: TimerService,
     private readonly debugLogger: DebugLoggerService,
-  ) {}
+    private readonly eventEmitter: EventEmitter2,
+    private readonly userService: UserService,
+  ) {
+    // Bridge timer events to WS rooms (complements @OnEvent handlers)
+    this.eventEmitter.on('timer.started', (payload: { taskId: number; userId: number }) => {
+      this.logger.log(`Bridging timer.started for task ${payload.taskId}`);
+      this.server?.to(`task_${payload.taskId}`).emit('timer.started', payload);
+    });
+    this.eventEmitter.on('timer.paused', (payload: { taskId: number; seconds: number; userId?: number }) => {
+      this.server?.to(`task_${payload.taskId}`).emit('timer.paused', payload);
+    });
+    this.eventEmitter.on('timer.tick', (payload: { taskId: number; seconds: number }) => {
+      this.server?.to(`task_${payload.taskId}`).emit('timer.tick', payload);
+    });
+  }
 
   // Resilience improvements for Phase 3
   private readonly maxRetries = 3;
   private readonly retryDelay = 1000; // 1 second
   private isInitialized = false;
+
+  afterInit(server: Server) {
+    // Server is ready
+    this.logger.log('WebSocket server initialized');
+  }
 
   async onModuleInit() {
     this.logger.log('🚀 EventsGateway initializing - performing startup verification...');
@@ -130,6 +152,19 @@ export class EventsGateway
   }
 
   handleConnection(client: Socket, ...args: any[]) {
+    const userId = (client as Socket & { user?: any }).user?.sub;
+
+    if (!userId) {
+      this.logger.warn(`Unauthorized WS connection: ${client.id}`);
+      this.debugLogger.logWebSocketEvent('unauthorized_connection', client.id);
+      client.disconnect();
+      return;
+    }
+
+    this.logger.log(`Client connected: ${client.id} (user ${userId})`);
+    this.debugLogger.logWebSocketEvent('connection', client.id, { userId });
+    client.join(`user_${userId}`);
+    return;
     // TODO: Implementar autenticação WebSocket
     this.logger.log(`Client connected: ${client.id}`);
     this.debugLogger.logWebSocketEvent('connection', client.id);
@@ -157,6 +192,21 @@ export class EventsGateway
 
   @SubscribeMessage('timer.start')
   handleTimerStart(client: Socket, payload: { taskId: number }) {
+    const userId = (client as Socket & { user?: any }).user?.sub;
+    if (!userId) {
+      this.logger.warn(`Unauthorized timer.start from ${client.id}`);
+      client.emit('error', { code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      client.disconnect();
+      return;
+    }
+    this.logger.log(`Timer start requested for task ${payload.taskId} by user ${userId}`);
+    try {
+      this.timerService.start(payload.taskId, userId);
+    } catch (err: any) {
+      this.logger.error(`Failed to start timer for task ${payload.taskId}: ${err?.message}`);
+      client.emit('error', { code: 'TIMER_START_FAILED', message: 'Unable to start timer' });
+    }
+    return;
     // TODO: Implementar autenticação WebSocket
     this.logger.log(`Timer start requested for task ${payload.taskId}`);
     // const user = client.user;
@@ -165,6 +215,21 @@ export class EventsGateway
 
   @SubscribeMessage('timer.pause')
   handleTimerPause(client: Socket, payload: { taskId: number }) {
+    const userId = (client as Socket & { user?: any }).user?.sub;
+    if (!userId) {
+      this.logger.warn(`Unauthorized timer.pause from ${client.id}`);
+      client.emit('error', { code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      client.disconnect();
+      return;
+    }
+    this.logger.log(`Timer pause requested for task ${payload.taskId} by user ${userId}`);
+    try {
+      this.timerService.pause(payload.taskId, userId);
+    } catch (err: any) {
+      this.logger.error(`Failed to pause timer for task ${payload.taskId}: ${err?.message}`);
+      client.emit('error', { code: 'TIMER_PAUSE_FAILED', message: 'Unable to pause timer' });
+    }
+    return;
     // TODO: Implementar autenticação WebSocket
     this.logger.log(`Timer pause requested for task ${payload.taskId}`);
     // const user = client.user;
@@ -218,15 +283,36 @@ export class EventsGateway
       return;
     }
 
+    // Try to enrich payload with performer (actor) details
+    let enrichedPayload = payload;
+    try {
+      const actorId = payload?.createdBy || payload?.updatedBy || payload?.userId;
+      if (actorId) {
+        const actor = await this.userService.findOne(Number(actorId));
+        enrichedPayload = {
+          ...payload,
+          performer: {
+            id: actor.id,
+            name: actor.name,
+            email: actor.email,
+          },
+        };
+      }
+    } catch (e) {
+      this.logger.warn(`Could not enrich payload with performer: ${(e as any)?.message || e}`);
+    }
+
     for (const userId of uniqueUserIds) {
       try {
         this.logger.log(`📝 Creating notification for user ${userId}...`);
-        const notificationPayload = { ...payload, userId };
-        this.logger.log(`🚀 Notification payload: ${JSON.stringify(notificationPayload, null, 2)}`);
+        const notification = this.notificationFactory.create(eventName, enrichedPayload);
+        notification.userId = userId; 
+        
+        this.logger.log(`🚀 Notification payload: ${JSON.stringify(notification, null, 2)}`);
         
         this.logger.log(`GATEWAY: Creating notification for user ${userId}, Event: ${eventName}`);
         
-        const savedNotification = await this.notificationService.create(notificationPayload);
+        const savedNotification = await this.notificationService.create(notification);
         this.logger.log(`✅ Notification created successfully for user ${userId} with ID ${savedNotification.id}`);
         
         this.logger.log(`GATEWAY: Notification created successfully - ID: ${savedNotification.id}, User: ${userId}, Event: ${eventName}`);
@@ -276,7 +362,17 @@ export class EventsGateway
   }) {
     this.logger.log(`🔄 Task status changed event received: ${payload.oldStatus} → ${payload.newStatus}`);
     await this.handleEvent('task.status.changed', payload, (p) => {
-      const { task, updatedBy } = p;
+      const { task, updatedBy, newStatus } = p;
+      // If moved to review, notify only the reviewer (if different from actor)
+      if (newStatus === 'em_revisao') {
+        const reviewerId = (task as any)?.reviewer?.id ?? (task as any)?.task_reviewer_id ?? null;
+        if (reviewerId && reviewerId !== updatedBy) {
+          return [reviewerId];
+        }
+        return [];
+      }
+
+      // Default behavior: notify task and project members (excluding actor)
       const userIds = task.users?.map((user) => user.id).filter((id) => id !== updatedBy) || [];
       if (task.project?.users) {
         for (const user of task.project.users) {
@@ -348,3 +444,6 @@ export class EventsGateway
     });
   }
 }
+
+
+
