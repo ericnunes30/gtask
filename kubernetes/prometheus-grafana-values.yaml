@@ -1,0 +1,39 @@
+# Configurações do Grafana
+grafana:
+  # Habilita a criação de um Ingress para o Grafana
+  ingress:
+    enabled: true
+    # Suas anotações do Ingress para o Traefik e cert-manager
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - grafana.surrealgroup.com.br
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.surrealgroup.com.br
+
+  # Define a URL pública do Grafana para que ele carregue os arquivos corretamente
+  grafana.ini:
+    server:
+      root_url: https://grafana.surrealgroup.com.br/
+      serve_from_sub_path: false
+
+# Configurações do Prometheus
+prometheus:
+  # Habilita a criação de um Ingress para o Prometheus
+  ingress:
+    enabled: true
+    # Suas anotações do Ingress para o Traefik e cert-manager
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - prometheus.surrealgroup.com.br
+    tls:
+      - secretName: prometheus-tls
+        hosts:
+          - prometheus.surrealgroup.com.br

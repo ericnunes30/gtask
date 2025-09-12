@@ -1,4 +1,4 @@
-import { corsConfig } from './config/cors.config';
+﻿import { corsConfig } from './config/cors.config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, HttpStatus, BadRequestException } from '@nestjs/common';
 import { AppModule } from './app.module';
@@ -6,9 +6,12 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { AuthenticatedSocketAdapter } from './modules/events/adapters/authenticated-socket.adapter';
 import * as fs from 'fs';
+import { initSentry } from './config/sentry.config';
 
 async function bootstrap() {
   console.log('[main.ts] Bootstrap function started.');
+  // Initialize Sentry (no-op if SENTRY_DSN is not set)
+  initSentry();
   const app = await NestFactory.create(AppModule);
 
   // WebSocket Adapter for Authentication
@@ -31,9 +34,9 @@ async function bootstrap() {
       exceptionFactory: (errors) => {
         console.error('Validation errors:', errors);
         // Add logging to server.log
-        const logMessage = `[${new Date().toISOString()}] Validation Error: ${JSON.stringify(errors)}
-`;
-        fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', logMessage);
+        const logMessage = `[${new Date().toISOString()}] Validation Error: ${JSON.stringify(errors)}\n`;
+        const logPath = process.env.LOG_FILE || 'server.log';
+        fs.appendFileSync(logPath, logMessage);
         return new BadRequestException(errors);
       },
     }),
@@ -48,7 +51,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3334;
   console.log(`[main.ts] Application about to listen on port ${port}.`);
   await app.listen(port);
-  
-  console.log(`🚀 Application running on: http://localhost:${port}/${process.env.API_PREFIX || 'api/v1'}`);
+
+  console.log(`Application running on: http://localhost:${port}/${process.env.API_PREFIX || 'api/v1'}`);
 }
 bootstrap();

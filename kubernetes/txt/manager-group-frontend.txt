@@ -1,0 +1,87 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: manager-group-frontend-deployment-02
+  namespace: manager-group
+  labels:
+    app: manager-group-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: manager-group-frontend
+  template:
+    metadata:
+      labels:
+        app: manager-group-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ericnunes30/manager-group-frontend-v2-latest:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        env:
+        - name: BACKEND_API_URL
+          value: https://mgapi.surrealgroup.com.br/v2
+        # Optionally set explicit WS URL; otherwise derived from BACKEND_API_URL
+        #- name: BACKEND_WS_URL
+        #  value: wss://mgapi.surrealgroup.com.br
+        volumeMounts:
+        - name: mg-frontend-entrypoint
+          mountPath: /docker-entrypoint.d/10-config.sh
+          subPath: 10-config.sh
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 128Mi
+      volumes:
+      - name: mg-frontend-entrypoint
+        configMap:
+          name: mg-frontend-entrypoint
+          defaultMode: 0755
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: manager-group-frontend-service
+  namespace: manager-group
+  labels:
+    app: manager-group-frontend
+spec:
+  selector:
+    app: manager-group-frontend
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: manager-group-frontend-ingress
+  namespace: manager-group
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - mg.surrealgroup.com.br
+    secretName: manager-group-frontend-tls
+  rules:
+  - host: mg.surrealgroup.com.br
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: manager-group-frontend-service
+            port:
+              number: 80

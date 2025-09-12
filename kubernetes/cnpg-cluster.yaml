@@ -1,0 +1,30 @@
+# Arquivo: cnpg-cluster.yaml (Sintaxe para versão 1.22+)
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-producao
+  namespace: postgres
+spec:
+  instances: 3
+  
+  bootstrap:
+    initdb:
+      database: manager_group # Mantendo a sua ordem preferida
+      owner: app_owner
+      postInitApplicationSQL:
+        - CREATE DATABASE n8n_queue OWNER app_owner;
+        - CREATE DATABASE evolution OWNER app_owner;
+
+  storage:
+    size: 10Gi
+    storageClass: local-path
+
+  # --- A SINTAXE CORRETA PARA A NOVA VERSÃO ---
+  superuserSecret:
+    name: postgres-superuser-secret
+  applicationOwnerSecret:
+    name: app-user-secret
+  # --- FIM DA SINTAXE CORRETA ---
+
+  monitoring:
+    enablePodMonitor: true

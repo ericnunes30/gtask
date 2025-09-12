@@ -1,0 +1,145 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: manager-group-backend-deployment-2
+  namespace: manager-group
+  labels:
+    app: manager-group-backend
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: manager-group-backend
+  template:
+    metadata:
+      labels:
+        app: manager-group-backend
+    spec:
+      containers:
+      - name: backend
+        image: ericnunes30/manager-group-backend-v2-latest:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3333
+        startupProbe:
+          httpGet:
+            path: /v2
+            port: 3333
+            scheme: HTTP
+          periodSeconds: 5
+          failureThreshold: 20
+        readinessProbe:
+          httpGet:
+            path: /v2
+            port: 3333
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+          successThreshold: 1
+        livenessProbe:
+          httpGet:
+            path: /v2
+            port: 3333
+            scheme: HTTP
+          initialDelaySeconds: 15
+          periodSeconds: 30
+          timeoutSeconds: 3
+          failureThreshold: 3
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: HOST
+          value: 0.0.0.0
+        - name: PORT
+          value: "3333"
+        - name: LOG_LEVEL
+          value: info
+        - name: DB_HOST
+          value: postgres-service.postgres.svc.cluster.local
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: postgres
+        - name: DB_DATABASE
+          value: manager_group
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: manager-group-secret
+              key: DB_PASSWORD
+        - name: APP_KEY
+          valueFrom:
+            secretKeyRef:
+              name: manager-group-secret
+              key: APP_KEY
+        - name: JWT_SECRET
+          value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        - name: FRONTEND_URL
+          value: https://mg.surrealgroup.com.br
+        - name: API_PREFIX
+          value: v2
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: manager-group-secret
+              key: SENTRY_DSN
+        - name: SENTRY_ENVIRONMENT
+          value: production
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: manager-group-backend-service
+  namespace: manager-group
+  labels:
+    app: manager-group-backend
+spec:
+  selector:
+    app: manager-group-backend
+  ports:
+  - port: 3333
+    targetPort: 3333
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: manager-group-backend-ingress
+  namespace: manager-group
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - mgapi.surrealgroup.com.br
+    secretName: manager-group-backend-tls
+  rules:
+  - host: mgapi.surrealgroup.com.br
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: manager-group-backend-service
+            port:
+              number: 3333
+      - path: /socket.io
+        pathType: Prefix
+        backend:
+          service:
+            name: manager-group-backend-service
+            port:
+              number: 3333

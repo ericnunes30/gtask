@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/node';
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -33,6 +34,43 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     console.error(exception); // Log the full exception
+
+    // Capture only server-side errors (>=500) to avoid noise
+    try {
+      const statusForCapture =
+        exception instanceof HttpException
+          ? exception.getStatus()
+          : HttpStatus.INTERNAL_SERVER_ERROR;
+
+      if (statusForCapture >= 500) {
+        Sentry.withScope((scope) => {
+          scope.setTag('component', 'http');
+          scope.setTag('method', request.method);
+          scope.setTag('path', request.url);
+          // Attach shallow context without potentially sensitive body/query
+          scope.setExtras({
+            headers: {
+              'user-agent': request.headers['user-agent'],
+              referer: request.headers['referer'],
+            },
+            ip: request.ip,
+          });
+          // If authentication attaches user to request, record the id (no PII)
+          const anyReq: any = request as any;
+          if (anyReq.user && (anyReq.user.id || anyReq.user.userId)) {
+            Sentry.setUser({ id: String(anyReq.user.id || anyReq.user.userId) });
+          }
+          const err =
+            exception instanceof Error
+              ? exception
+              : new Error(typeof exception === 'string' ? exception : 'Unknown error');
+          Sentry.captureException(err);
+        });
+      }
+    } catch (sentryErr) {
+      // Avoid throwing from error handler
+      console.error('Sentry capture failed:', sentryErr);
+    }
 
     const status =
       exception instanceof HttpException
