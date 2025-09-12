@@ -9,3 +9,6 @@ frontend_old
 CLAUDE.md
 claude-2.md
 old
+# Environment files (do not commit secrets)
+.env
+**/.env
