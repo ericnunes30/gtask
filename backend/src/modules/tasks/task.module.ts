@@ -13,6 +13,7 @@ import { TaskCreationNotifierDecorator } from './decorators/task-creation-notifi
 import { TaskUpdateNotifierDecorator } from './decorators/task-update-notifier.decorator';
 import { TaskUpdater } from './services/task-updater.abstract';
 import { TimerService } from './services/timer.service';
+import { ActiveProjectFindAllStrategy } from './strategies/active-project-find-all.strategy';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Task, User, Occupation])],
@@ -22,6 +23,7 @@ import { TimerService } from './services/timer.service';
     TimerService,
     TaskStrategyFactory,
     TaskCreationFactory,
+    ActiveProjectFindAllStrategy, // Nova estratégia
     {
       provide: TaskCreator,
       useClass: TaskCreationNotifierDecorator,

@@ -13,9 +13,9 @@ import {
 } from './task-timer-update.strategy';
 import { 
   TaskFindAllStrategy,
-  RepositoryFindAllStrategy,
-  StandardFindAllStrategy 
+  RepositoryFindAllStrategy
 } from './task-find-all.strategy';
+import { ActiveProjectFindAllStrategy } from './active-project-find-all.strategy';
 
 @Injectable()
 export class TaskStrategyFactory {
@@ -35,7 +35,7 @@ export class TaskStrategyFactory {
 
     this.findAllStrategies = [
       new RepositoryFindAllStrategy(),
-      new StandardFindAllStrategy(),
+      new ActiveProjectFindAllStrategy(), // Nova estratégia como padrão
     ];
   }
 

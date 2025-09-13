@@ -53,8 +53,12 @@ export class TaskService extends TaskCreator implements TaskUpdater {
   }
 
   async findAll(): Promise<Task[]> {
+    this.logger.log('findAll called - getting strategy');
     const strategy = this.taskStrategyFactory.getFindAllStrategy(this.taskRepository);
-    return await strategy.execute(this.taskRepository);
+    this.logger.log(`Using strategy: ${strategy.constructor.name}`);
+    const result = await strategy.execute(this.taskRepository);
+    this.logger.log(`Found ${result.length} tasks`);
+    return result;
   }
 
   async findOne(id: number): Promise<Task> {
