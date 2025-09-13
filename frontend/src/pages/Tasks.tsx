@@ -307,6 +307,14 @@ const Tasks = () => {
       tasksToFilter = tasksToFilter.filter(task => task.status !== 'concluido');
     }
 
+    // Always hide canceled, pending and waiting for client tasks
+    tasksToFilter = tasksToFilter.filter(
+      task =>
+        task.status !== 'cancelado' &&
+        task.status !== 'pendente' &&
+        task.status !== 'aguardando_cliente'
+    );
+
     // Apply my reviews filter (only for admins and managers)
     if (showMyReviews && currentUserIdAuth) {
       tasksToFilter = tasksToFilter.filter(task => 

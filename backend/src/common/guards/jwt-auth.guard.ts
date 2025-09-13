@@ -1,4 +1,4 @@
-import { Injectable, ExecutionContext, Logger } from '@nestjs/common';
+import { Injectable, ExecutionContext, Logger, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 @Injectable()
@@ -14,10 +14,12 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   handleRequest(err, user, info) {
     if (err || !user) {
-      this.logger.error(`Authentication Error: ${info?.message || 'No user found'}`, err?.stack);
-      throw err || new Error('Unauthorized');
+      const message = info?.message || 'Unauthorized';
+      this.logger.error(`Authentication Error: ${message}`, err?.stack);
+      throw err || new UnauthorizedException(message);
     }
-    this.logger.log(`User authenticated: ${user.username}`);
+    const label = user?.username || user?.email || user?.sub || 'unknown';
+    this.logger.log(`User authenticated: ${label}`);
     return user;
   }
 }

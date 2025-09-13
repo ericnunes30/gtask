@@ -1,4 +1,4 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { 
   StructuredNotification, 
   NotificationStrategy, 
@@ -117,8 +117,9 @@ export class TaskCreatedStrategy extends BaseNotificationStrategy {
 
     // Nova estrutura de dados proposta
     const data = {
-      actorName: performer?.name || 'UsuÃ¡rio desconhecido',
+      actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: task.title,
+      taskId: task.id,
       projectTitle: task.project?.title
     };
 
@@ -137,7 +138,7 @@ export class TaskCreatedStrategy extends BaseNotificationStrategy {
   }
 
   getPriority(payload: TaskCreatedPayload): NotificationPriority {
-    // Prioridade baseada na urgÃªncia da tarefa
+    // Prioridade baseada na urgência da tarefa
     const priorityMap: Record<string, NotificationPriority> = {
       'urgente': NotificationPriority.URGENT,
       'alta': NotificationPriority.HIGH,
@@ -171,8 +172,9 @@ export class TaskStatusUpdatedStrategy extends BaseNotificationStrategy {
 
     // Nova estrutura de dados proposta
     const data = {
-      actorName: performer?.name || 'UsuÃ¡rio desconhecido',
+      actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: task.title,
+      taskId: task.id,
       oldStatus: oldStatus,
       newStatus: newStatus
     };
@@ -192,7 +194,7 @@ export class TaskStatusUpdatedStrategy extends BaseNotificationStrategy {
   }
 
   getPriority(payload: {oldStatus: string, newStatus: string}): NotificationPriority {
-    // Prioridade alta para mudanÃ§as crÃ­ticas de status
+    // Prioridade alta para mudanças críticas de status
     const criticalStatuses = ['concluido', 'cancelado', 'em_revisao'];
     const mediumStatuses = ['em_andamento', 'aguardando_cliente'];
     
@@ -230,8 +232,9 @@ export class CommentCreatedStrategy extends BaseNotificationStrategy {
 
     // Nova estrutura de dados proposta
     const data = {
-      actorName: performer?.name || 'UsuÃ¡rio desconhecido',
+      actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: comment.task.title,
+      taskId: comment.task.id,
       commentSnippet: comment.content.length > 50 ?
         comment.content.substring(0, 47) + '...' :
         comment.content
@@ -254,7 +257,7 @@ export class CommentCreatedStrategy extends BaseNotificationStrategy {
   }
 
   getPriority(payload: CommentCreatedPayload): NotificationPriority {
-    // ComentÃ¡rios geralmente tÃªm prioridade mÃ©dia
+    // Comentários geralmente têm prioridade média
     return NotificationPriority.MEDIUM;
   }
 }
@@ -427,8 +430,9 @@ export class TaskUpdatedStrategy extends BaseNotificationStrategy {
 
     // Nova estrutura de dados proposta
     const data = {
-      actorName: performer?.name || 'UsuÃ¡rio desconhecido',
+      actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: task.title,
+      taskId: task.id,
       changedFields: changedFields.map((field: any) => ({
         field: field.field,
         oldValue: field.oldValue,
@@ -445,7 +449,7 @@ export class TaskUpdatedStrategy extends BaseNotificationStrategy {
 
     return this.createBaseNotification(
       this.type,
-      NotificationPriority.MEDIUM, // Prioridade padrÃ£o para atualizaÃ§Ãµes
+      NotificationPriority.MEDIUM, // Prioridade padrão para atualizações
       data,
       metadata,
       updatedBy

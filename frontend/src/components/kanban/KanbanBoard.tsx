@@ -441,6 +441,17 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
   const permissions = usePermissions();
   const { socket, isConnected } = useSocket();
 
+  const finalColumnOrder = useMemo(() => {
+    let order = [...processedColumnOrder];
+    if (permissions.isMember) {
+      order = order.filter(colId => colId !== 'backlog' && colId !== 'waitingClient');
+    }
+    if (!permissions.isAdmin) {
+      order = order.filter(colId => colId !== 'cancelled');
+    }
+    return order;
+  }, [processedColumnOrder, permissions.isMember, permissions.isAdmin]);
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isTaskDetailsModalOpen, setIsTaskDetailsModalOpen] = useState(false);
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<KanbanTask | null>(null);
@@ -812,7 +823,7 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
         autoScroll={true}
       >
         <div className="kanban-container flex gap-4 h-full w-full overflow-x-auto overflow-y-hidden" style={{ minWidth: 'calc(280px * 7 + 1rem * 6)' }}>
-          {processedColumnOrder.map(columnId => {
+          {finalColumnOrder.map(columnId => {
             const columnData = processedColumns[columnId];
             if (!columnData) {
               console.warn(`Dados da coluna ${columnId} não encontrados.`);

@@ -26,7 +26,7 @@ const taskService = {
     return transformApiTaskToFrontend(response.data.data)
   },
 
-  async updateTask(id: number, data: UpdateTaskRequest): Promise<Task> {
+  async updateTask({ id, data }: { id: number; data: UpdateTaskRequest }): Promise<Task> {
     const response = await api.patch(`${ROUTES.tasks}/${id}`, data)
     return transformApiTaskToFrontend(response.data.data)
   },
@@ -67,8 +67,8 @@ export const useCreateTask = () => {
 export const useUpdateTask = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateTaskRequest }) =>
-      taskService.updateTask(id, data),
+    mutationFn: (payload: { id: number; data: UpdateTaskRequest }) => 
+      taskService.updateTask(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
       queryClient.invalidateQueries({ queryKey: ['task'] })

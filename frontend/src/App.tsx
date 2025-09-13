@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { SocketProvider } from '@/contexts/SocketContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { TaskModalProvider } from '@/contexts/TaskModalContext';
 import { setupAuthInterceptor } from '@/services/backend/api';
 import AppRoutes from "@/routes";
 
@@ -37,11 +38,13 @@ const App = () => {
           <AuthProvider>
             <SocketProvider>
               <NotificationProvider>
-                <AuthInterceptorSetup />
-                <TimerSocketSetup />
-                <Toaster />
-                <Sonner />
-                <AppRoutes />
+                <TaskModalProvider>
+                  <AuthInterceptorSetup />
+                  <TimerSocketSetup />
+                  <Toaster />
+                  <Sonner />
+                  <AppRoutes />
+                </TaskModalProvider>
               </NotificationProvider>
             </SocketProvider>
           </AuthProvider>

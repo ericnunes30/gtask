@@ -391,6 +391,14 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
       if (!props.showCompleted) {
         filteredTasks = filteredTasks.filter(task => task.status !== 'concluido');
       }
+
+      // Ocultar tarefas canceladas, pendentes e aguardando cliente
+      filteredTasks = filteredTasks.filter(
+        task =>
+          task.status !== 'cancelado' &&
+          task.status !== 'pendente' &&
+          task.status !== 'aguardando_cliente'
+      );
  
        // Ordena tarefas com base no modo de visualização
       if (viewMode === 'date') {

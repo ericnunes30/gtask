@@ -56,7 +56,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
   // --- Fim da Lógica de Curtidas ---
 
   // --- Lógica de Respostas (Agora usa dados pré-carregados) ---
-  // As respostas agora v��m de comment.replies se pré-carregadas pelo backend.
+  // As respostas agora vm de comment.replies se pré-carregadas pelo backend.
   // O estado showReplies e a função toggleShowReplies são removidos,
   // pois as respostas serão sempre visíveis se existirem.
   // A função loadReplies e os estados isLoadingReplies/setReplies não são mais necessários
@@ -77,7 +77,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
   }, [comment.replies]);
 
   // Modificar handleReplySubmit para usar setLocalReplies
-  // (Esta parte já está no c��digo, mas precisa usar setLocalReplies em vez de setReplies)
+  // (Esta parte já está no cdigo, mas precisa usar setLocalReplies em vez de setReplies)
   // A linha 114 em handleReplySubmit: setReplies(prev => [replyWithUser, ...prev]);
   // DEVE SER ALTERADA PARA: setLocalReplies(prev => [replyWithUser, ...prev]);
   // Esta alteração será feita em um diff separado para handleReplySubmit.
@@ -113,7 +113,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
           name: authUser.name || 'Usuário Desconhecido',
           // avatar_url: authUser.avatar_url, // Adicionar se disponível e necessário
         } as ApiUser : undefined, // Cast para ApiUser
-        likesCount: 0, // Nova resposta come��a com 0 curtidas
+        likesCount: 0, // Nova resposta comea com 0 curtidas
         repliesCount: 0, // Nova resposta começa com 0 sub-respostas
       };
       console.log('CommentItem - replyWithUser (after enrichment):', replyWithUser); // Adicionado log
@@ -146,7 +146,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
   // --- Fim da Lógica do Formulário de Resposta ---
 
   // Formatação da data (similar ao TaskDetailsModal)
-  const dateString = comment.createdAt;
+  const dateString = (comment as any).created_at;
   let formattedDate = "Data inválida";
   if (dateString) {
     const date = parseISO(dateString);
@@ -173,7 +173,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
         <div className="flex items-start justify-between">
           <div>
             <span className="font-medium">{comment.user?.name}</span>
-            {/* Adicionar lógica para exibir se é uma resposta a algu��m, se necessário */}
+            {/* Adicionar lógica para exibir se é uma resposta a algum, se necessário */}
           </div>
           <span className="text-xs text-muted-foreground">{formattedDate}</span>
         </div>
