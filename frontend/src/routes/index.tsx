@@ -1,15 +1,17 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Login from '@/pages/Login';
-import Projects from '@/pages/Projects';
-import ProjectView from '@/pages/ProjectView';
-import Tasks from '@/pages/Tasks';
-import Teams from '@/pages/Teams';
-import TaskDetails from '@/pages/TaskDetails';
 import NotFound from '@/pages/NotFound';
-import Settings from '@/pages/Settings';
-import Users from '@/pages/Users';
 import ProtectedRoute from './ProtectedRoute';
+import {
+  LazyProjectsPage,
+  LazyProjectViewPage,
+  LazyTasksPage,
+  LazyTeamsPage,
+  LazyTaskDetailsPage,
+  LazySettingsPage,
+  LazyUsersPage
+} from '@/pages/lazy/LazyPages';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -19,7 +21,7 @@ const AppRoutes: React.FC = () => {
         path="/"
         element={
           <ProtectedRoute>
-            <Projects />
+        <LazyProjectsPage />
           </ProtectedRoute>
         }
       />
@@ -27,7 +29,7 @@ const AppRoutes: React.FC = () => {
         path="/projects"
         element={
           <ProtectedRoute>
-            <Projects />
+        <LazyProjectsPage />
           </ProtectedRoute>
         }
       />
@@ -35,7 +37,7 @@ const AppRoutes: React.FC = () => {
         path="/projects/:projectId"
         element={
           <ProtectedRoute>
-            <ProjectView />
+        <LazyProjectViewPage />
           </ProtectedRoute>
         }
       />
@@ -43,7 +45,7 @@ const AppRoutes: React.FC = () => {
         path="/tasks"
         element={
           <ProtectedRoute>
-            <Tasks />
+        <LazyTasksPage />
           </ProtectedRoute>
         }
       />
@@ -51,7 +53,7 @@ const AppRoutes: React.FC = () => {
         path="/teams"
         element={
           <ProtectedRoute>
-            <Teams />
+        <LazyTeamsPage />
           </ProtectedRoute>
         }
       />
@@ -59,7 +61,7 @@ const AppRoutes: React.FC = () => {
         path="/tasks/:taskId"
         element={
           <ProtectedRoute>
-            <TaskDetails />
+        <LazyTaskDetailsPage />
           </ProtectedRoute>
         }
       />
@@ -67,7 +69,7 @@ const AppRoutes: React.FC = () => {
         path="/settings"
         element={
           <ProtectedRoute>
-            <Settings />
+        <LazySettingsPage />
           </ProtectedRoute>
         }
       />
@@ -75,7 +77,7 @@ const AppRoutes: React.FC = () => {
         path="/users"
         element={
           <ProtectedRoute>
-            <Users />
+        <LazyUsersPage />
           </ProtectedRoute>
         }
       />

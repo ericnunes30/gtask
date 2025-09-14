@@ -52,8 +52,8 @@ import { TaskForm } from '@/components/forms/TaskForm';
 import { TaskFormRef } from '@/components/forms/TaskForm';
 import { TaskTimer } from '@/components/tasks/TaskTimer';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSocket } from '@/contexts/SocketContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
+import { useSocket } from '@/contexts/adapters/SocketContextAdapter';
 import { calculateNewOrderForColumn } from './kanbanUtils';
 
 const priorityMap = {

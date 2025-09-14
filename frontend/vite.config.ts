@@ -5,33 +5,94 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  cacheDir: 'node_modules/.vite_custom_cache', // Adiciona um diretório de cache customizado para o Vite
+  cacheDir: 'node_modules/.vite_custom_cache',
+
+  // Build optimizations for lazy loading
+  build: {
+    // Enable rollup's code splitting optimizations
+    rollupOptions: {
+      // External config.js file
+      external: ['/config.js'],
+      output: {
+        // Create more granular chunks for better lazy loading
+        manualChunks: {
+          // Group vendor dependencies
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          // Group UI library
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', 'lucide-react'],
+          // Group data fetching
+          query: ['@tanstack/react-query'],
+          // Group form libraries
+          forms: ['react-hook-form', 'zod'],
+        },
+        // Optimize chunk names for better debugging
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId
+            ? chunkInfo.facadeModuleId.split('/').pop()
+            : 'chunk';
+          return `js/${facadeModuleId || 'chunk'}-[hash].js`;
+        },
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          const ext = info[info.length - 1];
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+            return `images/[name]-[hash][extname]`;
+          }
+          return `assets/[name]-[hash][extname]`;
+        },
+      },
+    },
+    // Generate source maps for production debugging
+    sourcemap: mode === 'production' ? false : true,
+    // Reduce console output
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: mode === 'production',
+        drop_debugger: mode === 'production',
+      },
+    },
+  },
+
   server: {
     host: "::",
     port: 8080,
     fs: {
-      strict: false, // Pode ajudar a evitar problemas de HMR em alguns sistemas
+      strict: false,
     },
     watch: {
-      usePolling: true, // Usar polling para detecção de mudanças de arquivo
+      usePolling: true,
     },
-    // Tentar desabilitar o cache do servidor de desenvolvimento (para fins de teste)
-    // Remova ou comente esta linha se causar problemas ou lentidão excessiva
-    // hmr: {
-    //   overlay: false, // Desabilita o overlay de erro do HMR, pode ajudar em alguns casos
-    // },
-    // Nota: A opção para desabilitar o cache do servidor diretamente (como `server.hmr.cache = false`) não é padrão.
-    // A melhor abordagem é limpar o cache do navegador e o `cacheDir` do Vite.
-    // O `usePolling` e as meta tags no index.html são as principais ferramentas contra cache.
+    // Optimized HMR for lazy loading
+    hmr: {
+      overlay: true,
+    },
   },
+
   plugins: [
     react(),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+
+  // Optimize dependency pre-bundling
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      '@tanstack/react-query',
+      'lucide-react',
+      'react-hook-form',
+      'zod',
+      'axios',
+    ],
   },
 }));

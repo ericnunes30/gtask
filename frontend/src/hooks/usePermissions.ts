@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { useState, useEffect } from 'react';
 import { Role } from '@/common/types'; // Import Role interface
 

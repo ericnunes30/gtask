@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 

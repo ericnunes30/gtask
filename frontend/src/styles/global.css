@@ -1,4 +1,7 @@
 
+/* Import page transition styles */
+@import '../components/transitions/PageTransition.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

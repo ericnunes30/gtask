@@ -24,7 +24,7 @@ import { useBackendServices } from '@/hooks/useBackendServices';
 import { getProjectQueryOptions } from '@/services/backend/projects';
 import { ProjectForm } from '@/components/forms/ProjectForm';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { TasksList } from '@/components/dashboard/TasksList';
 
 const ProjectView = () => {

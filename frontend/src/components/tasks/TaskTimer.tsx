@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSocket } from '@/contexts/SocketContext';
+import { useSocket } from '@/contexts/adapters/SocketContextAdapter';
 import { Play, Pause } from 'lucide-react';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { Button } from '@/components/ui/button';

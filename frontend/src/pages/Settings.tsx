@@ -33,7 +33,7 @@ import { z } from "zod";
 import { toast } from "@/components/ui/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { useBackendServices } from '@/hooks/useBackendServices';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, {

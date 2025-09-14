@@ -41,8 +41,8 @@ import { Task, TaskPriority, TaskStatus, UpdateTaskRequest, Team } from '@/commo
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { toast } from "sonner"; // Biblioteca para notificações (toast)
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSocket } from '@/contexts/SocketContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
+import { useSocket } from '@/contexts/adapters/SocketContextAdapter';
 
 // --- Funções Auxiliares para Estilização e Labels ---
 

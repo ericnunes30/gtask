@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { Project } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 
 export const ProjectsList = () => {
   const navigate = useNavigate();

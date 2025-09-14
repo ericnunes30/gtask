@@ -1,7 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useOptimizedQuery, useOptimisticMutation, useCacheManager, useQueryClient } from '@/hooks/useOptimizedQuery'
+import { queryKeys } from '@/lib/react-query/keys'
 import { CreateRoleRequest, UpdateRoleRequest, Role } from '@/common/types'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
+import { toast } from '@/components/ui/use-toast'
 
 const roleService = {
   async getRoles(): Promise<Role[]> {
@@ -41,39 +43,180 @@ const roleService = {
 }
 
 export const useGetRoles = () =>
-  useQuery({
-    queryKey: ['roles'],
-    queryFn: () => roleService.getRoles(),
-  })
+  useOptimizedQuery(
+    queryKeys.roles.lists(),
+    roleService.getRoles,
+    {
+      onError: (error) => {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar os cargos',
+          variant: 'destructive',
+        })
+      },
+    }
+  )
 
 export const useGetRole = (roleId: number, enabled = true) =>
-  useQuery({
-    queryKey: ['role', roleId],
-    queryFn: () => roleService.getRole(roleId),
-    enabled,
-  })
+  useOptimizedQuery(
+    queryKeys.roles.detail(roleId),
+    () => roleService.getRole(roleId),
+    {
+      enabled,
+      onError: (error) => {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar os detalhes do cargo',
+          variant: 'destructive',
+        })
+      },
+    }
+  )
 
 export const useCreateRole = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  const { setData } = useCacheManager()
+
+  return useOptimisticMutation({
     mutationFn: (data: CreateRoleRequest) => roleService.createRole(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
+
+    onMutate: async (newRole) => {
+      // Cancelar queries relacionadas
+      await queryClient.cancelQueries({ queryKey: queryKeys.roles.lists() })
+
+      // Salvar snapshot
+      const previousRoles = queryClient.getQueryData(queryKeys.roles.lists())
+
+      // Adicionar cargo otimisticamente
+      const optimisticRole = {
+        ...newRole,
+        id: Date.now(), // ID temporário
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      setData(queryKeys.roles.lists(), (old: any) => [...(old || []), optimisticRole])
+
+      return { previousRoles }
+    },
+
+    invalidateKeys: [
+      queryKeys.roles.lists(),
+      queryKeys.users.lists(),
+    ],
+
+    updateCache: (createdRole) => {
+      setData(queryKeys.roles.detail(createdRole.id), createdRole)
+    },
+
+    onSuccess: (createdRole) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Cargo criado com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível criar o cargo',
+        variant: 'destructive',
+      })
+    },
   })
 }
 
 export const useUpdateRole = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  const { setData } = useCacheManager()
+
+  return useOptimisticMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateRoleRequest }) =>
       roleService.updateRole(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
+
+    onMutate: async ({ id, data }) => {
+      // Cancelar queries
+      await queryClient.cancelQueries({ queryKey: queryKeys.roles.detail(id) })
+      await queryClient.cancelQueries({ queryKey: queryKeys.roles.lists() })
+
+      // Snapshots
+      const previousRole = queryClient.getQueryData(queryKeys.roles.detail(id))
+      const previousRoles = queryClient.getQueryData(queryKeys.roles.lists())
+
+      // Atualização otimista
+      setData(queryKeys.roles.detail(id), (old: any) => ({
+        ...old,
+        ...data,
+        updatedAt: new Date().toISOString(),
+      }))
+
+      setData(queryKeys.roles.lists(), (old: any[]) =>
+        old?.map(role =>
+          role.id === id ? { ...role, ...data, updatedAt: new Date().toISOString() } : role
+        ) || []
+      )
+
+      return { previousRole, previousRoles }
+    },
+
+    invalidateKeys: [
+      queryKeys.roles.lists(),
+      queryKeys.users.lists(),
+    ],
+
+    onSuccess: () => {
+      toast({
+        title: 'Sucesso',
+        description: 'Cargo atualizado com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar o cargo',
+        variant: 'destructive',
+      })
+    },
   })
 }
 
 export const useDeleteRole = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  const { setData, removeData } = useCacheManager()
+
+  return useOptimisticMutation({
     mutationFn: (id: number) => roleService.deleteRole(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
+
+    onMutate: async (id) => {
+      const role = queryClient.getQueryData(queryKeys.roles.detail(id))
+
+      // Remover otimisticamente
+      setData(queryKeys.roles.lists(), (old: any[]) =>
+        old?.filter(r => r.id !== id) || []
+      )
+
+      // Remover do cache individual
+      removeData(queryKeys.roles.detail(id))
+
+      return { deletedRole: role }
+    },
+
+    invalidateKeys: [
+      queryKeys.roles.lists(),
+      queryKeys.users.lists(),
+    ],
+
+    onSuccess: (_, id) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Cargo excluído com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível excluir o cargo',
+        variant: 'destructive',
+      })
+    },
   })
 }

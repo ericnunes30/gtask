@@ -8,6 +8,13 @@ import { mockUserFactory, mockCreateUserDtoFactory, mockRoleFactory } from '../m
 import { NotFoundException } from '@nestjs/common';
 import { User } from '../../src/modules/user/entities/user.entity';
 import { Role } from '../../src/modules/role/entities/role.entity'; // Import Role entity
+import * as bcrypt from 'bcrypt';
+import * as fs from 'fs';
+
+// Mock the entire bcrypt module
+jest.mock('bcrypt');
+// Mock the entire fs module  
+jest.mock('fs');
 
 // Mock for UserRepository
 const mockUserRepository = {
@@ -17,10 +24,16 @@ const mockUserRepository = {
   findOne: jest.fn(),
   remove: jest.fn(),
   createQueryBuilder: jest.fn(() => ({
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     getOne: jest.fn(),
   })),
+};
+
+// Mock for RoleRepository
+const mockRoleRepository = {
+  find: jest.fn(),
 };
 
 describe('UserService', () => {
@@ -34,6 +47,10 @@ describe('UserService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
+        },
+        {
+          provide: getRepositoryToken(Role),
+          useValue: mockRoleRepository,
         },
       ],
     }).compile();
@@ -50,15 +67,32 @@ describe('UserService', () => {
   describe('create', () => {
     it('should create a new user', async () => {
       const createUserDto: CreateUserDto = mockCreateUserDtoFactory();
-      const createdUser = mockUserFactory({ ...createUserDto, id: 1 });
+      const hashedPassword = 'hashedPassword123';
+      const createdUser = mockUserFactory({ ...createUserDto, id: 1, password: hashedPassword });
 
+      // Mock bcrypt hash
+      (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
+      
       (userRepository.create as jest.Mock).mockReturnValue(createdUser);
       (userRepository.save as jest.Mock).mockResolvedValue(createdUser);
 
       const result = await service.create(createUserDto);
       expect(result).toEqual(createdUser);
-      expect(userRepository.create).toHaveBeenCalledWith(createUserDto);
+      expect(bcrypt.hash).toHaveBeenCalledWith(createUserDto.password, 10);
+      expect(userRepository.create).toHaveBeenCalledWith({ ...createUserDto, password: hashedPassword });
       expect(userRepository.save).toHaveBeenCalledWith(createdUser);
+    });
+
+    it('should handle bcrypt hash error', async () => {
+      const createUserDto: CreateUserDto = mockCreateUserDtoFactory();
+      
+      // Mock bcrypt hash to throw error
+      (bcrypt.hash as jest.Mock).mockRejectedValue(new Error('Hashing failed'));
+
+      await expect(service.create(createUserDto)).rejects.toThrow('Hashing failed');
+      expect(bcrypt.hash).toHaveBeenCalledWith(createUserDto.password, 10);
+      expect(userRepository.create).not.toHaveBeenCalled();
+      expect(userRepository.save).not.toHaveBeenCalled();
     });
   });
 
@@ -71,6 +105,7 @@ describe('UserService', () => {
       expect(result).toEqual(users);
       expect(userRepository.find).toHaveBeenCalledWith({
         select: ['id', 'name', 'email', 'createdAt', 'updatedAt'],
+        relations: ['roles', 'occupations'],
       });
     });
   });
@@ -84,7 +119,7 @@ describe('UserService', () => {
       expect(result).toEqual(user);
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { id: user.id },
-        relations: ['roles', 'occupations', 'projects', 'tasks'],
+        relations: ['roles', 'occupations'],
       });
     });
 
@@ -95,7 +130,7 @@ describe('UserService', () => {
       await expect(service.findOne(userId)).rejects.toThrow(NotFoundException);
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { id: userId },
-        relations: ['roles', 'occupations', 'projects', 'tasks'],
+        relations: ['roles', 'occupations'],
       });
     });
   });
@@ -105,6 +140,7 @@ describe('UserService', () => {
       const user = mockUserFactory();
       const mockGetOne = jest.fn().mockResolvedValue(user);
       (userRepository.createQueryBuilder as jest.Mock).mockReturnValue({
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         getOne: mockGetOne,
@@ -119,6 +155,7 @@ describe('UserService', () => {
       const email = 'nonexistent@example.com';
       const mockGetOne = jest.fn().mockResolvedValue(null);
       (userRepository.createQueryBuilder as jest.Mock).mockReturnValue({
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         getOne: mockGetOne,
@@ -143,9 +180,83 @@ describe('UserService', () => {
       expect(result).toEqual(updatedUser);
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { id: user.id },
-        relations: ['roles', 'occupations', 'projects', 'tasks'],
+        relations: ['roles', 'occupations'],
       });
       expect(userRepository.save).toHaveBeenCalledWith(expect.objectContaining(updateUserDto));
+    });
+
+    it('should update user with password hashing', async () => {
+      const user = mockUserFactory();
+      const updateUserDto: UpdateUserDto = { name: 'Updated User Name', password: 'newpassword' };
+      const hashedPassword = 'hashedNewPassword';
+      const updatedUser = mockUserFactory({ ...user, ...updateUserDto, password: hashedPassword });
+
+      // Mock bcrypt hash
+      (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
+      (fs.appendFileSync as jest.Mock).mockImplementation(() => {});
+      
+      (userRepository.findOne as jest.Mock).mockResolvedValue(user);
+      (userRepository.save as jest.Mock).mockResolvedValue(updatedUser);
+
+      const result = await service.update(user.id, updateUserDto);
+      expect(result).toEqual(updatedUser);
+      expect(bcrypt.hash).toHaveBeenCalledWith('newpassword', 10);
+      expect(fs.appendFileSync).toHaveBeenCalledWith(
+        'G:/novosApps/manager-group/backend/server.log',
+        expect.stringContaining('User 1 updated. Password changed.')
+      );
+    });
+
+    it('should update user without password change', async () => {
+      const user = mockUserFactory();
+      const updateUserDto: UpdateUserDto = { name: 'Updated User Name' };
+      const updatedUser = mockUserFactory({ ...user, ...updateUserDto });
+
+      (fs.appendFileSync as jest.Mock).mockImplementation(() => {});
+      
+      (userRepository.findOne as jest.Mock).mockResolvedValue(user);
+      (userRepository.save as jest.Mock).mockResolvedValue(updatedUser);
+
+      const result = await service.update(user.id, updateUserDto);
+      expect(result).toEqual(updatedUser);
+      expect(bcrypt.hash).not.toHaveBeenCalled();
+      expect(fs.appendFileSync).toHaveBeenCalledWith(
+        'G:/novosApps/manager-group/backend/server.log',
+        expect.stringContaining('User 1 updated.')
+      );
+      expect(fs.appendFileSync).toHaveBeenCalledWith(
+        'G:/novosApps/manager-group/backend/server.log',
+        expect.not.stringContaining('Password changed')
+      );
+    });
+
+    it('should handle bcrypt hash error during update', async () => {
+      const user = mockUserFactory();
+      const updateUserDto: UpdateUserDto = { password: 'newpassword' };
+      
+      (bcrypt.hash as jest.Mock).mockRejectedValue(new Error('Hashing failed'));
+      (userRepository.findOne as jest.Mock).mockResolvedValue(user);
+
+      await expect(service.update(user.id, updateUserDto)).rejects.toThrow('Hashing failed');
+      expect(bcrypt.hash).toHaveBeenCalledWith('newpassword', 10);
+      expect(userRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should handle file system write error', async () => {
+      const user = mockUserFactory();
+      const updateUserDto: UpdateUserDto = { name: 'Updated User Name' };
+      const updatedUser = mockUserFactory({ ...user, ...updateUserDto });
+
+      jest.spyOn(fs, 'appendFileSync').mockImplementation(() => {
+        throw new Error('File system error');
+      });
+      
+      (userRepository.findOne as jest.Mock).mockResolvedValue(user);
+      (userRepository.save as jest.Mock).mockResolvedValue(updatedUser);
+
+      const result = await service.update(user.id, updateUserDto);
+      expect(result).toEqual(updatedUser);
+      // The method should still succeed even if logging fails
     });
 
     it('should throw NotFoundException if user is not found for update', async () => {
@@ -156,7 +267,7 @@ describe('UserService', () => {
       await expect(service.update(userId, updateUserDto)).rejects.toThrow(NotFoundException);
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { id: userId },
-        relations: ['roles', 'occupations', 'projects', 'tasks'],
+        relations: ['roles', 'occupations'],
       });
       expect(userRepository.save).not.toHaveBeenCalled();
     });
@@ -171,7 +282,7 @@ describe('UserService', () => {
       await service.remove(user.id);
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { id: user.id },
-        relations: ['roles', 'occupations', 'projects', 'tasks'],
+        relations: ['roles', 'occupations'],
       });
       expect(userRepository.remove).toHaveBeenCalledWith(user);
     });
@@ -183,7 +294,7 @@ describe('UserService', () => {
       await expect(service.remove(userId)).rejects.toThrow(NotFoundException);
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { id: userId },
-        relations: ['roles', 'occupations', 'projects', 'tasks'],
+        relations: ['roles', 'occupations'],
       });
       expect(userRepository.remove).not.toHaveBeenCalled();
     });
@@ -193,10 +304,12 @@ describe('UserService', () => {
     it('should assign roles to a user', async () => {
       const user = mockUserFactory();
       const roleIds = [1, 2];
+      const roles = [mockRoleFactory({ id: 1 }), mockRoleFactory({ id: 2 })];
       // Mocking user with assigned roles using mockRoleFactory
-      const updatedUser = mockUserFactory({ ...user, roles: [mockRoleFactory({ id: 1 }), mockRoleFactory({ id: 2 })] });
+      const updatedUser = mockUserFactory({ ...user, roles });
 
       (userRepository.findOne as jest.Mock).mockResolvedValue(user);
+      (mockRoleRepository.find as jest.Mock).mockResolvedValue(roles);
       (userRepository.save as jest.Mock).mockResolvedValue(updatedUser);
 
       const result = await service.assignRoles(user.id, roleIds);
@@ -204,6 +317,9 @@ describe('UserService', () => {
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { id: user.id },
         relations: ['roles'],
+      });
+      expect(mockRoleRepository.find).toHaveBeenCalledWith({
+        where: { id: expect.arrayContaining(roleIds) }
       });
       expect(userRepository.save).toHaveBeenCalledWith(user);
     });
@@ -218,7 +334,63 @@ describe('UserService', () => {
         where: { id: userId },
         relations: ['roles'],
       });
+      expect(mockRoleRepository.find).not.toHaveBeenCalled();
       expect(userRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if some roles are not found', async () => {
+      const user = mockUserFactory();
+      const roleIds = [1, 2, 3];
+      const foundRoles = [mockRoleFactory({ id: 1 }), mockRoleFactory({ id: 2 })]; // Only 2 roles found
+
+      (userRepository.findOne as jest.Mock).mockResolvedValue(user);
+      (mockRoleRepository.find as jest.Mock).mockResolvedValue(foundRoles);
+
+      await expect(service.assignRoles(user.id, roleIds)).rejects.toThrow(NotFoundException);
+      expect(userRepository.findOne).toHaveBeenCalledWith({
+        where: { id: user.id },
+        relations: ['roles'],
+      });
+      expect(mockRoleRepository.find).toHaveBeenCalledWith({
+        where: { id: expect.arrayContaining(roleIds) }
+      });
+      expect(userRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should handle empty roleIds array', async () => {
+      const user = mockUserFactory();
+      const roleIds: number[] = [];
+      const roles: any[] = [];
+      const updatedUser = mockUserFactory({ ...user, roles });
+
+      (userRepository.findOne as jest.Mock).mockResolvedValue(user);
+      (mockRoleRepository.find as jest.Mock).mockResolvedValue(roles);
+      (userRepository.save as jest.Mock).mockResolvedValue(updatedUser);
+
+      const result = await service.assignRoles(user.id, roleIds);
+      expect(result).toEqual(updatedUser);
+      expect(mockRoleRepository.find).toHaveBeenCalledWith({
+        where: { id: expect.arrayContaining(roleIds) }
+      });
+      expect(userRepository.save).toHaveBeenCalledWith(user);
+    });
+
+    it('should handle single role assignment', async () => {
+      const user = mockUserFactory();
+      const roleIds = [1];
+      const roles = [mockRoleFactory({ id: 1 })];
+      const updatedUser = mockUserFactory({ ...user, roles });
+
+      (userRepository.findOne as jest.Mock).mockResolvedValue(user);
+      (mockRoleRepository.find as jest.Mock).mockResolvedValue(roles);
+      (userRepository.save as jest.Mock).mockResolvedValue(updatedUser);
+
+      const result = await service.assignRoles(user.id, roleIds);
+      expect(result).toEqual(updatedUser);
+      expect(mockRoleRepository.find).toHaveBeenCalledWith({
+        where: { id: expect.arrayContaining(roleIds) }
+      });
+      expect(userRepository.save).toHaveBeenCalledWith(user);
     });
   });
 });

@@ -1,7 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useOptimizedQuery, useOptimisticMutation, useCacheManager, useQueryClient } from '@/hooks/useOptimizedQuery'
+import { queryKeys } from '@/lib/react-query/keys'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { CreateTeamRequest, UpdateTeamRequest, Team, UserOccupation } from '@/common/types'
+import { toast } from '@/components/ui/use-toast'
 
 const teamService = { // Renomeado occupationService para teamService
   async getTeams(): Promise<Team[]> {
@@ -52,74 +54,226 @@ const teamUserService = { // Renomeado occupationUserService para teamUserServic
   },
 }
 
-export const useGetTeams = () => // Renomeado useGetOccupations para useGetTeams
-  useQuery({ queryKey: ['teams'], queryFn: teamService.getTeams }) // Alterado queryKey para 'teams'
+export const useGetTeams = () =>
+  useOptimizedQuery(
+    queryKeys.teams.lists(),
+    teamService.getTeams,
+    {
+      onError: (error) => {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar as equipes',
+          variant: 'destructive',
+        })
+      },
+    }
+  )
 
-export const useGetTeam = (teamId: number, enabled = true) => // Renomeado useGetOccupation para useGetTeam
-  useQuery({
-    queryKey: ['team', teamId], // Alterado queryKey para 'team'
-    queryFn: () => teamService.getTeam(teamId), // Renomeado getOccupation para getTeam
-    enabled,
-  })
+export const useGetTeam = (teamId: number, enabled = true) =>
+  useOptimizedQuery(
+    queryKeys.teams.detail(teamId),
+    () => teamService.getTeam(teamId),
+    {
+      enabled,
+      onError: (error) => {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar os detalhes da equipe',
+          variant: 'destructive',
+        })
+      },
+    }
+  )
 
-export const useCreateTeam = () => { // Renomeado useCreateOccupation para useCreateTeam
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (data: CreateTeamRequest) => // Alterado CreateOccupationRequest para CreateTeamRequest
-      teamService.createTeam(data), // Renomeado createOccupation para createTeam
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teams'] }), // Alterado queryKey para 'teams'
+export const useCreateTeam = () => {
+  const { setData } = useCacheManager()
+
+  return useOptimisticMutation({
+    mutationFn: (data: CreateTeamRequest) => teamService.createTeam(data),
+
+    onMutate: async (newTeam) => {
+      // Cancelar queries relacionadas
+      await queryClient.cancelQueries({ queryKey: queryKeys.teams.lists() })
+
+      // Salvar snapshot
+      const previousTeams = queryClient.getQueryData(queryKeys.teams.lists())
+
+      // Adicionar equipe otimisticamente
+      const optimisticTeam = {
+        ...newTeam,
+        id: Date.now(), // ID temporário
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      setData(queryKeys.teams.lists(), (old: any) => [...(old || []), optimisticTeam])
+
+      return { previousTeams }
+    },
+
+    invalidateKeys: [queryKeys.teams.lists()],
+
+    updateCache: (createdTeam) => {
+      setData(queryKeys.teams.detail(createdTeam.id), createdTeam)
+    },
+
+    onSuccess: (createdTeam) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Equipe criada com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível criar a equipe',
+        variant: 'destructive',
+      })
+    },
   })
 }
 
-export const useUpdateTeam = () => { // Renomeado useUpdateOccupation para useUpdateTeam
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateTeamRequest }) => // Alterado UpdateOccupationRequest para UpdateTeamRequest
-      teamService.updateTeam(id, data), // Renomeado updateOccupation para updateTeam
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teams'] }), // Alterado queryKey para 'teams'
+export const useUpdateTeam = () => {
+  const { setData } = useCacheManager()
+
+  return useOptimisticMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateTeamRequest }) =>
+      teamService.updateTeam(id, data),
+
+    onMutate: async ({ id, data }) => {
+      // Cancelar queries
+      await queryClient.cancelQueries({ queryKey: queryKeys.teams.detail(id) })
+      await queryClient.cancelQueries({ queryKey: queryKeys.teams.lists() })
+
+      // Snapshots
+      const previousTeam = queryClient.getQueryData(queryKeys.teams.detail(id))
+      const previousTeams = queryClient.getQueryData(queryKeys.teams.lists())
+
+      // Atualização otimista
+      setData(queryKeys.teams.detail(id), (old: any) => ({
+        ...old,
+        ...data,
+        updatedAt: new Date().toISOString(),
+      }))
+
+      setData(queryKeys.teams.lists(), (old: any[]) =>
+        old?.map(team =>
+          team.id === id ? { ...team, ...data, updatedAt: new Date().toISOString() } : team
+        ) || []
+      )
+
+      return { previousTeam, previousTeams }
+    },
+
+    invalidateKeys: [queryKeys.teams.lists()],
+
+    onSuccess: () => {
+      toast({
+        title: 'Sucesso',
+        description: 'Equipe atualizada com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar a equipe',
+        variant: 'destructive',
+      })
+    },
   })
 }
 
-export const useDeleteTeam = () => { // Renomeado useDeleteOccupation para useDeleteTeam
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: number) => teamService.deleteTeam(id), // Renomeado deleteOccupation para deleteTeam
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teams'] }), // Alterado queryKey para 'teams'
+export const useDeleteTeam = () => {
+  const { setData, removeData } = useCacheManager()
+
+  return useOptimisticMutation({
+    mutationFn: (id: number) => teamService.deleteTeam(id),
+
+    onMutate: async (id) => {
+      const team = queryClient.getQueryData(queryKeys.teams.detail(id))
+
+      // Remover otimisticamente
+      setData(queryKeys.teams.lists(), (old: any[]) =>
+        old?.filter(t => t.id !== id) || []
+      )
+
+      // Remover do cache individual
+      removeData(queryKeys.teams.detail(id))
+
+      return { deletedTeam: team }
+    },
+
+    invalidateKeys: [queryKeys.teams.lists()],
+
+    onSuccess: (_, id) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Equipe excluída com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível excluir a equipe',
+        variant: 'destructive',
+      })
+    },
   })
 }
 
-export const useAddUserToTeam = () => { // Renomeado useAddUserToOccupation para useAddUserToTeam
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      teamId, // Renomeado occupationId para teamId
-      userId,
-    }: {
-      teamId: number // Renomeado occupationId para teamId
-      userId: number
-    }) => teamUserService.addUserToTeam(teamId, userId), // Renomeado occupationUserService.addUserToOccupation
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] }) // Alterado queryKey para 'teams'
-      queryClient.invalidateQueries({
-        queryKey: ['teamUsers', variables.teamId], // Alterado queryKey para 'teamUsers' e variables.occupationId para variables.teamId
+export const useAddUserToTeam = () => {
+  return useOptimisticMutation({
+    mutationFn: ({ teamId, userId }: { teamId: number; userId: number }) =>
+      teamUserService.addUserToTeam(teamId, userId),
+
+    invalidateKeys: [
+      queryKeys.teams.lists(),
+      queryKeys.users.lists(),
+    ],
+
+    onSuccess: (_, { teamId }) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Usuário adicionado à equipe com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível adicionar o usuário à equipe',
+        variant: 'destructive',
       })
     },
   })
 }
 
 export const useRemoveUserFromTeam = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      teamId,
-      userId,
-    }: {
-      teamId: number
-      userId: number
-    }) => teamUserService.removeUserFromTeam(teamId, userId),
+  return useOptimisticMutation({
+    mutationFn: ({ teamId, userId }: { teamId: number; userId: number }) =>
+      teamUserService.removeUserFromTeam(teamId, userId),
+
+    invalidateKeys: [
+      queryKeys.teams.lists(),
+      queryKeys.users.lists(),
+    ],
+
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] })
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      toast({
+        title: 'Sucesso',
+        description: 'Usuário removido da equipe com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível remover o usuário da equipe',
+        variant: 'destructive',
+      })
     },
   })
 }

@@ -14,6 +14,7 @@ import { RecurringTask, ScheduleType, TaskTemplate } from '../../src/modules/rec
 import { CreateRecurringTaskDto } from '../../src/modules/recurring-task/dto/create-recurring-task.dto';
 import { Comment } from '../../src/modules/comment/entities/comment.entity';
 import { CreateCommentDto } from '../../src/modules/comment/dto/create-comment.dto';
+import { ActivityLog } from '../../src/modules/activity-log/entities/activity-log.entity';
 
 export const mockUserFactory = (data: Partial<User> = {}): User => ({
   id: 1,
@@ -67,7 +68,7 @@ export const mockTaskFactory = (data: Partial<Task> = {}): Task => {
     priority: PriorityLevel.Low,
     start_date: new Date(),
     due_date: new Date(),
-    order: 1,
+    order: null,
     timer: 0,
     project_id: 1,
     recurring_task_id: null,
@@ -79,13 +80,23 @@ export const mockTaskFactory = (data: Partial<Task> = {}): Task => {
     createdAt: new Date(),
     updatedAt: new Date(),
     project: {} as Project, // Mock project
+    recurringTask: null, // Mock recurringTask
     reviewer: null as any, // Mock reviewer, casting to User type
     users: [] as User[], // Mock users
     occupations: [] as Occupation[], // Mock occupations
+    comments: [] as Comment[], // Mock comments
+    activityLogs: [] as ActivityLog[], // Mock activityLogs
   };
 
-  // Merge provided data onto the base properties.
-  const mergedTaskData = { ...baseTaskProperties, ...data };
+  // Merge provided data onto the base properties, handling undefined values
+  const mergedTaskData = { ...baseTaskProperties };
+  
+  // Only merge properties that are not undefined
+  Object.keys(data).forEach(key => {
+    if (data[key] !== undefined) {
+      (mergedTaskData as any)[key] = data[key];
+    }
+  });
 
   // Define the `toJSON` function with the correct signature.
   const mockToJSON = function(this: Task): Task & { timer: number } {

@@ -16,7 +16,7 @@ import { TaskForm } from '@/components/forms/TaskForm';
 import { format, isBefore, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 
 const TaskDetails = () => {
   const { taskId } = useParams();

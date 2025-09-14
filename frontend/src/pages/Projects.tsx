@@ -41,7 +41,7 @@ import { Project, ProjectPriority, Task } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { Switch } from "@/components/ui/switch"; // Importar o componente Switch
 
 // Estendendo a interface Project para incluir campos adicionais usados na UI

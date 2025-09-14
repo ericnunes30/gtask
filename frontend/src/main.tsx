@@ -1,22 +1,23 @@
 import { createRoot } from 'react-dom/client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import App from './App.tsx'
 import './styles/global.css'
-
-const queryClient = new QueryClient()
+import { ReactQueryPersistProvider } from './lib/react-query/persist.tsx'
+import { QueryErrorBoundary } from './components/error-handling/QueryErrorBoundary'
 
 // Set initial theme based on localStorage before rendering the app
-const savedTheme = localStorage.getItem('theme');
+const savedTheme = localStorage.getItem('theme')
 if (savedTheme === 'dark') {
-  document.documentElement.classList.add('dark');
+  document.documentElement.classList.add('dark')
 } else {
-  document.documentElement.classList.remove('dark');
+  document.documentElement.classList.remove('dark')
 }
 
 createRoot(document.getElementById('root')!).render(
-  <QueryClientProvider client={queryClient}>
-    <App />
-    <ReactQueryDevtools initialIsOpen={false} />
-  </QueryClientProvider>,
+  <ReactQueryPersistProvider>
+    <QueryErrorBoundary>
+      <App />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryErrorBoundary>
+  </ReactQueryPersistProvider>,
 )

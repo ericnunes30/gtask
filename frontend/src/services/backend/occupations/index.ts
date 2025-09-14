@@ -1,7 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useOptimizedQuery, useOptimisticMutation, useCacheManager, useQueryClient } from '@/hooks/useOptimizedQuery'
+import { queryKeys } from '@/lib/react-query/keys'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { Team } from '@/common/types'
+import { toast } from '@/components/ui/use-toast'
 
 interface CreateOccupationRequest {
   name: string
@@ -79,87 +81,226 @@ const occupationUserService = {
 }
 
 export const useGetOccupations = () =>
-  useQuery({ 
-    queryKey: ['occupations'], 
-    queryFn: async () => {
-      console.log('Fetching occupations from API...');
-      try {
-        const occupations = await occupationService.getOccupations();
-        console.log('Occupations fetched successfully:', occupations);
-        return occupations;
-      } catch (error) {
+  useOptimizedQuery(
+    queryKeys.occupations.lists(),
+    occupationService.getOccupations,
+    {
+      onError: (error) => {
         console.error('Error fetching occupations:', error);
-        throw error;
-      }
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar as ocupações',
+          variant: 'destructive',
+        })
+      },
     }
-  })
+  )
 
 export const useGetOccupation = (occupationId: number, enabled = true) =>
-  useQuery({
-    queryKey: ['occupation', occupationId],
-    queryFn: () => occupationService.getOccupation(occupationId),
-    enabled,
-  })
+  useOptimizedQuery(
+    queryKeys.occupations.detail(occupationId),
+    () => occupationService.getOccupation(occupationId),
+    {
+      enabled,
+      onError: (error) => {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar os detalhes da ocupação',
+          variant: 'destructive',
+        })
+      },
+    }
+  )
 
 export const useCreateOccupation = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  const { setData } = useCacheManager()
+
+  return useOptimisticMutation({
     mutationFn: (data: CreateOccupationRequest) =>
       occupationService.createOccupation(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['occupations'] }),
+
+    onMutate: async (newOccupation) => {
+      // Cancelar queries relacionadas
+      await queryClient.cancelQueries({ queryKey: queryKeys.occupations.lists() })
+
+      // Salvar snapshot
+      const previousOccupations = queryClient.getQueryData(queryKeys.occupations.lists())
+
+      // Adicionar ocupação otimisticamente
+      const optimisticOccupation = {
+        ...newOccupation,
+        id: Date.now(), // ID temporário
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      setData(queryKeys.occupations.lists(), (old: any) => [...(old || []), optimisticOccupation])
+
+      return { previousOccupations }
+    },
+
+    invalidateKeys: [queryKeys.occupations.lists()],
+
+    updateCache: (createdOccupation) => {
+      setData(queryKeys.occupations.detail(createdOccupation.id), createdOccupation)
+    },
+
+    onSuccess: (createdOccupation) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Ocupação criada com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível criar a ocupação',
+        variant: 'destructive',
+      })
+    },
   })
 }
 
 export const useUpdateOccupation = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  const { setData } = useCacheManager()
+
+  return useOptimisticMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateOccupationRequest }) =>
       occupationService.updateOccupation(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['occupations'] }),
+
+    onMutate: async ({ id, data }) => {
+      // Cancelar queries
+      await queryClient.cancelQueries({ queryKey: queryKeys.occupations.detail(id) })
+      await queryClient.cancelQueries({ queryKey: queryKeys.occupations.lists() })
+
+      // Snapshots
+      const previousOccupation = queryClient.getQueryData(queryKeys.occupations.detail(id))
+      const previousOccupations = queryClient.getQueryData(queryKeys.occupations.lists())
+
+      // Atualização otimista
+      setData(queryKeys.occupations.detail(id), (old: any) => ({
+        ...old,
+        ...data,
+        updatedAt: new Date().toISOString(),
+      }))
+
+      setData(queryKeys.occupations.lists(), (old: any[]) =>
+        old?.map(occupation =>
+          occupation.id === id ? { ...occupation, ...data, updatedAt: new Date().toISOString() } : occupation
+        ) || []
+      )
+
+      return { previousOccupation, previousOccupations }
+    },
+
+    invalidateKeys: [queryKeys.occupations.lists()],
+
+    onSuccess: () => {
+      toast({
+        title: 'Sucesso',
+        description: 'Ocupação atualizada com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar a ocupação',
+        variant: 'destructive',
+      })
+    },
   })
 }
 
 export const useDeleteOccupation = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  const { setData, removeData } = useCacheManager()
+
+  return useOptimisticMutation({
     mutationFn: (id: number) => occupationService.deleteOccupation(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['occupations'] }),
+
+    onMutate: async (id) => {
+      const occupation = queryClient.getQueryData(queryKeys.occupations.detail(id))
+
+      // Remover otimisticamente
+      setData(queryKeys.occupations.lists(), (old: any[]) =>
+        old?.filter(o => o.id !== id) || []
+      )
+
+      // Remover do cache individual
+      removeData(queryKeys.occupations.detail(id))
+
+      return { deletedOccupation: occupation }
+    },
+
+    invalidateKeys: [queryKeys.occupations.lists()],
+
+    onSuccess: (_, id) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Ocupação excluída com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível excluir a ocupação',
+        variant: 'destructive',
+      })
+    },
   })
 }
 
 export const useAddUserToOccupation = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      occupationId,
-      userId,
-    }: {
-      occupationId: number
-      userId: number
-    }) => occupationUserService.addUserToOccupation(occupationId, userId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['occupations'] })
-      queryClient.invalidateQueries({
-        queryKey: ['occupationUsers', variables.occupationId],
+  return useOptimisticMutation({
+    mutationFn: ({ occupationId, userId }: { occupationId: number; userId: number }) =>
+      occupationUserService.addUserToOccupation(occupationId, userId),
+
+    invalidateKeys: [
+      queryKeys.occupations.lists(),
+      queryKeys.users.lists(),
+    ],
+
+    onSuccess: (_, { occupationId }) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Usuário adicionado à ocupação com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível adicionar o usuário à ocupação',
+        variant: 'destructive',
       })
     },
   })
 }
 
 export const useRemoveUserFromOccupation = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      occupationId,
-      userId,
-    }: {
-      occupationId: number
-      userId: number
-    }) => occupationUserService.removeUserFromOccupation(occupationId, userId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['occupations'] })
-      queryClient.invalidateQueries({
-        queryKey: ['occupationUsers', variables.occupationId],
+  return useOptimisticMutation({
+    mutationFn: ({ occupationId, userId }: { occupationId: number; userId: number }) =>
+      occupationUserService.removeUserFromOccupation(occupationId, userId),
+
+    invalidateKeys: [
+      queryKeys.occupations.lists(),
+      queryKeys.users.lists(),
+    ],
+
+    onSuccess: () => {
+      toast({
+        title: 'Sucesso',
+        description: 'Usuário removido da ocupação com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível remover o usuário da ocupação',
+        variant: 'destructive',
       })
     },
   })

@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input";
 
 import { Switch } from "@/components/ui/switch";
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { TaskFormRef } from '@/components/forms/TaskForm';
 import { RecurringTasksList } from '@/components/recurring/RecurringTasksList';
 

@@ -40,7 +40,7 @@ import {
   RecurringTaskScheduleType
 } from '@/common/types';
 import { useBackendServices } from '@/hooks/useBackendServices';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Schema de validação para o formulário

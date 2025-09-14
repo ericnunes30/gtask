@@ -1,7 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useOptimizedQuery, useOptimisticMutation, useCacheManager, useQueryClient } from '@/hooks/useOptimizedQuery'
+import { queryKeys } from '@/lib/react-query/keys'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { CreateCommentRequest, UpdateCommentRequest, Comment } from '@/common/types'
+import { toast } from '@/components/ui/use-toast'
 
 const commentService = {
   async getComments(): Promise<Comment[]> {
@@ -43,75 +45,267 @@ const commentService = {
 }
 
 export const useGetComments = () =>
-  useQuery({ queryKey: ['comments'], queryFn: commentService.getComments })
+  useOptimizedQuery(
+    queryKeys.comments.lists(),
+    commentService.getComments,
+    {
+      onError: (error) => {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar os comentários',
+          variant: 'destructive',
+        })
+      },
+    }
+  )
 
 export const useGetCommentsByTask = (taskId: number) =>
-  useQuery({
-    queryKey: ['taskComments', taskId],
-    queryFn: () => commentService.getCommentsByTask(taskId),
-  })
-
-interface MutateCommentArgs {
-  id?: number
-  data: CreateCommentRequest | UpdateCommentRequest
-}
+  useOptimizedQuery(
+    queryKeys.comments.byTask(taskId),
+    () => commentService.getCommentsByTask(taskId),
+    {
+      enabled: !!taskId,
+      onError: (error) => {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar os comentários da tarefa',
+          variant: 'destructive',
+        })
+      },
+    }
+  )
 
 export const useCreateComment = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  const { setData } = useCacheManager()
+
+  return useOptimisticMutation({
     mutationFn: (data: CreateCommentRequest) => commentService.createComment(data),
-    onSuccess: (newComment) => {
-      console.log('Comment created successfully:', newComment);
-      queryClient.invalidateQueries({ queryKey: ['comments'] });
-      queryClient.invalidateQueries({ queryKey: ['taskComments'] });
+
+    onMutate: async (newComment) => {
+      // Cancelar queries relacionadas
+      await queryClient.cancelQueries({ queryKey: queryKeys.comments.lists() })
+      if (newComment.taskId) {
+        await queryClient.cancelQueries({
+          queryKey: queryKeys.comments.byTask(newComment.taskId)
+        })
+      }
+
+      // Salvar snapshots
+      const previousComments = queryClient.getQueryData(queryKeys.comments.lists())
+      const previousTaskComments = newComment.taskId
+        ? queryClient.getQueryData(queryKeys.comments.byTask(newComment.taskId))
+        : undefined
+
+      // Adicionar comentário otimisticamente
+      const optimisticComment = {
+        ...newComment,
+        id: Date.now(), // ID temporário
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      setData(queryKeys.comments.lists(), (old: any) => [...(old || []), optimisticComment])
+
+      if (newComment.taskId) {
+        setData(
+          queryKeys.comments.byTask(newComment.taskId),
+          (old: any) => [...(old || []), optimisticComment]
+        )
+      }
+
+      return { previousComments, previousTaskComments, newComment }
     },
+
+    invalidateKeys: (data, variables, context) => [
+      queryKeys.comments.lists(),
+      ...(context?.newComment?.taskId ? [queryKeys.comments.byTask(context.newComment.taskId)] : []),
+    ],
+
+    updateCache: (createdComment) => {
+      setData(queryKeys.comments.detail(createdComment.id), createdComment)
+    },
+
+    onSuccess: (createdComment) => {
+      console.log('Comment created successfully:', createdComment)
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário criado com sucesso',
+      })
+    },
+
     onError: (error) => {
-      console.error('Error creating comment:', error);
+      console.error('Error creating comment:', error)
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível criar o comentário',
+        variant: 'destructive',
+      })
     },
   })
 }
 
 export const useUpdateComment = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  const { setData } = useCacheManager()
+
+  return useOptimisticMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateCommentRequest }) =>
       commentService.updateComment(id, data),
+
+    onMutate: async ({ id, data }) => {
+      // Cancelar queries
+      await queryClient.cancelQueries({ queryKey: queryKeys.comments.detail(id) })
+      await queryClient.cancelQueries({ queryKey: queryKeys.comments.lists() })
+
+      // Snapshots
+      const previousComment = queryClient.getQueryData(queryKeys.comments.detail(id))
+      const previousComments = queryClient.getQueryData(queryKeys.comments.lists())
+
+      // Atualização otimista
+      setData(queryKeys.comments.detail(id), (old: any) => ({
+        ...old,
+        ...data,
+        updatedAt: new Date().toISOString(),
+      }))
+
+      setData(queryKeys.comments.lists(), (old: any[]) =>
+        old?.map(comment =>
+          comment.id === id ? { ...comment, ...data, updatedAt: new Date().toISOString() } : comment
+        ) || []
+      )
+
+      // Se o comentário pertence a uma tarefa, atualizar também os comentários da tarefa
+      if (previousComment?.taskId) {
+        await queryClient.cancelQueries({
+          queryKey: queryKeys.comments.byTask(previousComment.taskId)
+        })
+        setData(queryKeys.comments.byTask(previousComment.taskId), (old: any[]) =>
+          old?.map(comment =>
+            comment.id === id ? { ...comment, ...data, updatedAt: new Date().toISOString() } : comment
+          ) || []
+        )
+      }
+
+      return { previousComment, previousComments }
+    },
+
+    invalidateKeys: [
+      queryKeys.comments.lists(),
+    ],
+
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments'] })
-      queryClient.invalidateQueries({ queryKey: ['taskComments'] })
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário atualizado com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar o comentário',
+        variant: 'destructive',
+      })
     },
   })
 }
 
 export const useDeleteComment = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  const { setData, removeData } = useCacheManager()
+
+  return useOptimisticMutation({
     mutationFn: (id: number) => commentService.deleteComment(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments'] })
-      queryClient.invalidateQueries({ queryKey: ['taskComments'] })
+
+    onMutate: async (id) => {
+      const comment = queryClient.getQueryData(queryKeys.comments.detail(id))
+
+      // Remover otimisticamente
+      setData(queryKeys.comments.lists(), (old: any[]) =>
+        old?.filter(c => c.id !== id) || []
+      )
+
+      // Se o comentário pertence a uma tarefa, remover também dos comentários da tarefa
+      if (comment?.taskId) {
+        await queryClient.cancelQueries({
+          queryKey: queryKeys.comments.byTask(comment.taskId)
+        })
+        setData(queryKeys.comments.byTask(comment.taskId), (old: any[]) =>
+          old?.filter(c => c.id !== id) || []
+        )
+      }
+
+      // Remover do cache individual
+      removeData(queryKeys.comments.detail(id))
+
+      return { deletedComment: comment }
+    },
+
+    invalidateKeys: [
+      queryKeys.comments.lists(),
+    ],
+
+    onSuccess: (_, id) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário excluído com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível excluir o comentário',
+        variant: 'destructive',
+      })
     },
   })
 }
 
 export const useLikeComment = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useOptimisticMutation({
     mutationFn: (id: number) => commentService.likeComment(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments'] })
-      queryClient.invalidateQueries({ queryKey: ['taskComments'] })
+
+    invalidateKeys: [
+      queryKeys.comments.lists(),
+    ],
+
+    onSuccess: (_, id) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário curtido com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível curtir o comentário',
+        variant: 'destructive',
+      })
     },
   })
 }
 
 export const useUnlikeComment = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useOptimisticMutation({
     mutationFn: (id: number) => commentService.unlikeComment(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments'] })
-      queryClient.invalidateQueries({ queryKey: ['taskComments'] })
+
+    invalidateKeys: [
+      queryKeys.comments.lists(),
+    ],
+
+    onSuccess: (_, id) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Like removido com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível remover o like',
+        variant: 'destructive',
+      })
     },
   })
 }
