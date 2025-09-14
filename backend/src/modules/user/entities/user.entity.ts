@@ -26,6 +26,12 @@ export class User {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
   updatedAt: Date;
 
+  @Column({ default: true, type: 'boolean', name: 'is_active' })
+  is_active: boolean;
+
+  @Column({ nullable: true, type: 'varchar' })
+  whatsapp?: string;
+
   @ManyToMany(() => Occupation, (occupation) => occupation.users)
   occupations: Occupation[];
 

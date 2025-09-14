@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -127,13 +128,17 @@ const Users = () => {
     occupation_id: string;
     occupations: number[];
     roles: number[];
-  }>({
+    is_active: boolean;
+    whatsapp: string;
+  }>(
     name: '',
     email: '',
     password: '',
     occupation_id: '',
     occupations: [],
     roles: [],
+    is_active: true,
+    whatsapp: '',
   });
 
   // Função para atualizar manualmente a lista de usuários
@@ -212,6 +217,8 @@ const Users = () => {
         name: newUser.name,
         email: newUser.email,
         password: newUser.password,
+        is_active: newUser.is_active,
+        whatsapp: newUser.whatsapp || null,
       };
 
       const createdUser = await mutateUser({ data: userData });
@@ -239,6 +246,8 @@ const Users = () => {
         occupation_id: '',
         occupations: [],
         roles: [],
+        is_active: true,
+        whatsapp: '',
       });
 
       setIsDialogOpen(false);
@@ -309,6 +318,8 @@ const Users = () => {
       occupation_id: user.occupation_id ? user.occupation_id.toString() : '',
       occupations: userOccupations,
       roles: userRoles,
+      is_active: user.is_active ?? true,
+      whatsapp: user.whatsapp || '',
     };
 
     setNewUser(newUserData);
@@ -331,6 +342,8 @@ const Users = () => {
       const userData = {
         name: newUser.name,
         email: newUser.email,
+        is_active: newUser.is_active,
+        whatsapp: newUser.whatsapp || null,
       };
 
       // Adicionar senha se estiver definida
@@ -379,6 +392,8 @@ const Users = () => {
         occupation_id: '',
         occupations: [],
         roles: [],
+        is_active: true,
+        whatsapp: '',
       });
       setEditingUser(null);
       setIsEditDialogOpen(false);
@@ -671,6 +686,38 @@ const Users = () => {
                     )}
                   </div>
                 </div>
+
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="is_active" className="text-right">
+                    Ativo
+                  </Label>
+                  <div className="col-span-3 flex items-center space-x-2">
+                    <Switch
+                      id="is_active"
+                      checked={newUser.is_active}
+                      onCheckedChange={(checked) => {
+                        setNewUser(prev => ({ ...prev, is_active: checked }));
+                      }}
+                    />
+                    <Label htmlFor="is_active" className="text-sm">
+                      {newUser.is_active ? 'Usuário ativo' : 'Usuário inativo'}
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="whatsapp" className="text-right">
+                    WhatsApp
+                  </Label>
+                  <Input
+                    id="whatsapp"
+                    name="whatsapp"
+                    value={newUser.whatsapp}
+                    onChange={handleFormChange}
+                    className="col-span-3"
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button type="submit" onClick={handleAddUser}>Salvar</Button>
@@ -830,6 +877,38 @@ const Users = () => {
                     )}
                   </div>
                 </div>
+
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-is_active" className="text-right">
+                    Ativo
+                  </Label>
+                  <div className="col-span-3 flex items-center space-x-2">
+                    <Switch
+                      id="edit-is_active"
+                      checked={newUser.is_active}
+                      onCheckedChange={(checked) => {
+                        setNewUser(prev => ({ ...prev, is_active: checked }));
+                      }}
+                    />
+                    <Label htmlFor="edit-is_active" className="text-sm">
+                      {newUser.is_active ? 'Usuário ativo' : 'Usuário inativo'}
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-whatsapp" className="text-right">
+                    WhatsApp
+                  </Label>
+                  <Input
+                    id="edit-whatsapp"
+                    name="whatsapp"
+                    value={newUser.whatsapp}
+                    onChange={handleFormChange}
+                    className="col-span-3"
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="mr-2">Cancelar</Button>
@@ -898,6 +977,7 @@ const Users = () => {
               <TableRow>
                 <TableHead className="w-[250px]">Nome</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Equipes</TableHead>
                 <TableHead>Nível de Permissão</TableHead>
                 <TableHead>Data de Cadastro</TableHead>
@@ -919,6 +999,16 @@ const Users = () => {
                       </div>
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={user.is_active !== false ? "default" : "secondary"}
+                        className={user.is_active !== false
+                          ? "bg-green-100 text-green-800 hover:bg-green-200 border-green-200"
+                          : "bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-200"}
+                      >
+                        {user.is_active !== false ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       {user.occupations && user.occupations.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
@@ -991,7 +1081,7 @@ const Users = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     Nenhum usuário encontrado.
                   </TableCell>
                 </TableRow>
