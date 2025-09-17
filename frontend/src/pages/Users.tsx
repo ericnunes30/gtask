@@ -246,7 +246,7 @@ const Users = () => {
 
       toast({
         title: "Usuário adicionado",
-        description: `${createdUser.name} foi adicionado com sucesso.`,
+        description: `${createdUser?.name || 'Usuário'} foi adicionado com sucesso.`,
       });
 
       // Recarregar lista de usuários
