@@ -16,3 +16,6 @@ docs
 # Environment files (do not commit secrets)
 .env
 **/.env
+
+node_modules
+package*
