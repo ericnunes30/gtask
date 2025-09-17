@@ -116,7 +116,8 @@ const Users = () => {
       ? 'Não foi possível carregar os dados.'
       : null);
   const loading = usersLoading || rolesLoading || occupationsLoading;
-  const { mutateAsync: mutateUser } = usersService.useCreateUser();
+  const { mutateAsync: createUserMutate } = usersService.useCreateUser();
+  const { mutateAsync: updateUserMutate } = usersService.useUpdateUser();
   const { mutate: deleteUserMutate } = usersService.useDeleteUser();
 
   // Formulário de novo usuário
@@ -214,7 +215,7 @@ const Users = () => {
         password: newUser.password,
       };
 
-      const createdUser = await mutateUser({ data: userData });
+      const createdUser = await createUserMutate({ data: userData });
 
       // Depois de criar o usuário, tentar atribuir roles se houver
       if (newUser.roles && newUser.roles.length > 0) {
@@ -338,7 +339,7 @@ const Users = () => {
         userData.password = newUser.password;
       }
 
-      const updatedUser = await mutateUser({ id: editingUser.id, data: userData });
+      const updatedUser = await updateUserMutate({ id: editingUser.id, data: userData });
 
       // Depois de atualizar o usuário, tentar atribuir roles se houver
       if (newUser.roles && newUser.roles.length > 0) {
@@ -368,7 +369,7 @@ const Users = () => {
 
       toast({
         title: "Usuário atualizado",
-        description: `${updatedUser.name} foi atualizado com sucesso.`,
+        description: `${updatedUser?.name || 'Usuário'} foi atualizado com sucesso.`,
       });
       
       // Resetar o formulário

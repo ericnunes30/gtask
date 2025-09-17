@@ -161,10 +161,10 @@ export const useUpdateUser = () => {
       queryKeys.roles.lists(),
     ],
 
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
       toast({
         title: 'Sucesso',
-        description: 'Usuário atualizado com sucesso',
+        description: `Usuário ${updatedUser.name} atualizado com sucesso`,
       })
     },
 
