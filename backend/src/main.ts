@@ -1,4 +1,4 @@
-﻿import { corsConfig } from './config/cors.config';
+import { corsConfig } from './config/cors.config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, HttpStatus, BadRequestException } from '@nestjs/common';
 import { AppModule } from './app.module';

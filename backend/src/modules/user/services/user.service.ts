@@ -69,7 +69,8 @@ export class UserService {
     const savedUser = await this.userRepository.save(user);
 
     const logMessage = `[${new Date().toISOString()}] User ${savedUser.id} updated. ${updateUserDto.password ? 'Password changed.' : ''}\n`;
-    fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', logMessage);
+    const logPath = process.env.LOG_FILE || 'server.log';
+    fs.appendFileSync(logPath, logMessage);
 
     return savedUser;
   }
