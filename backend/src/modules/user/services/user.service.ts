@@ -69,7 +69,29 @@ export class UserService {
     const savedUser = await this.userRepository.save(user);
 
     const logMessage = `[${new Date().toISOString()}] User ${savedUser.id} updated. ${updateUserDto.password ? 'Password changed.' : ''}\n`;
-    fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', logMessage);
+    
+    // Validate log path to prevent directory traversal
+    const logPath = process.env.LOG_FILE;
+    if (!logPath) {
+      throw new Error('LOG_FILE environment variable is required');
+    }
+    
+    // Validate path - only allow relative paths within allowed directories
+    const path = require('path');
+    const normalizedPath = path.normalize(logPath);
+    
+    // Prevent directory traversal attacks
+    if (normalizedPath.includes('..') || path.isAbsolute(normalizedPath)) {
+      throw new Error('Invalid log file path');
+    }
+    
+    // Ensure the log directory exists
+    const logDir = path.dirname(normalizedPath);
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+    
+    fs.appendFileSync(normalizedPath, logMessage);
 
     return savedUser;
   }
