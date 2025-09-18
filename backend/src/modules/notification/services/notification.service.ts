@@ -2,11 +2,12 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StructuredNotificationEntity } from '../entities/notification.entity';
-import { 
-  StructuredNotification, 
+import {
+  StructuredNotification,
   NotificationQueryOptions,
   NotificationPagination
 } from '../interfaces/notification.types';
+import { UpdateNotificationDto } from '../dto/update-notification.dto';
 import { NotificationFactory } from '../factories/notification.factory';
 import { DebugLoggerService } from './debug-logger.service';
 
@@ -239,6 +240,34 @@ export class NotificationService {
     const deleted = result.affected || 0;
     this.debugLogger.logNotificationEvent('notifications_cleanup_old', { daysToKeep, deleted }, 0);
     return deleted;
+  }
+
+  async update(id: number, userId: number, updates: UpdateNotificationDto): Promise<StructuredNotification> {
+    // Verificar se a notificação existe e pertence ao usuário
+    const existingNotification = await this.findById(id, userId);
+    if (!existingNotification) {
+      throw new NotFoundException('Notificação não encontrada ou não pertence ao usuário');
+    }
+
+    try {
+      // Atualizar apenas os campos fornecidos
+      await this.repository.update(
+        { id, userId },
+        updates
+      );
+
+      // Buscar a notificação atualizada
+      const updatedNotification = await this.findById(id, userId);
+      
+      this.logger.log(`NOTIFICATION UPDATED: ID ${id}, User ${userId}`);
+      this.debugLogger.logNotificationEvent('notification_updated', { id, updates }, userId);
+      
+      return updatedNotification;
+    } catch (error) {
+      this.logger.error(`NOTIFICATION UPDATE FAILED: ID ${id}, User ${userId}, Error: ${error.message}`);
+      this.debugLogger.logError(error, `Notification update failed for ID ${id}`);
+      throw error;
+    }
   }
 
   // Método para buscar notificações com filtros avançados
