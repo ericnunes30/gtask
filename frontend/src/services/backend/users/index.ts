@@ -128,8 +128,10 @@ export const useUpdateUser = () => {
   const { setData } = useCacheManager()
 
   return useOptimisticMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateUserRequest }) =>
-      userService.updateUser(id, data),
+    mutationFn: async ({ id, data }: { id: number; data: UpdateUserRequest }) => {
+      const updatedUser = await userService.updateUser(id, data);
+      return updatedUser;
+    },
 
     onMutate: async ({ id, data }) => {
       // Cancelar queries
@@ -161,10 +163,10 @@ export const useUpdateUser = () => {
       queryKeys.roles.lists(),
     ],
 
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
       toast({
         title: 'Sucesso',
-        description: 'Usuário atualizado com sucesso',
+        description: `Usuário ${updatedUser?.name || 'atualizado'} atualizado com sucesso`,
       })
     },
 
