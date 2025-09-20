@@ -11,7 +11,6 @@ old
 guia_atual.md
 coverage
 docs
-.project
 
 # Environment files (do not commit secrets)
 .env
