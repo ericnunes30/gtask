@@ -5,7 +5,7 @@ on:
     types: [opened]
 
 permissions:
-  issues: write # Permissão para adicionar/modificar etiquetas
+  issues: write
 
 jobs:
   classify_and_prioritize:
@@ -15,7 +15,7 @@ jobs:
         id: classify_type
         uses: sst/opencode/github@latest
         with:
-          model: chutes/Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
+          model: Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8 # <-- MODELO ATUALIZADO AQUI
           prompt: |
             You are a GitHub issue triage expert.
             Analyze the following issue and classify it into ONE of these categories: bug, enhancement, documentation, question.
@@ -30,7 +30,7 @@ jobs:
         id: classify_priority
         uses: sst/opencode/github@latest
         with:
-          model: chutes/Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
+          model: Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8 # <-- MODELO ATUALIZADO AQUI
           prompt: |
             You are an expert product manager.
             Analyze the following issue's title and body to determine its priority.
@@ -39,13 +39,8 @@ jobs:
             Issue Body:
             ${{ github.event.issue.body }}
 
-            Consider the user impact, severity, and potential for blocking other work. Classify it into ONE of the following priority levels:
-            - p0 (Urgent: Critical bug, security issue, blocks users)
-            - p1 (High: Major bug, highly requested feature)
-            - p2 (Medium: Minor bug, nice-to-have feature)
-            - p3 (Low: Trivial issue, typo, very minor tweak)
-
-            Respond with ONLY the single priority label (e.g., p1). Do not add explanations or any other text.
+            Consider user impact and severity. Classify it into ONE of the following priority levels: p0 (Urgent), p1 (High), p2 (Medium), p3 (Low).
+            Respond with ONLY the single priority label (e.g., p1).
 
       - name: Apply Labels
         if: steps.classify_type.outputs.result != '' && steps.classify_priority.outputs.result != ''
