@@ -6,17 +6,18 @@ on:
 
 permissions:
   issues: write
-  contents: read # <-- Permissão adicionada para o checkout
+  contents: read
 
 jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 # <-- PASSO ADICIONADO
+        uses: actions/checkout@v4
 
       - name: Post classification trigger comment
         run: |
           gh issue comment ${{ github.event.issue.number }} --body "/classify"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # AQUI ESTÁ A MUDANÇA
+          GITHUB_TOKEN: ${{ secrets.PAT }}
