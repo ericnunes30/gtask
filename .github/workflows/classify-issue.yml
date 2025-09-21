@@ -1,54 +1,65 @@
 name: Classify and Prioritize Issue
 
 on:
-  issues:
-    types: [opened]
+  issue_comment:
+    types: [created]
 
 permissions:
   issues: write
 
 jobs:
   classify_and_prioritize:
+    # Apenas executa se o comentário for o nosso gatilho
+    if: github.event.comment.body == '/classify'
     runs-on: ubuntu-latest
     steps:
-      - name: Classify Issue Type
-        id: classify_type
+      # Nós precisamos "construir" o prompt que será lido pelo opencode
+      # A ação vai ler o corpo do comentário que a acionou.
+      - name: Update comment with full instructions
+        id: prompt
+        run: |
+          # O prompt é o texto que a IA irá ler.
+          # Note que estamos passando as informações da issue dentro do prompt.
+          PROMPT="""
+          You are a GitHub issue triage expert.
+          Analyze the following issue and return a JSON object with two keys: "type" and "priority".
+
+          Issue Title: "${{ github.event.issue.title }}"
+          Issue Body:
+          ${{ github.event.issue.body }}
+
+          For the "type" key, choose one of these values: "bug", "enhancement", "documentation", "question".
+          For the "priority" key, choose one of these values: "p0", "p1", "p2", "p3".
+
+          Respond with ONLY the raw JSON object. Example: {"type": "bug", "priority": "p1"}
+          """
+          # Nós editamos o comentário de gatilho para conter o prompt completo
+          gh issue comment ${{ github.event.issue.number }} --edit ${{ github.event.comment.id }} --body "$PROMPT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Run Opencode AI
+        id: opencode
+        # A ação irá ler o comentário que foi atualizado no passo anterior
         uses: sst/opencode/github@latest
         with:
-          model: Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8 # <-- MODELO ATUALIZADO AQUI
-          prompt: |
-            You are a GitHub issue triage expert.
-            Analyze the following issue and classify it into ONE of these categories: bug, enhancement, documentation, question.
-
-            Issue Title: "${{ github.event.issue.title }}"
-            Issue Body:
-            ${{ github.event.issue.body }}
-
-            Respond with ONLY the single label name. Do not add any other text.
-
-      - name: Prioritize Issue
-        id: classify_priority
-        uses: sst/opencode/github@latest
-        with:
-          model: Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8 # <-- MODELO ATUALIZADO AQUI
-          prompt: |
-            You are an expert product manager.
-            Analyze the following issue's title and body to determine its priority.
-
-            Issue Title: "${{ github.event.issue.title }}"
-            Issue Body:
-            ${{ github.event.issue.body }}
-
-            Consider user impact and severity. Classify it into ONE of the following priority levels: p0 (Urgent), p1 (High), p2 (Medium), p3 (Low).
-            Respond with ONLY the single priority label (e.g., p1).
+          model: Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
 
       - name: Apply Labels
-        if: steps.classify_type.outputs.result != '' && steps.classify_priority.outputs.result != ''
+        if: steps.opencode.outputs.result != ''
         run: |
-          TYPE_LABEL="${{ steps.classify_type.outputs.result }}"
-          PRIORITY_LABEL="${{ steps.classify_priority.outputs.result }}"
-          
+          JSON_RESULT='${{ steps.opencode.outputs.result }}'
+          TYPE_LABEL=$(echo $JSON_RESULT | jq -r .type)
+          PRIORITY_LABEL=$(echo $JSON_e_result | jq -r .priority)
+
           echo "Applying labels: $TYPE_LABEL, $PRIORITY_LABEL"
           gh issue edit ${{ github.event.issue.number }} --add-label "$TYPE_LABEL,$PRIORITY_LABEL"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Clean up comment
+        if: always() # Executa mesmo se os passos anteriores falharem
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --edit ${{ github.event.comment.id }} --body "Classificação concluída."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
