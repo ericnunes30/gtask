@@ -15,7 +15,7 @@ jobs:
         id: classify_type
         uses: sst/opencode/github@latest
         with:
-          model: chutes/moonshotai/Kimi-K2-Instruct-0905
+          model: chutes/Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
           prompt: |
             You are a GitHub issue triage expert.
             Analyze the following issue and classify it into ONE of these categories: bug, enhancement, documentation, question.
