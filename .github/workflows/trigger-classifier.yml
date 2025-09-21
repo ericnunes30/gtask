@@ -17,9 +17,8 @@ jobs:
 
       - name: Create Prompt and Post Comment
         run: |
-          # Usamos um "heredoc" para criar um texto de múltiplas linhas facilmente
           PROMPT=$(cat <<'EOF'
-          #opencode-run
+          /oc
           You are a GitHub issue triage expert.
           Analyze the following issue and return a JSON object with two keys: "type" and "priority".
 
@@ -35,4 +34,4 @@ jobs:
           )
           gh issue comment ${{ github.event.issue.number }} --body "$PROMPT"
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT }} # Importante continuar usando o PAT aqui
+          GITHUB_TOKEN: ${{ secrets.PAT }}
