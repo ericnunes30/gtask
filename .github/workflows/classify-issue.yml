@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   classify_and_prioritize:
-    # Aciona se o comentário começar com /oc
     if: startsWith(github.event.comment.body, '/oc')
     runs-on: ubuntu-latest
     steps:
@@ -21,23 +20,43 @@ jobs:
           model: Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
 
       - name: Apply Labels
-        if: steps.opencode.outputs.result != ''
+        if: always() # Executa este passo mesmo que o anterior não gere output
         run: |
-          JSON_RESULT='${{ steps.opencode.outputs.result }}'
-          if ! echo "$JSON_RESULT" | jq .; then
-            echo "Error: AI did not return a valid JSON."
-            exit 1
+          # Usamos a CLI do GitHub para buscar o JSON do último comentário
+          LATEST_COMMENT_JSON=$(gh issue view ${{ github.event.issue.number }} --json comments -q '.comments[-1]')
+          
+          # Verificamos se o autor do comentário é o bot da IA
+          COMMENT_AUTHOR=$(echo "$LATEST_COMMENT_JSON" | jq -r .author.login)
+          echo "Latest comment author: $COMMENT_AUTHOR"
+          
+          if [ "$COMMENT_AUTHOR" != "opencode-agent[bot]" ]; then
+            echo "Latest comment is not from the opencode-agent. Nothing to label."
+            exit 0
           fi
           
-          TYPE_LABEL=$(echo "$JSON_RESULT" | jq -r .type)
-          PRIORITY_LABEL=$(echo "$JSON_RESULT" | jq -r .priority)
+          # Extraímos o corpo do comentário, que contém o nosso JSON de resultado
+          COMMENT_BODY=$(echo "$LATEST_COMMENT_JSON" | jq -r .body)
+          echo "Result JSON from comment: $COMMENT_BODY"
+
+          # Validamos o JSON e extraímos as etiquetas
+          if ! echo "$COMMENT_BODY" | jq .; then
+            echo "Error: Comment body from agent is not a valid JSON."
+            exit 1
+          fi
+          TYPE_LABEL=$(echo "$COMMENT_BODY" | jq -r .type)
+          PRIORITY_LABEL=$(echo "$COMMENT_BODY" | jq -r .priority)
+
+          if [ -z "$TYPE_LABEL" ] || [ -z "$PRIORITY_LABEL" ]; then
+            echo "Error: Could not parse type or priority from JSON."
+            exit 1
+          fi
 
           echo "Applying labels: $TYPE_LABEL, $PRIORITY_LABEL"
           gh issue edit ${{ github.event.issue.number }} --add-label "$TYPE_LABEL,$PRIORITY_LABEL"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Add reaction to acknowledge completion
+      - name: Add reaction to acknowledge trigger
         if: always()
         run: |
           gh api \
