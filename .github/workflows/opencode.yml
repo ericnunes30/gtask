@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run opencode
-        uses: aemr3/opencode/github@dev
+        uses: sst/opencode/github@latest
         env:
           CHUTES_API_KEY: ${{ secrets.CHUTES_API_KEY }}
         with:
