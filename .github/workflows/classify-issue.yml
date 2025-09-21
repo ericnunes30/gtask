@@ -1,0 +1,59 @@
+name: Classify and Prioritize Issue
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write # Permissão para adicionar/modificar etiquetas
+
+jobs:
+  classify_and_prioritize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Classify Issue Type
+        id: classify_type
+        uses: sst/opencode/github@latest
+        with:
+          model: chutes/moonshotai/Kimi-K2-Instruct-0905
+          prompt: |
+            You are a GitHub issue triage expert.
+            Analyze the following issue and classify it into ONE of these categories: bug, enhancement, documentation, question.
+
+            Issue Title: "${{ github.event.issue.title }}"
+            Issue Body:
+            ${{ github.event.issue.body }}
+
+            Respond with ONLY the single label name. Do not add any other text.
+
+      - name: Prioritize Issue
+        id: classify_priority
+        uses: sst/opencode/github@latest
+        with:
+          model: chutes/Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
+          prompt: |
+            You are an expert product manager.
+            Analyze the following issue's title and body to determine its priority.
+
+            Issue Title: "${{ github.event.issue.title }}"
+            Issue Body:
+            ${{ github.event.issue.body }}
+
+            Consider the user impact, severity, and potential for blocking other work. Classify it into ONE of the following priority levels:
+            - p0 (Urgent: Critical bug, security issue, blocks users)
+            - p1 (High: Major bug, highly requested feature)
+            - p2 (Medium: Minor bug, nice-to-have feature)
+            - p3 (Low: Trivial issue, typo, very minor tweak)
+
+            Respond with ONLY the single priority label (e.g., p1). Do not add explanations or any other text.
+
+      - name: Apply Labels
+        if: steps.classify_type.outputs.result != '' && steps.classify_priority.outputs.result != ''
+        run: |
+          TYPE_LABEL="${{ steps.classify_type.outputs.result }}"
+          PRIORITY_LABEL="${{ steps.classify_priority.outputs.result }}"
+          
+          echo "Applying labels: $TYPE_LABEL, $PRIORITY_LABEL"
+          gh issue edit ${{ github.event.issue.number }} --add-label "$TYPE_LABEL,$PRIORITY_LABEL"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
