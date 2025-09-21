@@ -1,0 +1,19 @@
+name: Trigger Issue Classifier
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write # Permissão para comentar na issue
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post classification trigger comment
+        run: |
+          # Este comentário irá acionar o segundo workflow
+          gh issue comment ${{ github.event.issue.number }} --body "/classify"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
