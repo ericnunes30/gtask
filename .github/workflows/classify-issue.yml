@@ -6,11 +6,12 @@ on:
 
 permissions:
   issues: write
-  id-token: write # <-- SOLUÇÃO PARA O ERRO 1
+  id-token: write
 
 jobs:
   classify_and_prioritize:
-    if: startsWith(github.event.comment.body, '#opencode-run')
+    # Aciona se o comentário começar com /oc
+    if: startsWith(github.event.comment.body, '/oc')
     runs-on: ubuntu-latest
     steps:
       - name: Run Opencode AI
@@ -38,7 +39,6 @@ jobs:
 
       - name: Add reaction to acknowledge completion
         if: always()
-        # <-- SOLUÇÃO PARA O ERRO 2
         run: |
           gh api \
             --method POST \
