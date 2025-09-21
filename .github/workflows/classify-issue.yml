@@ -21,7 +21,7 @@ jobs:
         id: opencode
         uses: sst/opencode/github@latest
         with:
-          model: chutes/zai-org/GLM-4.5-FP8
+          model: chutes/Qwen/Qwen3-235B-A22B-Instruct-2507
 
       - name: Apply Labels
         if: always()
