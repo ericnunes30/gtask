@@ -7,12 +7,16 @@ on:
 permissions:
   issues: write
   id-token: write
+  contents: read # <-- PERMISSÃO ADICIONADA
 
 jobs:
   classify_and_prioritize:
     if: startsWith(github.event.comment.body, '/oc')
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # <-- PASSO CRUCIAL ADICIONADO
+
       - name: Run Opencode AI
         id: opencode
         uses: sst/opencode/github@latest
@@ -20,12 +24,10 @@ jobs:
           model: Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
 
       - name: Apply Labels
-        if: always() # Executa este passo mesmo que o anterior não gere output
+        if: always()
         run: |
-          # Usamos a CLI do GitHub para buscar o JSON do último comentário
           LATEST_COMMENT_JSON=$(gh issue view ${{ github.event.issue.number }} --json comments -q '.comments[-1]')
           
-          # Verificamos se o autor do comentário é o bot da IA
           COMMENT_AUTHOR=$(echo "$LATEST_COMMENT_JSON" | jq -r .author.login)
           echo "Latest comment author: $COMMENT_AUTHOR"
           
@@ -34,11 +36,9 @@ jobs:
             exit 0
           fi
           
-          # Extraímos o corpo do comentário, que contém o nosso JSON de resultado
           COMMENT_BODY=$(echo "$LATEST_COMMENT_JSON" | jq -r .body)
           echo "Result JSON from comment: $COMMENT_BODY"
 
-          # Validamos o JSON e extraímos as etiquetas
           if ! echo "$COMMENT_BODY" | jq .; then
             echo "Error: Comment body from agent is not a valid JSON."
             exit 1
