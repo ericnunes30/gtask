@@ -6,16 +6,15 @@ on:
 
 permissions:
   issues: write
+  id-token: write # <-- SOLUÇÃO PARA O ERRO 1
 
 jobs:
   classify_and_prioritize:
-    # Aciona se o comentário começar com a nossa frase-chave
     if: startsWith(github.event.comment.body, '#opencode-run')
     runs-on: ubuntu-latest
     steps:
       - name: Run Opencode AI
         id: opencode
-        # A ação vai ler automaticamente o corpo do comentário que a acionou
         uses: sst/opencode/github@latest
         with:
           model: Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
@@ -23,7 +22,6 @@ jobs:
       - name: Apply Labels
         if: steps.opencode.outputs.result != ''
         run: |
-          # Adicionamos uma verificação para garantir que o resultado é um JSON válido
           JSON_RESULT='${{ steps.opencode.outputs.result }}'
           if ! echo "$JSON_RESULT" | jq .; then
             echo "Error: AI did not return a valid JSON."
@@ -36,11 +34,16 @@ jobs:
           echo "Applying labels: $TYPE_LABEL, $PRIORITY_LABEL"
           gh issue edit ${{ github.event.issue.number }} --add-label "$TYPE_LABEL,$PRIORITY_LABEL"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Usamos o token padrão aqui
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add reaction to acknowledge completion
-        if: always() # Executa mesmo se os passos anteriores falharem
+        if: always()
+        # <-- SOLUÇÃO PARA O ERRO 2
         run: |
-          gh reaction add --comment ${{ github.event.comment.id }} -c hooray
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content='hooray'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
