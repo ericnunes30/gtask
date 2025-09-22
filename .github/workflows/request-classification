@@ -1,4 +1,4 @@
-name: 2. Request Classification
+name: Request Classification
 
 on:
   issue_comment:
