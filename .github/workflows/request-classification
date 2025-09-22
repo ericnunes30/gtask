@@ -1,4 +1,4 @@
-name: Request Classification
+name: 2. Request Classification
 
 on:
   issue_comment:
@@ -11,7 +11,10 @@ permissions:
 
 jobs:
   request:
-    if: startsWith(github.event.comment.body, '/oc')
+    # CONDIÇÃO CORRIGIDA CONFORME A DOCUMENTAÇÃO
+    if: |
+      contains(github.event.comment.body, '/oc') ||
+      contains(github.event.comment.body, '/opencode')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
