@@ -1,0 +1,41 @@
+name: Apply Classification
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  apply:
+    # A condição principal: só executa se o autor do comentário for o bot da IA.
+    if: github.event.comment.user.login == 'opencode-agent[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write # Permissão para aplicar as etiquetas
+
+    steps:
+      - name: Apply Labels from Agent Comment
+        run: |
+          # Pega o corpo do comentário que acionou este workflow
+          COMMENT_BODY='${{ github.event.comment.body }}'
+          echo "Result JSON from agent: $COMMENT_BODY"
+
+          # Valida se o comentário é um JSON
+          if ! echo "$COMMENT_BODY" | jq .; then
+            echo "Error: Comment body from agent is not a valid JSON."
+            exit 1
+          fi
+          
+          # Extrai os valores do JSON
+          TYPE_LABEL=$(echo "$COMMENT_BODY" | jq -r .type)
+          PRIORITY_LABEL=$(echo "$COMMENT_BODY" | jq -r .priority)
+
+          if [ -z "$TYPE_LABEL" ] || [ -z "$PRIORITY_LABEL" ]; then
+            echo "Error: Could not parse type or priority from JSON."
+            exit 1
+          fi
+
+          # Aplica as duas etiquetas na issue original
+          echo "Applying labels: $TYPE_LABEL, $PRIORITY_LABEL"
+          gh issue edit ${{ github.event.issue.number }} --add-label "$TYPE_LABEL,$PRIORITY_LABEL"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
