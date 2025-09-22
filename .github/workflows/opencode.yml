@@ -5,22 +5,33 @@ on:
     types: [created]
 
 jobs:
-  opencode:
+  request:
     if: |
       contains(github.event.comment.body, '/oc') ||
       contains(github.event.comment.body, '/opencode')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+      contents: read
+      issues: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
-      - name: Run opencode
+      - name: Run Opencode AI (Fire and Forget)
         uses: sst/opencode/github@latest
         env:
           CHUTES_API_KEY: ${{ secrets.CHUTES_API_KEY }}
         with:
           model: chutes/Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
+
+      - name: Add reaction to acknowledge request
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content='thumbs_up'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
