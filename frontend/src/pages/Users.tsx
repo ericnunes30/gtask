@@ -142,10 +142,6 @@ const Users = () => {
   const { mutateAsync: addUserToTeamMutate } = teamsService.useAddUserToTeam();
   const { mutateAsync: removeUserFromTeamMutate } = teamsService.useRemoveUserFromTeam();
 
-  console.log('usersQueryData:', usersQueryData);
-  console.log('usersLoading:', usersLoading);
-  console.log('usersIsError:', usersIsError);
-  console.log('usersError:', usersError);
   const {
     data: rolesQueryData,
     isLoading: rolesLoading,
@@ -153,10 +149,6 @@ const Users = () => {
     error: rolesError,
     refetch: refetchRoles,
   } = rolesService.useGetRoles();
-  console.log('rolesQueryData:', rolesQueryData);
-  console.log('rolesLoading:', rolesLoading);
-  console.log('rolesIsError:', rolesIsError);
-  console.log('rolesError:', rolesError);
   const {
     data: occupationsQueryData,
     isLoading: occupationsLoading,
@@ -280,7 +272,6 @@ const Users = () => {
       if (newUser.roles && newUser.roles.length > 0) {
         try {
           await usersService.userService.assignRoles(createdUser.id, newUser.roles);
-          console.log('Roles atribuídas com sucesso:', newUser.roles);
         } catch (roleError) {
           console.error('Erro ao atribuir roles:', roleError);
           toast({
@@ -407,15 +398,10 @@ const Users = () => {
       const updatedUser = await updateUserMutate({ id: editingUser.id, data: userData });
       
       // Debug: Verificar estrutura do updatedUser
-      console.log('UpdatedUser recebido:', updatedUser);
-      console.log('UpdatedUser.name:', updatedUser.name);
-      console.log('UpdatedUser.data:', updatedUser.data);
-
       // Depois de atualizar o usuário, tentar atribuir roles se houver
       if (newUser.roles && newUser.roles.length > 0) {
         try {
           await usersService.userService.assignRoles(editingUser.id, newUser.roles);
-          console.log('Roles atualizadas com sucesso:', newUser.roles);
         } catch (roleError) {
           console.error('Erro ao atribuir roles:', roleError);
           toast({
@@ -574,27 +560,9 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
   user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
   user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
   (user.whatsapp && user.whatsapp.toLowerCase().includes(searchTerm.toLowerCase().replace(/\D/g, '')))
-) : [];
+  ) : [];
 
-  // Debug logs
-  console.log('usersQueryData type:', typeof usersQueryData);
-  console.log('usersQueryData:', usersQueryData);
-  console.log('filteredUsers type:', typeof filteredUsers);
-  console.log('filteredUsers:', filteredUsers);
-  
-  // Debug das datas dos usuários
-  if (Array.isArray(usersQueryData)) {
-    usersQueryData.forEach((user, index) => {
-      console.log(`User ${index} dates:`, {
-        id: user.id,
-        name: user.name,
-        created_at: user.created_at,
-        createdAt: user.createdAt,
-        updated_at: user.updated_at,
-        updatedAt: user.updatedAt
-      });
-    });
-  }
+  // Debug logs removidos para evitar poluição do console
 
   // Renderizar tela de carregamento
   if (loading) {

@@ -7,10 +7,7 @@ import { toast } from '@/components/ui/use-toast'
 
 const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    console.log('authService - login - credentials:', credentials);
     const response = await api.post(ROUTES.auth.login, credentials);
-    console.log('authService.login - raw api response:', response);
-    console.log('authService.login - response.data:', response.data);
     
     // Backend-2 returns: { accessToken: "...", refreshToken: "...", user: {...} }
     const { accessToken, refreshToken, user } = response.data.data;
@@ -25,13 +22,10 @@ const authService = {
   },
 
   async getCurrentUser(): Promise<User> {
-    console.log('authService - getCurrentUser - fetching...');
     // AuthContext will handle token presence
     const response = await api.get(ROUTES.auth.profile);
-    console.log('authService - getCurrentUser - response:', response);
     // Backend-2 returns: { data: { userId: ..., email: ..., name: ... } }
     const userData = response.data.data;
-    console.log('authService - getCurrentUser - userData:', userData);
     return userData as User;
   },
 
@@ -73,8 +67,6 @@ export const useRefreshToken = () => {
   return useOptimisticMutation({
     mutationFn: async (payload: { refreshToken: string }) => {
       const response = await api.post(ROUTES.auth.refresh, payload)
-      console.log('useRefreshToken - raw api response:', response)
-      console.log('useRefreshToken - response.data:', response.data)
       return response.data.data // Should return { accessToken: string }
     },
 

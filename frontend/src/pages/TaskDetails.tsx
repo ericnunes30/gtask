@@ -34,23 +34,18 @@ const TaskDetails = () => {
   const permissions = usePermissions();
 
   useEffect(() => {
-    console.log('📋 TASK DETAILS: Iniciando busca para taskId:', taskId);
     const storedTasks = localStorage.getItem('tasks');
     if (storedTasks) {
       const tasksArray = JSON.parse(storedTasks);
       const foundTask = tasksArray.find((t: any) => t.id === taskId);
 
       if (foundTask) {
-        console.log('📋 TASK DETAILS: Task encontrada no localStorage:', foundTask);
         setTask(foundTask);
 
         const storedComments = localStorage.getItem(`comments_${taskId}`);
         if (storedComments) {
           const parsedComments = JSON.parse(storedComments);
-          console.log('📋 TASK DETAILS: Comentários do localStorage:', parsedComments);
           setComments(parsedComments);
-        } else {
-          console.log('📋 TASK DETAILS: Nenhum comentário no localStorage para task:', taskId);
         }
 
         const storedProjects = localStorage.getItem('projects');

@@ -17,7 +17,8 @@ createRoot(document.getElementById('root')!).render(
   <ReactQueryPersistProvider>
     <QueryErrorBoundary>
       <App />
-      <ReactQueryDevtools initialIsOpen={false} />
+      {/* React Query DevTools temporariamente desabilitado por erro de cache */}
+      {/* {process.env.NODE_ENV !== 'production' && <ReactQueryDevtools initialIsOpen={false} />} */}
     </QueryErrorBoundary>
   </ReactQueryPersistProvider>,
 )

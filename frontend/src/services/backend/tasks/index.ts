@@ -14,13 +14,8 @@ const taskService = {
   },
 
   async getTask(id: number): Promise<Task> {
-    console.log('🔄 TASK SERVICE: Chamando getTask para ID:', id);
     const response = await api.get(`${ROUTES.tasks}/${id}`)
-    console.log('📋 TASK SERVICE: Resposta bruta da API:', response);
-    console.log('📊 TASK SERVICE: response.data:', response.data);
-    console.log('🎯 TASK SERVICE: response.data.data:', response.data.data);
     const transformed = transformApiTaskToFrontend(response.data.data)
-    console.log('✅ TASK SERVICE: Dados transformados:', transformed);
     return transformed
   },
 

@@ -298,16 +298,11 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
     try {
       // Verificar se usuários foram selecionados
       let selectedUsers = values.users || [];
-      console.log('📋 Usuários iniciais:', selectedUsers);
 
       // Se nenhum usuário foi selecionado, incluir todos os usuários das equipes selecionadas
       if (selectedUsers.length === 0 && values.teams && values.teams.length > 0) {
-        console.log('👥 Nenhum usuário selecionado, pegando das equipes:', values.teams);
-        console.log('🔍 Usuários filtrados disponíveis:', filteredUsers);
-        
         // Obter todos os usuários das equipes selecionadas
         selectedUsers = filteredUsers.map(user => user.id);
-        console.log('✅ Usuários selecionados das equipes:', selectedUsers);
       }
 
       // Preparar os dados do projeto com os usuários selecionados

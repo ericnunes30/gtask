@@ -14,24 +14,16 @@ const commentService = {
   },
 
   async getCommentsByTask(taskId: number): Promise<Comment[]> {
-    console.log('💬 COMMENT SERVICE: Buscando comentários para task:', taskId);
     // backend-2 doesn't expose /comments/task/:id; map to query param ?task=
     const response = await api.get(`${ROUTES.comments}?task=${taskId}`)
-    console.log('💬 COMMENT SERVICE: Resposta bruta:', response);
-    console.log('💬 COMMENT SERVICE: response.data:', response.data);
     // Aplicar transformer nos comentários
     const transformed = response.data.map(transformApiCommentToFrontend)
-    console.log('💬 COMMENT SERVICE: Comentários transformados:', transformed);
     return transformed
   },
 
   async createComment(data: CreateCommentRequest): Promise<Comment> {
-    console.log('Sending create comment request with data:', data);
     const response = await api.post(ROUTES.comments, data);
-    console.log('Received create comment response (raw):', response); // Log da resposta completa
-    console.log('Received create comment response (data):', response.data); // Log de response.data
-    console.log('Received create comment response (data.data):', response.data.data); // Log de response.data.data
-            return response.data.data; // <-- CORRIGIDO
+    return response.data.data; // <-- CORRIGIDO
   },
 
   async updateComment(id: number, data: UpdateCommentRequest): Promise<Comment> {
@@ -44,12 +36,10 @@ const commentService = {
   },
 
 async likeComment(id: number): Promise<void> {
-    console.log('commentService.likeComment called', id);
     await api.post(`${ROUTES.comments}/${id}/like`, {})
   },
 
 async unlikeComment(id: number): Promise<void> {
-    console.log('commentService.unlikeComment called', id);
     await api.delete(`${ROUTES.comments}/${id}/like`)
   },
 }

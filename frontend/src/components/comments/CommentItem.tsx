@@ -18,12 +18,6 @@ interface CommentItemProps {
 }
 
 const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isReply = false, onReplySuccessfullyAdded }) => {
-  // Log the comment object to see its structure
-  console.log('📝 COMMENT ITEM: Comentário recebido:', comment);
-  console.log('📝 COMMENT ITEM: likesCount:', comment.likesCount);
-  console.log('📝 COMMENT ITEM: likes array:', comment.likes);
-  console.log('📝 COMMENT ITEM: Número de likes:', comment.likes?.length || 0);
-  
   const { user: authUser } = useAuth();
   
   // Check if current user has liked the comment
@@ -43,18 +37,15 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
   const { mutateAsync: unlikeComment } = comments.useUnlikeComment();
 
 const handleLikeToggle = async () => {
-    console.log('handleLikeToggle called', { isLiked, commentId: comment.id, isLiking });
     if (isLiking) return;
 
     setIsLiking(true);
     try {
       if (isLiked) {
-        console.log('Calling unlikeComment', comment.id);
         await unlikeComment(comment.id);
         setLikesCount(prev => Math.max(0, prev - 1));
         setIsLiked(false);
       } else {
-        console.log('Calling likeComment', comment.id);
         await likeComment(comment.id);
         setLikesCount(prev => prev + 1);
         setIsLiked(true);
@@ -117,9 +108,7 @@ const handleLikeToggle = async () => {
         parentId: comment.parentId || comment.id // Se o comentário atual já tem um parentId (é uma resposta), usa ele. Senão, usa o id do comentário atual.
       };
 
-      console.log('CommentItem - Enviando dados da resposta:', commentData);
       const newReply = await createComment(commentData);
-      console.log('CommentItem - newReply from API:', newReply); // Adicionado log
 
       // Enriquecer a resposta com dados do usuário
       const replyWithUser: ApiComment = {
@@ -132,7 +121,6 @@ const handleLikeToggle = async () => {
         likesCount: 0, // Nova resposta comea com 0 curtidas
         repliesCount: 0, // Nova resposta começa com 0 sub-respostas
       };
-      console.log('CommentItem - replyWithUser (after enrichment):', replyWithUser); // Adicionado log
 
       setLocalReplies(prev => [replyWithUser, ...prev]); // Adicionar atualização otimista local
       setReplyContent('');
