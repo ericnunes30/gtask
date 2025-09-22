@@ -11,7 +11,6 @@ permissions:
 
 jobs:
   request:
-    # CONDIÇÃO CORRIGIDA CONFORME A DOCUMENTAÇÃO
     if: |
       contains(github.event.comment.body, '/oc') ||
       contains(github.event.comment.body, '/opencode')
@@ -25,7 +24,7 @@ jobs:
         env:
           CHUTES_API_KEY: ${{ secrets.CHUTES_API_KEY }}
         with:
-          model: chutes/Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
+          model: chutes/Qwen/Qwen3-Coder-480B-A5B-Instruct-FP8
 
       - name: Add reaction to acknowledge request
         run: |
