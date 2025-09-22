@@ -1,0 +1,35 @@
+name: Request Classification
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+jobs:
+  request:
+    if: startsWith(github.event.comment.body, '/oc')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Opencode AI (Fire and Forget)
+        uses: sst/opencode/github@latest
+        env:
+          CHUTES_API_KEY: ${{ secrets.CHUTES_API_KEY }}
+        with:
+          model: chutes/Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
+
+      - name: Add reaction to acknowledge request
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content='thumbs_up'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
