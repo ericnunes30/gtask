@@ -22,7 +22,8 @@ jobs:
 
       - name: Run opencode on PR
         uses: sst/opencode/github@latest
-        with:
+        env:
+          CHUTES_API_KEY: ${{ secrets.CHUTES_API_KEY }}
           # ATENÇÃO: Verifique se este é o nome correto do modelo para esta tarefa
           model: chutes/moonshotai/Kimi-K2-Instruct-0905
           # Exemplo de prompt para revisar um PR. Ajuste conforme sua necessidade.
