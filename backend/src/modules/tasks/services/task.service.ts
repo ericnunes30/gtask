@@ -62,11 +62,6 @@ export class TaskService extends TaskCreator implements TaskUpdater {
   }
 
   async findOne(id: number): Promise<Task> {
-    // Validate input to prevent SQL injection
-    if (!id || typeof id !== 'number' || id < 1 || !Number.isInteger(id)) {
-      throw new NotFoundException(`Invalid task ID: ${id}`);
-    }
-    
     const task = await this.taskRepository.findOne({
       where: { id },
       relations: ['users', 'occupations', 'project', 'reviewer'], // Removido comments daqui

@@ -255,7 +255,7 @@ const Users = () => {
 
       toast({
         title: "Usuário adicionado",
-        description: `${createdUser?.name || 'Usuário'} foi adicionado com sucesso.`,
+        description: `${createdUser.name} foi adicionado com sucesso.`,
       });
 
       // Recarregar lista de usuários
@@ -382,7 +382,7 @@ const Users = () => {
 
       toast({
         title: "Usuário atualizado",
-        description: `${updatedUser?.name || 'Usuário'} foi atualizado com sucesso.`,
+        description: `${updatedUser.name} foi atualizado com sucesso.`,
       });
       
       // Resetar o formulário

@@ -25,7 +25,6 @@ import {
   NotificationPagination
 } from '../interfaces/notification.types';
 import { NotificationQueryDto } from '../dto/notification-query.dto';
-import { UpdateNotificationDto } from '../dto/update-notification.dto';
 
 // @ApiTags('notifications')
 // @ApiBearerAuth()
@@ -202,27 +201,6 @@ export class NotificationController {
     try {
       const payload = this.jwtService.verify(token);
       return this.notificationService.searchNotifications(payload.sub, searchTerm, options);
-    } catch {
-      throw new UnauthorizedException('Token inválido ou expirado');
-    }
-  }
-
-  @Patch(':id')
-  @HttpCode(HttpStatus.OK)
-  async patchNotification(
-    @Param('id') id: number,
-    @Body() updateNotificationDto: UpdateNotificationDto,
-    @Headers('authorization') authorization: string
-  ): Promise<StructuredNotification> {
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Token de autenticação não fornecido');
-    }
-    const token = authorization.substring(7);
-    try {
-      const payload = this.jwtService.verify(token);
-      const notification = await this.notificationService.update(id, payload.sub, updateNotificationDto);
-      this.debugLogger.logNotificationEvent('notification_updated', { id, updates: updateNotificationDto }, payload.sub);
-      return notification;
     } catch {
       throw new UnauthorizedException('Token inválido ou expirado');
     }
