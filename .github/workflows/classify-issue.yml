@@ -7,7 +7,7 @@ on:
 permissions:
   issues: write
   id-token: write
-  contents: read # <-- PERMISSÃO ADICIONADA
+  contents: read
 
 jobs:
   classify_and_prioritize:
@@ -15,12 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 # <-- PASSO CRUCIAL ADICIONADO
+        uses: actions/checkout@v4
 
       - name: Run Opencode AI
         id: opencode
         uses: sst/opencode/github@latest
+        env:
+          # 1. Garante que a API Key seja enviada para autenticação
+          CHUTES_API_KEY: ${{ secrets.CHUTES_API_KEY }}
         with:
+          # 2. Mantém o nome completo do modelo com o prefixo do provedor
           model: chutes/Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
 
       - name: Apply Labels
