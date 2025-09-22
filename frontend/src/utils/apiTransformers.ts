@@ -103,6 +103,13 @@ export const transformApiTaskToFrontend = (apiTask: any): Task => {
     transformedTask.activityLogs = apiTask.activityLogs.map(transformApiActivityLogToFrontend);
   }
 
+  // Transformar comentários se existirem
+  if (apiTask.comments && Array.isArray(apiTask.comments)) {
+    console.log('🔄 TRANSFORMER: Transformando comentários:', apiTask.comments);
+    transformedTask.comments = apiTask.comments.map((comment: any) => transformApiCommentToFrontend(comment));
+    console.log('✅ TRANSFORMER: Comentários transformados:', transformedTask.comments);
+  }
+
   return transformedTask;
 };
 
@@ -114,6 +121,7 @@ export const transformApiTaskToFrontend = (apiTask: any): Task => {
  * @returns O projeto transformado para o formato do frontend.
  */
 export const transformApiCommentToFrontend = (apiComment: any): Comment => {
+  console.log('💬 COMMENT TRANSFORMER: Entrada:', apiComment);
   const transformedComment: any = { ...apiComment };
 
   if (apiComment.created_at !== undefined) {
@@ -133,8 +141,24 @@ export const transformApiCommentToFrontend = (apiComment: any): Comment => {
     delete transformedComment.parent_id;
   }
   if (apiComment.likes_count !== undefined) {
-    transformedComment.likesCount = apiComment.likes_count;
+    console.log('🎯 Converting likes_count:', apiComment.likes_count, '→', parseInt(apiComment.likes_count, 10) || 0);
+    transformedComment.likesCount = parseInt(apiComment.likes_count, 10) || 0;
     delete transformedComment.likes_count;
+  }
+
+  // Transformar likes se existirem
+  if (apiComment.likes && Array.isArray(apiComment.likes)) {
+    transformedComment.likes = apiComment.likes.map((like: any) => {
+      const transformedLike: any = { ...like };
+      
+      // Converter created_at para createdAt se necessário
+      if (like.created_at !== undefined) {
+        transformedLike.createdAt = like.created_at;
+        delete transformedLike.created_at;
+      }
+      
+      return transformedLike;
+    });
   }
 
   // Recursivamente transformar replies se existirem

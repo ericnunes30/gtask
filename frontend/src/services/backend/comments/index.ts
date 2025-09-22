@@ -1,9 +1,11 @@
-import { useOptimizedQuery, useOptimisticMutation, useCacheManager, useQueryClient } from '@/hooks/useOptimizedQuery'
+import { useOptimizedQuery, useOptimisticMutation, useCacheManager } from '@/hooks/useOptimizedQuery'
 import { queryKeys } from '@/lib/react-query/keys'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { CreateCommentRequest, UpdateCommentRequest, Comment } from '@/common/types'
 import { toast } from '@/components/ui/use-toast'
+import { queryClient } from '@/lib/react-query/config'
+import { transformApiCommentToFrontend } from '@/utils/apiTransformers'
 
 const commentService = {
   async getComments(): Promise<Comment[]> {
@@ -12,9 +14,15 @@ const commentService = {
   },
 
   async getCommentsByTask(taskId: number): Promise<Comment[]> {
+    console.log('💬 COMMENT SERVICE: Buscando comentários para task:', taskId);
     // backend-2 doesn't expose /comments/task/:id; map to query param ?task=
     const response = await api.get(`${ROUTES.comments}?task=${taskId}`)
-    return response.data
+    console.log('💬 COMMENT SERVICE: Resposta bruta:', response);
+    console.log('💬 COMMENT SERVICE: response.data:', response.data);
+    // Aplicar transformer nos comentários
+    const transformed = response.data.map(transformApiCommentToFrontend)
+    console.log('💬 COMMENT SERVICE: Comentários transformados:', transformed);
+    return transformed
   },
 
   async createComment(data: CreateCommentRequest): Promise<Comment> {
@@ -35,11 +43,13 @@ const commentService = {
     await api.delete(`${ROUTES.comments}/${id}`)
   },
 
-  async likeComment(id: number): Promise<void> {
+async likeComment(id: number): Promise<void> {
+    console.log('commentService.likeComment called', id);
     await api.post(`${ROUTES.comments}/${id}/like`, {})
   },
 
-  async unlikeComment(id: number): Promise<void> {
+async unlikeComment(id: number): Promise<void> {
+    console.log('commentService.unlikeComment called', id);
     await api.delete(`${ROUTES.comments}/${id}/like`)
   },
 }

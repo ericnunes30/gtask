@@ -1,8 +1,9 @@
-import { useOptimisticMutation, useCacheManager, useQueryClient } from '@/hooks/useOptimizedQuery'
+import { useOptimisticMutation, useCacheManager } from '@/hooks/useOptimizedQuery'
 import { queryKeys } from '@/lib/react-query/keys'
 import { UpdateUserRequest, User } from '@/common/types'
 import { userService } from '@/services/backend/users'
 import { toast } from '@/components/ui/use-toast'
+import { queryClient } from '@/lib/react-query/config'
 
 const profileService = {
   async updateProfile(userId: number, data: UpdateUserRequest): Promise<User> {

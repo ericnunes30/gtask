@@ -19,10 +19,10 @@ export class RecurringTaskController {
     return this.recurringTaskService.findOne(+id);
   }
 
-  @Post()
+@Post()
   async create(@Body() createRecurringTaskDto: CreateRecurringTaskDto, @NestRequest() req) {
     Logger.log(`Received createRecurringTaskDto: ${JSON.stringify(createRecurringTaskDto)}`, 'RecurringTaskController');
-    return this.recurringTaskService.create(createRecurringTaskDto, req.user.id);
+    return this.recurringTaskService.create(createRecurringTaskDto, req.user.sub);
   }
 
   @Put(':id')

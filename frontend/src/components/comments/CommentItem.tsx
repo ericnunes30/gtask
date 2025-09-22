@@ -18,8 +18,22 @@ interface CommentItemProps {
 }
 
 const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isReply = false, onReplySuccessfullyAdded }) => {
-  // --- Lógica de Curtidas (Movida do TaskDetailsModal) ---
-  const [isLiked, setIsLiked] = useState(false); // Começa false (sem checkIfLiked)
+  // Log the comment object to see its structure
+  console.log('📝 COMMENT ITEM: Comentário recebido:', comment);
+  console.log('📝 COMMENT ITEM: likesCount:', comment.likesCount);
+  console.log('📝 COMMENT ITEM: likes array:', comment.likes);
+  console.log('📝 COMMENT ITEM: Número de likes:', comment.likes?.length || 0);
+  
+  const { user: authUser } = useAuth();
+  
+  // Check if current user has liked the comment
+  const hasUserLiked = React.useMemo(() => {
+    if (!authUser || !comment.likes) return false;
+    return comment.likes.some(like => like.userId === authUser.id);
+  }, [authUser, comment.likes]);
+  
+// --- Lógica de Curtidas (Movida do TaskDetailsModal) ---
+  const [isLiked, setIsLiked] = useState(hasUserLiked);
   const [likesCount, setLikesCount] = useState(comment.likesCount || 0);
   const [isLiking, setIsLiking] = useState(false);
   const { comments } = useBackendServices();
@@ -28,16 +42,19 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
   const { mutateAsync: likeComment } = comments.useLikeComment();
   const { mutateAsync: unlikeComment } = comments.useUnlikeComment();
 
-  const handleLikeToggle = async () => {
+const handleLikeToggle = async () => {
+    console.log('handleLikeToggle called', { isLiked, commentId: comment.id, isLiking });
     if (isLiking) return;
 
     setIsLiking(true);
     try {
       if (isLiked) {
+        console.log('Calling unlikeComment', comment.id);
         await unlikeComment(comment.id);
         setLikesCount(prev => Math.max(0, prev - 1));
         setIsLiked(false);
       } else {
+        console.log('Calling likeComment', comment.id);
         await likeComment(comment.id);
         setLikesCount(prev => prev + 1);
         setIsLiked(true);
@@ -83,8 +100,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
   // Esta alteração será feita em um diff separado para handleReplySubmit.
   // --- Fim da Lógica de Respostas ---
 
-  // --- Lógica do Formulário de Resposta ---
-  const { user: authUser } = useAuth();
+// --- Lógica do Formulário de Resposta ---
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
@@ -146,7 +162,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, parentTaskId, isRepl
   // --- Fim da Lógica do Formulário de Resposta ---
 
   // Formatação da data (similar ao TaskDetailsModal)
-  const dateString = (comment as any).created_at;
+  const dateString = comment.createdAt; // Usar a propriedade correta após transformação
   let formattedDate = "Data inválida";
   if (dateString) {
     const date = parseISO(dateString);

@@ -1,10 +1,11 @@
-import { useOptimizedQuery, useOptimisticMutation, useCacheManager, useQueryClient } from '@/hooks/useOptimizedQuery'
+import { useOptimizedQuery, useOptimisticMutation, useCacheManager } from '@/hooks/useOptimizedQuery'
 import { queryKeys } from '@/lib/react-query/keys'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { Project, CreateProjectRequest, UpdateProjectRequest } from '@/common/types'
 import { transformApiProjectToFrontend } from '@/utils/apiTransformers'
 import { toast } from '@/components/ui/use-toast'
+import { queryClient } from '@/lib/react-query/config'
 
 const projectService = {
   async getProjects(): Promise<Project[]> {

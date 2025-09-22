@@ -61,15 +61,15 @@ export class CommentController {
     return this.commentService.remove(id);
   }
 
-  @Post(':id/like')
+@Post(':id/like')
   @UseGuards(JwtAuthGuard)
   likeComment(@Param('id', ParseIntPipe) id: number, @Request() req) {
-    return this.commentService.likeComment(id, req.user.id);
+    return this.commentService.likeComment(id, req.user.sub);
   }
 
   @Delete(':id/like')
   @UseGuards(JwtAuthGuard)
   unlikeComment(@Param('id', ParseIntPipe) id: number, @Request() req) {
-    return this.commentService.unlikeComment(id, req.user.id);
+    return this.commentService.unlikeComment(id, req.user.sub);
   }
 }

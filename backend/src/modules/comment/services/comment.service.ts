@@ -38,13 +38,26 @@ export class CommentService extends CommentCreator {
     }
   }
 
-  async findAll(): Promise<Comment[]> {
+async findAll(): Promise<Comment[]> {
     return this.commentRepository.find({
-      relations: ['user', 'task', 'task.users', 'task.project', 'task.project.users'],
+      relations: ['user', 'task', 'task.users', 'task.project', 'task.project.users', 'likes'],
     });
   }
 
   async findOne(id: number): Promise<Comment> {
+    const comment = await this.commentRepository.findOne({
+      where: { id },
+      relations: ['user', 'task', 'task.users', 'task.project', 'task.project.users', 'likes'],
+    });
+
+    if (!comment) {
+      throw new NotFoundException(`Comentário com ID ${id} não encontrado`);
+    }
+
+    return comment;
+  }
+
+  async findOneWithoutLikes(id: number): Promise<Comment> {
     const comment = await this.commentRepository.findOne({
       where: { id },
       relations: ['user', 'task', 'task.users', 'task.project', 'task.project.users'],
@@ -68,15 +81,20 @@ export class CommentService extends CommentCreator {
     await this.commentRepository.remove(comment);
   }
 
-  async findByTaskId(taskId: number): Promise<Comment[]> {
+async findByTaskId(taskId: number): Promise<Comment[]> {
     return this.commentRepository.find({
       where: { task: { id: taskId } },
-      relations: ['user', 'task'],
+      relations: ['user', 'task', 'likes'],
     });
   }
 
   async likeComment(commentId: number, userId: number): Promise<void> {
-    const comment = await this.findOne(commentId);
+    const comment = await this.findOneWithoutLikes(commentId);
+    
+    if (!comment) {
+      throw new NotFoundException(`Comment with ID ${commentId} not found`);
+    }
+    
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!user) {
@@ -99,7 +117,12 @@ export class CommentService extends CommentCreator {
   }
 
   async unlikeComment(commentId: number, userId: number): Promise<void> {
-    const comment = await this.findOne(commentId);
+    const comment = await this.findOneWithoutLikes(commentId);
+    
+    if (!comment) {
+      throw new NotFoundException(`Comment with ID ${commentId} not found`);
+    }
+    
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!user) {

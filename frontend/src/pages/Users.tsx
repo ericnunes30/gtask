@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, MoreHorizontal, Search, Pencil, Trash2, RefreshCw } from 'lucide-react';
+import { PlusCircle, Filter, MoreHorizontal, Search, Pencil, Trash2, RefreshCw, Phone, CheckCircle, XCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -65,6 +65,58 @@ const getBadgeColorClass = (teamId: number) => {
   // Caso contrário, usa um cálculo para distribuir as cores de forma cíclica
   const colorIndex = teamId ? (teamId % Object.keys(colorClasses).length) || teamId : 1;
   return colorClasses[colorIndex] || 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-200';
+};
+
+// Função para formatar número do WhatsApp
+const formatWhatsApp = (whatsapp: string) => {
+  if (!whatsapp) return null;
+  
+  // Remove tudo que não é número
+  const numbersOnly = whatsapp.replace(/\D/g, '');
+  
+  // Formata para (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+  if (numbersOnly.length === 11) {
+    return `(${numbersOnly.slice(0, 2)}) ${numbersOnly.slice(2, 7)}-${numbersOnly.slice(7)}`;
+  } else if (numbersOnly.length === 10) {
+    return `(${numbersOnly.slice(0, 2)}) ${numbersOnly.slice(2, 6)}-${numbersOnly.slice(6)}`;
+  }
+  
+  // Retorna o original se não conseguir formatar
+  return whatsapp;
+};
+
+// Função para formatar data de forma segura
+const formatUserDate = (dateString: string | undefined): string => {
+  if (!dateString) return 'Data não definida';
+  
+  try {
+    // Verifica se é uma string válida
+    if (typeof dateString !== 'string') {
+      console.warn('formatUserDate: dateString não é string:', dateString);
+      return 'Data inválida';
+    }
+    
+    // Tenta criar a data
+    const date = new Date(dateString);
+    
+    // Verifica se a data é válida
+    if (isNaN(date.getTime())) {
+      console.warn('formatUserDate: Data inválida:', dateString);
+      return 'Data inválida';
+    }
+    
+    // Verifica se é uma data muito antiga ou futura (possível erro)
+    const year = date.getFullYear();
+    if (year < 1900 || year > 2100) {
+      console.warn('formatUserDate: Data fora do range esperado:', dateString, 'ano:', year);
+      return 'Data inválida';
+    }
+    
+    return date.toLocaleDateString('pt-BR');
+  } catch (error) {
+    console.error('formatUserDate: Erro ao formatar data:', dateString, error);
+    return 'Data inválida';
+  }
 };
 
 const Users = () => {
@@ -131,7 +183,7 @@ const Users = () => {
     roles: number[];
     is_active: boolean;
     whatsapp: string;
-  }>(
+  }>({
     name: '',
     email: '',
     password: '',
@@ -353,6 +405,11 @@ const Users = () => {
       }
 
       const updatedUser = await updateUserMutate({ id: editingUser.id, data: userData });
+      
+      // Debug: Verificar estrutura do updatedUser
+      console.log('UpdatedUser recebido:', updatedUser);
+      console.log('UpdatedUser.name:', updatedUser.name);
+      console.log('UpdatedUser.data:', updatedUser.data);
 
       // Depois de atualizar o usuário, tentar atribuir roles se houver
       if (newUser.roles && newUser.roles.length > 0) {
@@ -380,9 +437,12 @@ const Users = () => {
         ...occupationsToRemove.map(teamId => removeUserFromTeamMutate({ teamId, userId: editingUser.id }))
       ]);
 
+      // Verificar se updatedUser tem estrutura { data: {...} } ou é direto
+      const userName = updatedUser.data ? updatedUser.data.name : updatedUser.name;
+      
       toast({
         title: "Usuário atualizado",
-        description: `${updatedUser.name} foi atualizado com sucesso.`,
+        description: `${userName || 'Usuário'} foi atualizado com sucesso.`,
       });
       
       // Resetar o formulário
@@ -467,11 +527,74 @@ const Users = () => {
     }
   };
 
-  // Filtragem dos usuários
-  const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
+  // Função para atualizar o status do usuário
+  const handleUpdateUserStatus = async (userId: number, isActive: boolean) => {
+    try {
+      // Encontrar o usuário na lista para obter os dados atuais
+      const user = Array.isArray(usersQueryData) ? usersQueryData.find(u => u.id === userId) : null;
+      if (!user) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Usuário não encontrado.",
+        });
+        return;
+      }
+
+      // Atualizar apenas o campo is_active
+      const updatedUser = await updateUserMutate({ 
+        id: userId, 
+        data: { 
+          is_active: isActive,
+          name: user.name,
+          email: user.email,
+          // Manter os outros campos inalterados
+        } 
+      });
+
+      toast({
+        title: "Status atualizado",
+        description: `Status do usuário ${user.name} foi atualizado com sucesso.`,
+      });
+
+      // Recarregar lista de usuários
+      await refetch();
+    } catch (err) {
+      console.error('Erro ao atualizar status do usuário:', err);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível atualizar o status do usuário. Tente novamente.",
+      });
+    }
+  };
+
+// Filtragem dos usuários
+const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user =>
+  user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  (user.whatsapp && user.whatsapp.toLowerCase().includes(searchTerm.toLowerCase().replace(/\D/g, '')))
+) : [];
+
+  // Debug logs
+  console.log('usersQueryData type:', typeof usersQueryData);
+  console.log('usersQueryData:', usersQueryData);
+  console.log('filteredUsers type:', typeof filteredUsers);
+  console.log('filteredUsers:', filteredUsers);
+  
+  // Debug das datas dos usuários
+  if (Array.isArray(usersQueryData)) {
+    usersQueryData.forEach((user, index) => {
+      console.log(`User ${index} dates:`, {
+        id: user.id,
+        name: user.name,
+        created_at: user.created_at,
+        createdAt: user.createdAt,
+        updated_at: user.updated_at,
+        updatedAt: user.updatedAt
+      });
+    });
+  }
 
   // Renderizar tela de carregamento
   if (loading) {
@@ -489,10 +612,11 @@ const Users = () => {
           <div className="border rounded-lg overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[250px]"><Skeleton className="h-4 w-20" /></TableHead>
-                  <TableHead><Skeleton className="h-4 w-20" /></TableHead>
-                  <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                 <TableRow>
+                   <TableHead className="w-[250px]"><Skeleton className="h-4 w-20" /></TableHead>
+                   <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                   <TableHead className="w-[80px]"><Skeleton className="h-4 w-16" /></TableHead>
+                   <TableHead className="whitespace-nowrap"><Skeleton className="h-4 w-32" /></TableHead>
                   <TableHead><Skeleton className="h-4 w-20" /></TableHead>
                   <TableHead><Skeleton className="h-4 w-20" /></TableHead>
                   <TableHead><Skeleton className="h-4 w-20" /></TableHead>
@@ -500,17 +624,18 @@ const Users = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <TableRow key={index}>
-                    <TableCell><Skeleton className="h-8 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
-                  </TableRow>
-                ))}
+                  {Array.from({ length: 5 }).map((_, index) => (
+                   <TableRow key={index}>
+                     <TableCell><Skeleton className="h-8 w-40" /></TableCell>
+                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+<TableCell className="whitespace-nowrap"><Skeleton className="h-4 w-12" /></TableCell>
+                   <TableCell className="whitespace-nowrap"><Skeleton className="h-4 w-32" /></TableCell>
+                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                   </TableRow>
+                 ))}
               </TableBody>
             </Table>
           </div>
@@ -975,14 +1100,15 @@ const Users = () => {
         <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-[250px]">Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Equipes</TableHead>
-                <TableHead>Nível de Permissão</TableHead>
-                <TableHead>Data de Cadastro</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+               <TableRow>
+                <TableHead className="whitespace-nowrap">Nome</TableHead>
+                <TableHead className="whitespace-nowrap">Email</TableHead>
+                <TableHead className="whitespace-nowrap">Status</TableHead>
+                <TableHead className="whitespace-nowrap">WhatsApp</TableHead>
+                <TableHead className="whitespace-nowrap">Equipes</TableHead>
+                <TableHead className="whitespace-nowrap">Nível de Permissão</TableHead>
+                <TableHead className="whitespace-nowrap">Data de Cadastro</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -992,23 +1118,35 @@ const Users = () => {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <Avatar>
-                          <AvatarFallback>
-                            {user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+<AvatarFallback>
+                            {user.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'ND'}
                           </AvatarFallback>
                         </Avatar>
-                        <span>{user.name}</span>
+                        <span>{user.name || 'Nome não definido'}</span>
                       </div>
                     </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={user.is_active !== false ? "default" : "secondary"}
-                        className={user.is_active !== false
-                          ? "bg-green-100 text-green-800 hover:bg-green-200 border-green-200"
-                          : "bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-200"}
-                      >
-                        {user.is_active !== false ? "Ativo" : "Inativo"}
-                      </Badge>
+                    <TableCell>{user.email || 'Email não definido'}</TableCell>
+                     <TableCell className="whitespace-nowrap">
+                      <Switch
+                        checked={user.is_active !== false}
+                        onCheckedChange={(checked) => {
+                          // Função para atualizar o status do usuário
+                          handleUpdateUserStatus(user.id, checked);
+                        }}
+                        className={user.is_active !== false 
+                          ? "bg-green-500 data-[state=checked]:bg-green-500" 
+                          : "bg-gray-300"}
+                      />
+                     </TableCell>
+                     <TableCell className="whitespace-nowrap">
+                      {user.whatsapp ? (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3 w-3 text-green-600" />
+                          <span className="text-sm font-mono">{formatWhatsApp(user.whatsapp)}</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {user.occupations && user.occupations.length > 0 ? (
@@ -1055,7 +1193,7 @@ const Users = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {new Date(user.created_at || user.createdAt).toLocaleDateString('pt-BR')}
+                      {formatUserDate(user.created_at || user.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -1081,8 +1219,8 @@ const Users = () => {
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                 <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center">
                     Nenhum usuário encontrado.
                   </TableCell>
                 </TableRow>

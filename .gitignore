@@ -4,7 +4,6 @@ context-engineering-intro
 logs.md
 frontend
 frontend_old
-.project
 .claude
 CLAUDE.md
 claude-2.md
@@ -12,6 +11,7 @@ old
 guia_atual.md
 coverage
 docs
+.project
 
 # Environment files (do not commit secrets)
 .env

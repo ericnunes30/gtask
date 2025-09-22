@@ -270,6 +270,14 @@ export interface UpdateTaskRequest {
 // COMMENT INTERFACES
 // =====================================================
 
+export interface CommentLike {
+  id: number;
+  commentId: number;
+  userId: number;
+  createdAt: string;
+  user?: User;
+}
+
 export interface Comment {
   id: number;
   content: string;
@@ -280,6 +288,7 @@ export interface Comment {
   createdAt: string; // Mudar para camelCase
   updatedAt: string; // Mudar para camelCase
   user?: User; // Objeto do autor (carregado via preload)
+  likes?: CommentLike[]; // Curtidas no comentário
   repliesCount?: number; // Contagem de respostas diretas
   mentionedUsers?: User[]; // Usuários mencionados
   replies?: Comment[]; // Para respostas aninhadas pré-carregadas

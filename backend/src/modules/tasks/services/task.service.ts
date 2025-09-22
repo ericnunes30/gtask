@@ -71,24 +71,33 @@ export class TaskService extends TaskCreator implements TaskUpdater {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
-    // Raw SQL para buscar comentários e suas respostas
+// Raw SQL para buscar comentários e suas respostas
     const comments = await this.dataSource.query(`
       WITH RECURSIVE comment_tree AS (
         SELECT
           c.*,
-          json_build_object('id', u.id, 'name', u.name, 'email', u.email) as user
+          json_build_object('id', u.id, 'name', u.name, 'email', u.email) as user,
+          (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id) as likes_count
         FROM comments c
         LEFT JOIN users u ON u.id = c.user_id
         WHERE c.task_id = $1 AND c.parent_id IS NULL
         UNION ALL
         SELECT
           c.*,
-          json_build_object('id', u.id, 'name', u.name, 'email', u.email) as user
+          json_build_object('id', u.id, 'name', u.name, 'email', u.email) as user,
+          (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id) as likes_count
         FROM comments c
         LEFT JOIN users u ON u.id = c.user_id
         JOIN comment_tree ct ON ct.id = c.parent_id
       )
-      SELECT * FROM comment_tree;
+      SELECT 
+        *,
+        (SELECT json_agg(json_build_object(
+          'id', cl.id,
+          'userId', cl.user_id,
+          'createdAt', cl.created_at
+        )) FROM comment_likes cl WHERE cl.comment_id = comment_tree.id) as likes
+      FROM comment_tree;
     `, [id]);
 
     // Estrutura os comentários em formato aninhado

@@ -1,10 +1,11 @@
-import { useOptimizedQuery, useOptimisticMutation, useCacheManager, useDependentQuery, useQueryClient, usePrefetch } from '@/hooks/useOptimizedQuery'
+import { useOptimizedQuery, useOptimisticMutation, useCacheManager, useDependentQuery, usePrefetch } from '@/hooks/useOptimizedQuery'
 import { queryKeys } from '@/lib/react-query/keys'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { Task, CreateTaskRequest, UpdateTaskRequest } from '@/common/types'
 import { transformApiTaskToFrontend } from '@/utils/apiTransformers'
 import { toast } from '@/components/ui/use-toast'
+import { queryClient } from '@/lib/react-query/config'
 
 const taskService = {
   async getTasks(): Promise<Task[]> {
@@ -13,8 +14,14 @@ const taskService = {
   },
 
   async getTask(id: number): Promise<Task> {
+    console.log('🔄 TASK SERVICE: Chamando getTask para ID:', id);
     const response = await api.get(`${ROUTES.tasks}/${id}`)
-    return transformApiTaskToFrontend(response.data.data)
+    console.log('📋 TASK SERVICE: Resposta bruta da API:', response);
+    console.log('📊 TASK SERVICE: response.data:', response.data);
+    console.log('🎯 TASK SERVICE: response.data.data:', response.data.data);
+    const transformed = transformApiTaskToFrontend(response.data.data)
+    console.log('✅ TASK SERVICE: Dados transformados:', transformed);
+    return transformed
   },
 
   async getTasksByProject(projectId: number): Promise<Task[]> {

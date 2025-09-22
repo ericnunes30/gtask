@@ -1,9 +1,10 @@
-import { useOptimizedQuery, useOptimisticMutation, useCacheManager, useQueryClient } from '@/hooks/useOptimizedQuery'
+import { useOptimizedQuery, useOptimisticMutation, useCacheManager } from '@/hooks/useOptimizedQuery'
 import { queryKeys } from '@/lib/react-query/keys'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { Team } from '@/common/types'
 import { toast } from '@/components/ui/use-toast'
+import { queryClient } from '@/lib/react-query/config'
 
 interface CreateOccupationRequest {
   name: string

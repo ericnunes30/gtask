@@ -4,40 +4,55 @@ import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { CreateUserRequest, UpdateUserRequest, User } from '@/common/types'
 import { toast } from '@/components/ui/use-toast'
+import { queryClient as queryClientInstance } from '@/lib/react-query/config'
+import { useQueryClient as useQueryClientHook } from '@tanstack/react-query'
 
 export const userService = {
   async getUsers(): Promise<User[]> {
     const response = await api.get(ROUTES.users);
+    console.log('API Response getUsers:', response);
     // Support APIs that return either:
     //  - an array directly in response.data, or
     //  - a paginated wrapper { data: [...] } in response.data.data
     if (response?.data && Array.isArray(response.data)) {
+      console.log('Returning array directly:', response.data);
       return response.data as User[];
     }
     if (response?.data && response.data.data && Array.isArray(response.data.data)) {
+      console.log('Returning paginated data:', response.data.data);
       return response.data.data as User[];
     }
     // Fallback to whatever the endpoint returned (could be a single object)
+    console.log('Returning fallback data:', response.data);
     return response.data as any;
   },
   async getUser(userId: number): Promise<User> {
+    console.log('Getting user with id:', userId);
     const response = await api.get(`${ROUTES.users}/${userId}`);
+    console.log('Get user response:', response.data);
     return response.data;
   },
   async createUser(data: CreateUserRequest): Promise<User> {
+    console.log('Creating user with data:', data);
     const response = await api.post(ROUTES.users, data);
+    console.log('Create user response:', response.data);
     return response.data;
   },
   async updateUser(id: number, data: UpdateUserRequest): Promise<User> {
     // backend-2 expects PUT on /users/:id
+    console.log('Updating user with data:', { id, data });
     const response = await api.put(`${ROUTES.users}/${id}`, data);
+    console.log('Update user response:', response.data);
     return response.data;
   },
   async deleteUser(id: number): Promise<void> {
+    console.log('Deleting user with id:', id);
     await api.delete(`${ROUTES.users}/${id}`);
   },
   async assignRoles(userId: number, roleIds: number[]): Promise<User> {
+    console.log('Assigning roles to user:', { userId, roleIds });
     const response = await api.post(`${ROUTES.users}/${userId}/assign-roles`, { roleIds });
+    console.log('Assign roles response:', response.data);
     return response.data;
   },
 };
@@ -74,6 +89,7 @@ export const useGetUser = (userId: number) =>
 
 export const useCreateUser = () => {
   const { setData } = useCacheManager()
+  const queryClient = useQueryClientHook()
 
   return useOptimisticMutation({
     mutationFn: (data: CreateUserRequest) => userService.createUser(data),
@@ -126,6 +142,7 @@ export const useCreateUser = () => {
 
 export const useUpdateUser = () => {
   const { setData } = useCacheManager()
+  const queryClient = useQueryClientHook()
 
   return useOptimisticMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateUserRequest }) =>
@@ -180,6 +197,7 @@ export const useUpdateUser = () => {
 
 export const useDeleteUser = () => {
   const { setData, removeData } = useCacheManager()
+  const queryClient = useQueryClientHook()
 
   return useOptimisticMutation({
     mutationFn: (id: number) => userService.deleteUser(id),
