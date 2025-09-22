@@ -7,6 +7,7 @@ import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { Role } from '../../role/entities/role.entity';
+import { Occupation } from '../../occupation/entities/occupation.entity';
 import { Task } from '../../tasks/entities/task.entity';
 
 @Injectable()
@@ -16,12 +17,41 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
+    @InjectRepository(Occupation)
+    private readonly occupationRepository: Repository<Occupation>,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10); // 10 is the salt rounds
-    const user = this.userRepository.create({ ...createUserDto, password: hashedPassword });
-    return await this.userRepository.save(user);
+async create(createUserDto: CreateUserDto): Promise<User> {
+    const { occupationIds, ...userData } = createUserDto;
+    const hashedPassword = await bcrypt.hash(userData.password, 10); // 10 is the salt rounds
+    
+    // Criar o usuário com timestamps definidos
+    const user = this.userRepository.create({ 
+      ...userData, 
+      password: hashedPassword,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    // Salvar o usuário primeiro
+    const savedUser = await this.userRepository.save(user);
+    
+    // Se occupationIds foi fornecido, atribuir as occupations ao usuário
+    if (occupationIds && occupationIds.length > 0) {
+      const occupations = await this.occupationRepository.find({
+        where: { id: In(occupationIds) }
+      });
+      
+      if (occupations.length !== occupationIds.length) {
+        throw new NotFoundException('Uma ou mais occupations não foram encontradas');
+      }
+      
+      // Atribuir as occupations ao usuário
+      savedUser.occupations = occupations;
+      await this.userRepository.save(savedUser);
+    }
+    
+    return savedUser;
   }
 
   async findAll(): Promise<User[]> {
@@ -100,6 +130,31 @@ export class UserService {
 
     // Atribuir as roles ao usuário
     user.roles = roles;
+    
+    return await this.userRepository.save(user);
+  }
+
+  async assignOccupations(userId: number, occupationIds: number[]): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['occupations'],
+    });
+    
+    if (!user) {
+      throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
+    }
+
+    // Buscar occupations válidos pelos IDs fornecidos
+    const occupations = await this.occupationRepository.find({
+      where: { id: In(occupationIds) }
+    });
+    
+    if (occupations.length !== occupationIds.length) {
+      throw new NotFoundException('Uma ou mais ocupações não foram encontradas');
+    }
+
+    // Atribuir as occupations ao usuário
+    user.occupations = occupations;
     
     return await this.userRepository.save(user);
   }

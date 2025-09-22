@@ -57,4 +57,10 @@ export class UserController {
     const searchPermissionsUser = this.userService.assignRoles(id, roleIds);
     return searchPermissionsUser
   }
+
+  @Post(':id/assign-occupations')
+  assignOccupations(@Param('id', ParseIntPipe) id: number, @Body('occupationIds') occupationIds: number[]) {
+    const assignOccupations = this.userService.assignOccupations(id, occupationIds);
+    return assignOccupations
+  }
 }

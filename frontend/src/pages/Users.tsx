@@ -35,6 +35,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
 import { User, Role, CreateUserRequest, UpdateUserRequest } from "@/common/types";
 import { useBackendServices } from '@/hooks/useBackendServices'
+import { useAssignOccupations } from '@/services/backend/users'
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -164,6 +165,7 @@ const Users = () => {
   const { mutateAsync: createUserMutate } = usersService.useCreateUser();
   const { mutateAsync: updateUserMutate } = usersService.useUpdateUser();
   const { mutate: deleteUserMutate } = usersService.useDeleteUser();
+  const { mutateAsync: assignOccupationsMutate } = useAssignOccupations();
 
   // Formulário de novo usuário
   const [newUser, setNewUser] = useState<{
@@ -257,6 +259,10 @@ const Users = () => {
     }
 
     try {
+      // Debug: verificar dados do formulário
+      console.log('Dados do formulário:', newUser);
+      console.log('Occupations selecionadas:', newUser.occupations);
+      
       // Criar objeto de usuário básico para o backend-2
       const userData = {
         name: newUser.name,
@@ -264,9 +270,12 @@ const Users = () => {
         password: newUser.password,
         is_active: newUser.is_active,
         whatsapp: newUser.whatsapp || null,
+        occupationIds: newUser.occupations, // Adiciona occupationIds ao payload
       };
 
-      const createdUser = await createUserMutate({ data: userData });
+      console.log('Enviando dados do usuário:', userData);
+      const createdUser = await createUserMutate(userData);
+      console.log('Usuário criado:', createdUser);
 
       // Depois de criar o usuário, tentar atribuir roles se houver
       if (newUser.roles && newUser.roles.length > 0) {
@@ -280,6 +289,24 @@ const Users = () => {
             description: "Usuário criado, mas houve erro ao atribuir nível de permissão.",
           });
         }
+      }
+
+      // Depois de criar o usuário, tentar atribuir occupations se houver
+      if (newUser.occupations && newUser.occupations.length > 0) {
+        console.log('Tentando atribuir occupations:', newUser.occupations);
+        try {
+          await assignOccupationsMutate({ userId: createdUser.id, occupationIds: newUser.occupations });
+          console.log('Occupations atribuídas com sucesso');
+        } catch (occupationError) {
+          console.error('Erro ao atribuir equipes:', occupationError);
+          toast({
+            variant: "destructive",
+            title: "Aviso",
+            description: "Usuário criado, mas houve erro ao atribuir equipes.",
+          });
+        }
+      } else {
+        console.log('Nenhuma occupation para atribuir');
       }
 
       // Resetar o formulário
@@ -296,9 +323,9 @@ const Users = () => {
 
       setIsDialogOpen(false);
 
-      toast({
+toast({
         title: "Usuário adicionado",
-        description: `${createdUser.name} foi adicionado com sucesso.`,
+        description: `${createdUser.data?.name || createdUser.name} foi adicionado com sucesso.`,
       });
 
       // Recarregar lista de usuários

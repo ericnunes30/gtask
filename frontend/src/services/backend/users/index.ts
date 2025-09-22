@@ -1,11 +1,11 @@
-import { useOptimizedQuery, useOptimisticMutation, useCacheManager, useQueryClient } from '@/hooks/useOptimizedQuery'
+import { useOptimizedQuery, useOptimisticMutation, useCacheManager } from '@/hooks/useOptimizedQuery'
 import { queryKeys } from '@/lib/react-query/keys'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { CreateUserRequest, UpdateUserRequest, User } from '@/common/types'
 import { toast } from '@/components/ui/use-toast'
-import { queryClient as queryClientInstance } from '@/lib/react-query/config'
-import { useQueryClient as useQueryClientHook } from '@tanstack/react-query'
+import { queryClient } from '@/lib/react-query/config'
+import { useQueryClient } from '@tanstack/react-query'
 
 export const userService = {
   async getUsers(): Promise<User[]> {
@@ -22,24 +22,29 @@ export const userService = {
     // Fallback to whatever the endpoint returned (could be a single object)
     return response.data as any;
   },
-  async getUser(userId: number): Promise<User> {
+async getUser(userId: number): Promise<User> {
     const response = await api.get(`${ROUTES.users}/${userId}`);
     return response.data;
   },
-  async createUser(data: CreateUserRequest): Promise<User> {
+async createUser(data: CreateUserRequest): Promise<User> {
     const response = await api.post(ROUTES.users, data);
     return response.data;
   },
-  async updateUser(id: number, data: UpdateUserRequest): Promise<User> {
+async updateUser(id: number, data: UpdateUserRequest): Promise<User> {
     // backend-2 expects PUT on /users/:id
     const response = await api.put(`${ROUTES.users}/${id}`, data);
     return response.data;
   },
-  async deleteUser(id: number): Promise<void> {
+async deleteUser(id: number): Promise<void> {
     await api.delete(`${ROUTES.users}/${id}`);
   },
   async assignRoles(userId: number, roleIds: number[]): Promise<User> {
     const response = await api.post(`${ROUTES.users}/${userId}/assign-roles`, { roleIds });
+    return response.data;
+  },
+
+  async assignOccupations(userId: number, occupationIds: number[]): Promise<User> {
+    const response = await api.post(`${ROUTES.users}/${userId}/assign-occupations`, { occupationIds });
     return response.data;
   },
 };
@@ -76,7 +81,7 @@ export const useGetUser = (userId: number) =>
 
 export const useCreateUser = () => {
   const { setData } = useCacheManager()
-  const queryClient = useQueryClientHook()
+  const queryClient = useQueryClient()
 
   return useOptimisticMutation({
     mutationFn: (data: CreateUserRequest) => userService.createUser(data),
@@ -129,7 +134,7 @@ export const useCreateUser = () => {
 
 export const useUpdateUser = () => {
   const { setData } = useCacheManager()
-  const queryClient = useQueryClientHook()
+  const queryClient = useQueryClient()
 
   return useOptimisticMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateUserRequest }) =>
@@ -182,9 +187,36 @@ export const useUpdateUser = () => {
   })
 }
 
+export const useAssignOccupations = () => {
+  return useOptimisticMutation({
+    mutationFn: ({ userId, occupationIds }: { userId: number; occupationIds: number[] }) =>
+      userService.assignOccupations(userId, occupationIds),
+
+    invalidateKeys: [
+      queryKeys.users.lists(),
+      queryKeys.occupations.lists(),
+    ],
+
+    onSuccess: (_, { userId }) => {
+      toast({
+        title: 'Sucesso',
+        description: 'Equipes atribuídas com sucesso',
+      })
+    },
+
+    onError: (error) => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atribuir as equipes',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
 export const useDeleteUser = () => {
   const { setData, removeData } = useCacheManager()
-  const queryClient = useQueryClientHook()
+  const queryClient = useQueryClient()
 
   return useOptimisticMutation({
     mutationFn: (id: number) => userService.deleteUser(id),

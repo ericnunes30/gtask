@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsBoolean } from "class-validator";
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsBoolean, IsArray, IsNumber } from "class-validator";
 
 export class CreateUserDto {
   @IsNotEmpty({ message: 'Nome é obrigatório' })
@@ -21,4 +21,9 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   whatsapp?: string;
+
+  @IsOptional()
+  @IsArray({ message: 'Occupation IDs deve ser um array' })
+  @IsNumber({}, { each: true, message: 'Cada ID de occupation deve ser um número' })
+  occupationIds?: number[];
 }
