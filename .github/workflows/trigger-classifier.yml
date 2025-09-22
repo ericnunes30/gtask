@@ -1,4 +1,4 @@
-name: Trigger Issue Classifier
+name: Trigger Classifier
 
 on:
   issues:
