@@ -12,9 +12,15 @@ jobs:
 
       - name: Debug - Check frame-code installation
         run: |
+          echo "Checking for frame-code in PATH:"
           which frame-code || echo "frame-code not found in PATH"
-          ls -l /usr/local/bin/frame-code || echo "No frame-code binary"
+          echo "Checking installation directory:"
+          ls -l /usr/local/lib/node_modules/frame-code-cli || echo "No frame-code-cli installed"
           echo "PATH: $PATH"
+          echo "Node.js version:"
+          node --version
+          echo "npm version:"
+          npm --version
       
       - name: Test Frame Code CLI
         run: frame-code --version
