@@ -1,0 +1,14 @@
+name: Test Frame Code CLI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-frame-code-cli:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test Frame Code CLI
+        run: docker run --rm --entrypoint /bin/bash frame-code-listener-integrated -c "frame-code --version"
