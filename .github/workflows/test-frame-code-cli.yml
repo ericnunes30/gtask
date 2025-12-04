@@ -10,5 +10,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Debug - Check frame-code installation
+        run: |
+          which frame-code || echo "frame-code not found in PATH"
+          ls -l /usr/local/bin/frame-code || echo "No frame-code binary"
+          echo "PATH: $PATH"
+      
       - name: Test Frame Code CLI
         run: frame-code --version
