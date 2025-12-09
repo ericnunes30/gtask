@@ -46,15 +46,29 @@ jobs:
 
       - name: Run Issue Triage Agent
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL || 'https://api.openai.com/v1' }}
-          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-4o-mini' }}
+          LLM_PROVIDER: 'openai-compatible'
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: 'https://openrouter.ai/api/v1'
+          LLM_DEFAULT_MODEL: 'kwaipilot/kat-coder-pro:free'
+          LLM_MAX_TOKENS: '3000'
+          LLM_TEMPERATURE: '0.7'
+          LLM_MAX_OUTPUT_TOKENS: '240000'
+          COMPRESSION_ENABLED: 'true'
+          COMPRESSION_THRESHOLD: '0.8'
+          COMPRESSION_MAX_COUNT: '5'
+          COMPRESSION_MAX_TOKENS: '600'
+          COMPRESSION_MODEL: 'qwen/qwen3-coder:free'
+          COMPRESSION_LOGGING: 'true'
+          COMPRESSION_PERSIST: 'true'
+          MCP_TOOLS_ENABLED: 'false'
+          AGENT_MODE: 'autonomous'
+          DEBUG: 'false'
         run: |
           echo "Starting issue triage agent..."
           
-          # Check if OpenAI API key is available
-          if [ -z "$OPENAI_API_KEY" ]; then
-            echo "ERROR: OPENAI_API_KEY is not set. Please add it to repository secrets."
+          # Check if LLM API key is available
+          if [ -z "$LLM_API_KEY" ]; then
+            echo "ERROR: LLM_API_KEY is not set. Please add it to repository secrets."
             exit 1
           fi
           # Create triage prompt for the agent
