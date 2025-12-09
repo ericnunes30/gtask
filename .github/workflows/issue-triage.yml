@@ -11,7 +11,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-- name: Verify tools installation
+      - name: Verify tools installation
         run: |
           echo "Verifying installed tools..."
           echo "Node.js version:"
