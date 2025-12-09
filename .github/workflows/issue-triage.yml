@@ -11,17 +11,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          
-      - name: Install dependencies
+- name: Verify tools installation
         run: |
-          echo "Installing frame-code-cli..."
-          npm install -g frame-code-cli
-          echo "Checking installation:"
+          echo "Verifying installed tools..."
+          echo "Node.js version:"
+          node --version
+          echo "npm version:"
+          npm --version
+          echo "frame-code version:"
           frame-code --version
+          echo "✅ All tools are already installed in the container"
 
       - name: Extract issue information
         id: issue-info
@@ -46,9 +45,18 @@ jobs:
           EOF
 
       - name: Run Issue Triage Agent
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL || 'https://api.openai.com/v1' }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-4o-mini' }}
         run: |
           echo "Starting issue triage agent..."
           
+          # Check if OpenAI API key is available
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "ERROR: OPENAI_API_KEY is not set. Please add it to repository secrets."
+            exit 1
+          fi
           # Create triage prompt for the agent
           cat > triage-prompt.md << EOF
           # Issue Triage Task
@@ -87,7 +95,7 @@ jobs:
           EOF
           
           # Run the frame-code agent with the triage prompt and 5 minute timeout
-          timeout 300 frame-code agent run --prompt-file triage-prompt.md --output triage-result.json
+          timeout 300 frame-code autonomous --input-file triage-prompt.md --output-file triage-result.json
           
           echo "Triage completed. Results:"
           cat triage-result.json
