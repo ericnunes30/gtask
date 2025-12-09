@@ -66,12 +66,13 @@ jobs:
           SKILLS_ENABLED: 'true'
           SKILLS_DIRECTORY: '.code-skills'
           AGENT_MODE: 'autonomous'
-          DEBUG: 'false'
+          DEBUG: 'true'
         run: |
           echo "Setting up agent skills..."
           if [ -d "/tmp/frame-code-cli/.code-skills" ]; then
             cp -r /tmp/frame-code-cli/.code-skills .code-skills
             echo "✅ Skills copied to $(pwd)/.code-skills"
+            ls -R .code-skills
           else
              echo "⚠️ Skills not found in /tmp/frame-code-cli. Agent might be limited."
           fi
@@ -117,7 +118,7 @@ jobs:
           
           # Run the frame-code agent in autonomous mode
           # The agent will use MCP tools/skills to interact with GitHub
-          timeout 300 frame-code autonomous --input-file triage-prompt.md --output-file agent-log.txt
+          timeout 300 frame-code autonomous --verbose --input-file triage-prompt.md --output-file agent-log.txt
           
           echo "Agent execution completed. Full log:"
           cat agent-log.txt
