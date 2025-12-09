@@ -49,7 +49,7 @@ jobs:
           LLM_PROVIDER: 'openai-compatible'
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_BASE_URL: 'https://openrouter.ai/api/v1'
-          LLM_DEFAULT_MODEL: 'kwaipilot/kat-coder-pro:free'
+          LLM_DEFAULT_MODEL: 'qwen/qwen3-coder:free'
           LLM_MAX_TOKENS: '3000'
           LLM_TEMPERATURE: '0.7'
           LLM_MAX_OUTPUT_TOKENS: '240000'
@@ -89,124 +89,23 @@ jobs:
           \`\`\`
           
           **Instructions:**
-          1. Analyze the issue content, title, and any existing labels
-          2. Consider the impact on users and business operations
-          3. Assign appropriate priority (P0-P3)
-          4. Provide justification for your decision
-          5. Suggest any additional labels that should be applied
+          1. Analyze the issue content and impact.
+          2. USE YOUR TOOLS to assign the appropriate priority label (P0-P3) directly to the issue.
+          3. USE YOUR TOOLS to add a comment on the issue with your justification.
+          4. If the issue is critical (P0/P1), ensure your comment highlights this clearly.
           
-          **Output Format:**
-          Respond with a JSON object containing:
-          \`\`\`json
-          {
-            "priority": "P0|P1|P2|P3",
-            "justification": "Detailed explanation of the priority assignment",
-            "suggested_labels": ["label1", "label2"],
-            "requires_immediate_attention": true|false,
-            "estimated_complexity": "low|medium|high"
-          }
-          \`\`\`
+          **Available Priority Labels:**
+          - P0: Critical/Security (Extremely High)
+          - P1: Core Functionality (High)
+          - P2: Regular Bug/Feature (Medium)
+          - P3: Minor/Cosmetic (Low)
+          
+          DO NOT RETURN JSON. ACT ON THE ISSUE DIRECTLY.
           EOF
           
-          # Run the frame-code agent with the triage prompt and 5 minute timeout
-          timeout 300 frame-code autonomous --input-file triage-prompt.md --output-file triage-result.json
+          # Run the frame-code agent in autonomous mode
+          # The agent will use MCP tools/skills to interact with GitHub
+          timeout 300 frame-code autonomous --input-file triage-prompt.md --output-file agent-log.txt
           
-          echo "Triage completed. Results:"
-          cat triage-result.json
-
-      - name: Process Triage Results
-        id: triage-results
-        run: |
-          # Extract priority from results
-          PRIORITY=$(cat triage-result.json | jq -r '.priority')
-          JUSTIFICATION=$(cat triage-result.json | jq -r '.justification')
-          REQUIRES_ATTENTION=$(cat triage-result.json | jq -r '.requires_immediate_attention')
-          
-          echo "Assigned Priority: $PRIORITY"
-          echo "Justification: $JUSTIFICATION"
-          echo "Requires Immediate Attention: $REQUIRES_ATTENTION"
-          
-          # Set outputs for next steps
-          echo "priority=$PRIORITY" >> $GITHUB_OUTPUT
-          echo "justification=$JUSTIFICATION" >> $GITHUB_OUTPUT
-          echo "requires_attention=$REQUIRES_ATTENTION" >> $GITHUB_OUTPUT
-
-      - name: Apply Priority Label
-        if: steps.triage-results.outputs.priority != ''
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const priority = '${{ steps.triage-results.outputs.priority }}';
-            const issueNumber = context.issue.number;
-            
-            // Remove existing priority labels if any
-            const existingLabels = ['P0', 'P1', 'P2', 'P3'];
-            const currentLabels = context.payload.issue.labels.map(l => l.name);
-            
-            const labelsToRemove = existingLabels.filter(label => 
-              currentLabels.includes(label) && label !== priority
-            );
-            
-            if (labelsToRemove.length > 0) {
-              await github.rest.issues.removeLabel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber,
-                name: labelsToRemove
-              });
-            }
-            
-            // Add new priority label
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber,
-              labels: [priority]
-            });
-
-      - name: Add Triage Comment
-        if: steps.triage-results.outputs.justification != ''
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const priority = '${{ steps.triage-results.outputs.priority }}';
-            const justification = '${{ steps.triage-results.outputs.justification }}';
-            const requiresAttention = '${{ steps.triage-results.outputs.requires_attention }}' === 'true';
-            
-            const comment = `## 🤖 Issue Triage Results
-            
-            **Priority Assigned:** ${priority}
-            
-            **Justification:** ${justification}
-            
-            ${requiresAttention ? '⚠️ **This issue requires immediate attention**' : ''}
-            
-            ---
-            *This triage was performed automatically by the Issue Triage Agent.*`;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: comment
-            });
-
-      - name: Notify High Priority Issues
-        if: steps.triage-results.outputs.priority == 'P0' || steps.triage-results.outputs.priority == 'P1'
-        run: |
-          echo "🚨 HIGH PRIORITY ISSUE DETECTED: ${{ steps.triage-results.outputs.priority }}"
-          echo "Issue: ${{ github.event.issue.html_url }}"
-          echo "Justification: ${{ steps.triage-results.outputs.justification }}"
-          
-          # Here you could add additional notification logic:
-          # - Send Slack notification
-          # - Send email
-          # - Create alert in monitoring system
-          # - Notify specific teams
-
-      - name: Log Triage Activity
-        run: |
-          echo "$(date): Issue #${{ github.event.issue.number }} triaged as ${{ steps.triage-results.outputs.priority }}" >> triage-log.txt
-          echo "Issue URL: ${{ github.event.issue.html_url }}" >> triage-log.txt
-          echo "Justification: ${{ steps.triage-results.outputs.justification }}" >> triage-log.txt
-          echo "---" >> triage-log.txt
+          echo "Agent execution completed. Full log:"
+          cat agent-log.txt
