@@ -1,0 +1,190 @@
+name: Issue Triage Agent
+
+on:
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  issue-triage:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          echo "Installing frame-code-cli..."
+          npm install -g frame-code-cli
+          echo "Checking installation:"
+          frame-code --version
+
+      - name: Extract issue information
+        id: issue-info
+        run: |
+          echo "Issue Number: ${{ github.event.issue.number }}"
+          echo "Issue Title: ${{ github.event.issue.title }}"
+          echo "Issue Body: ${{ github.event.issue.body }}"
+          echo "Issue Labels: ${{ github.event.issue.labels.*.name }}"
+          echo "Issue Author: ${{ github.event.issue.user.login }}"
+          
+          # Save issue data to JSON file for agent processing
+          cat > issue-data.json << EOF
+          {
+            "number": ${{ github.event.issue.number }},
+            "title": "${{ github.event.issue.title }}",
+            "body": "${{ github.event.issue.body }}",
+            "author": "${{ github.event.issue.user.login }}",
+            "labels": [${{ join(github.event.issue.labels.*.name, ',') | replace('null', '') }}],
+            "created_at": "${{ github.event.issue.created_at }}",
+            "url": "${{ github.event.issue.html_url }}"
+          }
+          EOF
+
+      - name: Run Issue Triage Agent
+        run: |
+          echo "Starting issue triage agent..."
+          
+          # Create triage prompt for the agent
+          cat > triage-prompt.md << EOF
+          # Issue Triage Task
+          
+          Analyze the following GitHub issue and assign a priority level from P0 to P3:
+          
+          **Priority Levels:**
+          - **P0 (Extremely High)**: Critical bugs affecting production, security vulnerabilities, complete system outages
+          - **P1 (High)**: Significant bugs affecting core functionality, major performance issues
+          - **P2 (Medium)**: Regular bugs, feature requests with clear business value
+          - **P3 (Low)**: Minor issues, cosmetic problems, nice-to-have features
+          
+          **Issue Information:**
+          \`\`\`json
+          $(cat issue-data.json)
+          \`\`\`
+          
+          **Instructions:**
+          1. Analyze the issue content, title, and any existing labels
+          2. Consider the impact on users and business operations
+          3. Assign appropriate priority (P0-P3)
+          4. Provide justification for your decision
+          5. Suggest any additional labels that should be applied
+          
+          **Output Format:**
+          Respond with a JSON object containing:
+          \`\`\`json
+          {
+            "priority": "P0|P1|P2|P3",
+            "justification": "Detailed explanation of the priority assignment",
+            "suggested_labels": ["label1", "label2"],
+            "requires_immediate_attention": true|false,
+            "estimated_complexity": "low|medium|high"
+          }
+          \`\`\`
+          EOF
+          
+          # Run the frame-code agent with the triage prompt and 5 minute timeout
+          timeout 300 frame-code agent run --prompt-file triage-prompt.md --output triage-result.json
+          
+          echo "Triage completed. Results:"
+          cat triage-result.json
+
+      - name: Process Triage Results
+        id: triage-results
+        run: |
+          # Extract priority from results
+          PRIORITY=$(cat triage-result.json | jq -r '.priority')
+          JUSTIFICATION=$(cat triage-result.json | jq -r '.justification')
+          REQUIRES_ATTENTION=$(cat triage-result.json | jq -r '.requires_immediate_attention')
+          
+          echo "Assigned Priority: $PRIORITY"
+          echo "Justification: $JUSTIFICATION"
+          echo "Requires Immediate Attention: $REQUIRES_ATTENTION"
+          
+          # Set outputs for next steps
+          echo "priority=$PRIORITY" >> $GITHUB_OUTPUT
+          echo "justification=$JUSTIFICATION" >> $GITHUB_OUTPUT
+          echo "requires_attention=$REQUIRES_ATTENTION" >> $GITHUB_OUTPUT
+
+      - name: Apply Priority Label
+        if: steps.triage-results.outputs.priority != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const priority = '${{ steps.triage-results.outputs.priority }}';
+            const issueNumber = context.issue.number;
+            
+            // Remove existing priority labels if any
+            const existingLabels = ['P0', 'P1', 'P2', 'P3'];
+            const currentLabels = context.payload.issue.labels.map(l => l.name);
+            
+            const labelsToRemove = existingLabels.filter(label => 
+              currentLabels.includes(label) && label !== priority
+            );
+            
+            if (labelsToRemove.length > 0) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                name: labelsToRemove
+              });
+            }
+            
+            // Add new priority label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: [priority]
+            });
+
+      - name: Add Triage Comment
+        if: steps.triage-results.outputs.justification != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const priority = '${{ steps.triage-results.outputs.priority }}';
+            const justification = '${{ steps.triage-results.outputs.justification }}';
+            const requiresAttention = '${{ steps.triage-results.outputs.requires_attention }}' === 'true';
+            
+            const comment = `## 🤖 Issue Triage Results
+            
+            **Priority Assigned:** ${priority}
+            
+            **Justification:** ${justification}
+            
+            ${requiresAttention ? '⚠️ **This issue requires immediate attention**' : ''}
+            
+            ---
+            *This triage was performed automatically by the Issue Triage Agent.*`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+      - name: Notify High Priority Issues
+        if: steps.triage-results.outputs.priority == 'P0' || steps.triage-results.outputs.priority == 'P1'
+        run: |
+          echo "🚨 HIGH PRIORITY ISSUE DETECTED: ${{ steps.triage-results.outputs.priority }}"
+          echo "Issue: ${{ github.event.issue.html_url }}"
+          echo "Justification: ${{ steps.triage-results.outputs.justification }}"
+          
+          # Here you could add additional notification logic:
+          # - Send Slack notification
+          # - Send email
+          # - Create alert in monitoring system
+          # - Notify specific teams
+
+      - name: Log Triage Activity
+        run: |
+          echo "$(date): Issue #${{ github.event.issue.number }} triaged as ${{ steps.triage-results.outputs.priority }}" >> triage-log.txt
+          echo "Issue URL: ${{ github.event.issue.html_url }}" >> triage-log.txt
+          echo "Justification: ${{ steps.triage-results.outputs.justification }}" >> triage-log.txt
+          echo "---" >> triage-log.txt
