@@ -60,7 +60,11 @@ jobs:
           COMPRESSION_MODEL: 'qwen/qwen3-coder:free'
           COMPRESSION_LOGGING: 'true'
           COMPRESSION_PERSIST: 'true'
-          MCP_TOOLS_ENABLED: 'false'
+          COMPRESSION_LOGGING: 'true'
+          COMPRESSION_PERSIST: 'true'
+          MCP_TOOLS_ENABLED: 'true'
+          SKILLS_ENABLED: 'true'
+          SKILLS_DIRECTORY: '.code-skills'
           AGENT_MODE: 'autonomous'
           DEBUG: 'false'
         run: |
