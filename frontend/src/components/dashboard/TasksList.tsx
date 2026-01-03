@@ -37,7 +37,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"; // Biblioteca para formatação de datas
 import { ptBR } from "date-fns/locale"; // Localização PT-BR para date-fns
 import { cn } from "@/utils/utils"; // Utilitário para classes condicionais (comum com Shadcn/ui)
-import { Task, TaskPriority, TaskStatus, UpdateTaskRequest, Team } from '@/common/types';
+import { Task, TaskPriority, TaskStatus, UpdateTaskRequest, Team } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { toast } from "sonner"; // Biblioteca para notificações (toast)
 import { usePermissions } from '@/hooks/usePermissions';

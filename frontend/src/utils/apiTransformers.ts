@@ -1,6 +1,6 @@
 // frontend/src/utils/apiTransformers.ts
 
-import { Task, Project, Comment, Notification, ActivityLog } from '@/common/types';
+import { Task, Project, Comment, Notification, ActivityLog } from '@/utils/commonTypes';
 
 export const transformApiActivityLogToFrontend = (apiActivityLog: any): ActivityLog => {
   const transformedActivityLog: any = { ...apiActivityLog };

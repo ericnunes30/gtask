@@ -22,7 +22,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Project, Task, TaskStatus, User, TaskPriority, UpdateTaskRequest } from '@/common/types';
+import { Project, Task, TaskStatus, User, TaskPriority, UpdateTaskRequest } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

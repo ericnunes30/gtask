@@ -1,6 +1,6 @@
 import { useOptimisticMutation, useOptimizedQuery, useCacheManager } from '@/hooks/useOptimizedQuery'
 import { queryKeys } from '@/lib/react-query/keys'
-import { LoginCredentials, AuthResponse, User } from '@/common/types'
+import { LoginCredentials, AuthResponse, User } from '@/utils/commonTypes'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { toast } from '@/components/ui/use-toast'

@@ -43,7 +43,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/utils/utils";
-import { Project, ProjectPriority, Team, User, CreateProjectRequest, UpdateProjectRequest } from '@/common/types';
+import { Project, ProjectPriority, Team, User, CreateProjectRequest, UpdateProjectRequest } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { Label } from "@/components/ui/label"; // Adicionar importação de Label
 

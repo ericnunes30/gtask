@@ -6,7 +6,7 @@ import {
   RecurringTask,
   CreateRecurringTaskRequest,
   UpdateRecurringTaskRequest,
-} from '@/common/types'
+} from '@/utils/commonTypes'
 import { toast } from '@/components/ui/use-toast'
 import { queryClient } from '@/lib/react-query/config'
 

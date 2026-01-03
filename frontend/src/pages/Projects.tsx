@@ -37,7 +37,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Project, ProjectPriority, Task } from '@/common/types';
+import { Project, ProjectPriority, Task } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePermissions } from '@/hooks/usePermissions';

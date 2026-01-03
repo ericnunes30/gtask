@@ -35,7 +35,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { RecurringTask, User } from '@/common/types';
+import { RecurringTask, User } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { usePermissions } from '@/hooks/usePermissions';
 import { RecurringTaskForm } from '@/components/forms/RecurringTaskForm';

@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useQueryClient } from '@tanstack/react-query';
-import { Project, ProjectPriority, User, Team, UpdateTaskRequest, TaskStatus } from '@/common/types';
+import { Project, ProjectPriority, User, Team, UpdateTaskRequest, TaskStatus } from '@/utils/commonTypes';
 import { transformApiProjectToFrontend } from '@/utils/apiTransformers';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { getProjectQueryOptions } from '@/services/backend/projects';

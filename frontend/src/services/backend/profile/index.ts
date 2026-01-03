@@ -1,6 +1,6 @@
 import { useOptimisticMutation, useCacheManager } from '@/hooks/useOptimizedQuery'
 import { queryKeys } from '@/lib/react-query/keys'
-import { UpdateUserRequest, User } from '@/common/types'
+import { UpdateUserRequest, User } from '@/utils/commonTypes'
 import { userService } from '@/services/backend/users'
 import { toast } from '@/components/ui/use-toast'
 import { queryClient } from '@/lib/react-query/config'

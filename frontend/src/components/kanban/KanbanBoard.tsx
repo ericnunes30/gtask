@@ -34,7 +34,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Task, TaskStatus, UpdateTaskRequest } from '@/common/types';
+import { Task, TaskStatus, UpdateTaskRequest } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import TaskDetailsModal from "@/components/tasks/TaskDetailsModal";
 import useProcessedKanbanData from '@/hooks/useProcessedKanbanData';

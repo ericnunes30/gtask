@@ -19,7 +19,7 @@ import TaskTimerDisplay from './TaskDetails/TaskTimerDisplay';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import TaskDetailedFields from './TaskDetails/TaskDetailedFields';
 import TaskDetailsPopup from './TaskDetailsPopup';
-import { Task } from '@/common/types';
+import { Task } from '@/utils/commonTypes';
 
 interface TaskDetailsModalProps {
   isOpen: boolean;

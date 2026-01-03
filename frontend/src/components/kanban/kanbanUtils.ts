@@ -1,6 +1,6 @@
 // frontend/src/components/kanban/kanbanUtils.ts
 import { KanbanTask, FiltersObject, BoardMode, ViewMode, ProcessedKanbanColumns, TasksMap, ProcessedColumnOrder } from './kanbanTypes';
-import { TaskStatus, TaskPriority } from '@/common/types';
+import { TaskStatus, TaskPriority } from '@/utils/commonTypes';
 
 // Mapeamento de status da API para IDs de coluna no modo status
 export const statusToColumnIdMap: Record<TaskStatus, string> = {

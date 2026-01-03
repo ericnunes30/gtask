@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea"; // Adicionado Textarea
 import { Heart, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Comment as ApiComment, User as ApiUser } from '@/common/types'; // Importar a interface Comment e User
+import { Comment as ApiComment, User as ApiUser } from '@/utils/commonTypes'; // Importar a interface Comment e User
 import { useBackendServices } from '@/hooks/useBackendServices'
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter'; // Importar useAuth
 import { toast } from "sonner";
