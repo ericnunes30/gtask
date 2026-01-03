@@ -1,0 +1,24 @@
+# Dockerfile de desenvolvimento para o Backend
+FROM node:22-slim
+
+WORKDIR /app
+
+# Install OS build deps for native modules (e.g., bcrypt)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev)
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Expose the application port
+EXPOSE 3334
+
+# Run in development mode with watch
+CMD ["npm", "run", "start:dev"]

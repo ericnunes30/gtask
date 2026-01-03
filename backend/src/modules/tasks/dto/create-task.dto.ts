@@ -31,11 +31,13 @@ export class CreateTaskDto {
   @IsEnum(Status)
   status: Status;
 
+  @IsOptional()
   @IsDateString()
-  start_date: Date;
+  start_date?: string | null;
 
+  @IsOptional()
   @IsDateString()
-  due_date: Date;
+  due_date?: string | null;
 
   @IsOptional()
   @IsNumber()

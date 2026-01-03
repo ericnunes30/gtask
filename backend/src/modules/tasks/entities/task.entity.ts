@@ -45,11 +45,11 @@ export class Task {
   })
   status: Status;
 
-  @Column({ type: 'timestamp' })
-  start_date: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  start_date: Date | null;
 
-  @Column({ type: 'timestamp' })
-  due_date: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  due_date: Date | null;
 
   @Column({ type: 'integer', default: 0 })
   timer: number;
