@@ -81,7 +81,7 @@ interface ProjectFormProps {
 export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: ProjectFormProps) {
   const navigate = useNavigate();
   const { projects, users: usersService, teams: teamsService } = useBackendServices();
-  const { mutate, isPending } = projects.useCreateProject();
+  const { mutate, isPending } = projectId ? projects.useUpdateProject() : projects.useCreateProject();
   const { data: usersQueryData = [] as User[] } = usersService.useGetUsers();
   const { data: teamsQueryData = [] as Team[] } = teamsService.useGetTeams();
   const { data: projectData } = projects.useGetProject(projectId as number, Boolean(projectId));
@@ -320,6 +320,7 @@ export function ProjectForm({ projectId, initialData, onSuccess, onDelete }: Pro
       console.log('📤 Dados do projeto preparados:', projectData);
       console.log('🔄 Iniciando mutação com projectId:', projectId);
 
+      // Padrão consistente: ambos recebem { id?, data }
       mutate(
         { id: projectId, data: projectData },
         {

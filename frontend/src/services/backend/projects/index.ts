@@ -33,6 +33,9 @@ const projectService = {
   },
 }
 
+// Padrão consistente: ambos recebem { id?, data }
+type ProjectMutationInput = { id?: number; data: CreateProjectRequest | UpdateProjectRequest }
+
 export const useGetProjects = () =>
   useOptimizedQuery(
     queryKeys.projects.lists(),
@@ -115,9 +118,9 @@ export const useCreateProject = () => {
   const { setData } = useCacheManager()
 
   return useOptimisticMutation({
-    mutationFn: (data: CreateProjectRequest) => projectService.createProject(data),
+    mutationFn: ({ data }: ProjectMutationInput) => projectService.createProject(data as CreateProjectRequest),
 
-    onMutate: async (newProject) => {
+    onMutate: async ({ data }) => {
       // Cancelar queries relacionadas
       await queryClient.cancelQueries({ queryKey: queryKeys.projects.lists() })
 
@@ -126,7 +129,7 @@ export const useCreateProject = () => {
 
       // Adicionar projeto otimisticamente
       const optimisticProject = {
-        ...newProject,
+        ...data,
         id: Date.now(), // ID temporário
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -167,8 +170,8 @@ export const useUpdateProject = () => {
   const { setData } = useCacheManager()
 
   return useOptimisticMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateProjectRequest }) =>
-      projectService.updateProject(id, data),
+    mutationFn: ({ id, data }: ProjectMutationInput) =>
+      projectService.updateProject(id!, data as UpdateProjectRequest),
 
     onMutate: async ({ id, data }) => {
       // Cancelar queries
