@@ -2,7 +2,7 @@ import { useOptimizedQuery, useOptimisticMutation, useCacheManager } from '@/hoo
 import { queryKeys } from '@/lib/react-query/keys'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
-import { CreateCommentRequest, UpdateCommentRequest, Comment } from '@/common/types'
+import { CreateCommentRequest, UpdateCommentRequest, Comment } from '@/utils/commonTypes'
 import { toast } from '@/components/ui/use-toast'
 import { queryClient } from '@/lib/react-query/config'
 import { transformApiCommentToFrontend } from '@/utils/apiTransformers'

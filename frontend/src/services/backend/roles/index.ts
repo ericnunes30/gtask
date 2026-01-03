@@ -1,6 +1,6 @@
 import { useOptimizedQuery, useOptimisticMutation, useCacheManager } from '@/hooks/useOptimizedQuery'
 import { queryKeys } from '@/lib/react-query/keys'
-import { CreateRoleRequest, UpdateRoleRequest, Role } from '@/common/types'
+import { CreateRoleRequest, UpdateRoleRequest, Role } from '@/utils/commonTypes'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { toast } from '@/components/ui/use-toast'

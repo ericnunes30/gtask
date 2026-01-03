@@ -1,5 +1,5 @@
 // frontend/src/components/kanban/kanbanTypes.ts
-import { Task as ApiTask, TaskPriority, TaskStatus } from '@/common/types';
+import { Task as ApiTask, TaskPriority, TaskStatus } from '@/utils/commonTypes';
 
 // Re-exporta ApiTask como KanbanTask ou define um tipo específico se necessário.
 // Por enquanto, KanbanTask será um alias para ApiTask.

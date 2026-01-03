@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Team, User } from '@/common/types';
+import { Team, User } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 
 const TeamsPage = () => {

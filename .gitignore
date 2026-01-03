@@ -21,3 +21,11 @@ package*
 
 .gemini/
 gha-creds-*.json
+
+outputsrun-*
+
+*.md
+
+.mcp.json
+
+backup/

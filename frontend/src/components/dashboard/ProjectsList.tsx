@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from 'react-router-dom';
-import { Project } from '@/common/types';
+import { Project } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';

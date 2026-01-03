@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from 'react-router-dom';
-import { Task } from '@/common/types'; // Importar o tipo Task
+import { Task } from '@/utils/commonTypes'; // Importar o tipo Task
 
 // Map para prioridades dos badges
 const priorityMap = {

@@ -2,7 +2,7 @@ import { useOptimizedQuery, useOptimisticMutation, useCacheManager } from '@/hoo
 import { queryKeys } from '@/lib/react-query/keys'
 import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
-import { Project, CreateProjectRequest, UpdateProjectRequest } from '@/common/types'
+import { Project, CreateProjectRequest, UpdateProjectRequest } from '@/utils/commonTypes'
 import { transformApiProjectToFrontend } from '@/utils/apiTransformers'
 import { toast } from '@/components/ui/use-toast'
 import { queryClient } from '@/lib/react-query/config'

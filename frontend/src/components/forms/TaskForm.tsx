@@ -39,7 +39,7 @@ import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Task, TaskStatus, User, Team } from '@/common/types';
+import { Task, TaskStatus, User, Team } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { usePermissions } from '@/hooks/usePermissions';
 

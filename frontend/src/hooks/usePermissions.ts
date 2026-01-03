@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { useState, useEffect } from 'react';
-import { Role } from '@/common/types'; // Import Role interface
+import { Role } from '@/utils/commonTypes'; // Import Role interface
 
 // Definimos a interface para o objeto de permissões que o hook retornará
 export interface Permissions {

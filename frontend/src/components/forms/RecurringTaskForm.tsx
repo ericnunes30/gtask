@@ -38,7 +38,7 @@ import {
   Team as Occupation,
   TaskPriority,
   RecurringTaskScheduleType
-} from '@/common/types';
+} from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { ScrollArea } from '@/components/ui/scroll-area';

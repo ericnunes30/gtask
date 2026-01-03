@@ -17,6 +17,7 @@ import { NotificationFactory } from '../../notification/factories/notification.f
 import { DebugLoggerService } from '../../notification/services/debug-logger.service';
 import { TimerService } from '../../tasks/services/timer.service';
 import { UserService } from '../../user/services/user.service';
+import { PermissionService } from '../../permission/services/permission.service';
 
 @WebSocketGateway({
   cors: {
@@ -32,13 +33,14 @@ export class EventsGateway
   @WebSocketServer()
   server: Server;
 
-  constructor(
+constructor(
     private readonly notificationService: NotificationService,
     private readonly notificationFactory: NotificationFactory,
     private readonly timerService: TimerService,
     private readonly debugLogger: DebugLoggerService,
     private readonly eventEmitter: EventEmitter2,
     private readonly userService: UserService,
+    private readonly permissionService: PermissionService,
   ) {
     // Bridge timer events to WS rooms (complements @OnEvent handlers)
     this.eventEmitter.on('timer.started', (payload: { taskId: number; userId: number }) => {
@@ -336,24 +338,16 @@ export class EventsGateway
     }
   }
 
-  @OnEvent('task.created')
+@OnEvent('task.created')
   async handleTaskCreatedEvent(payload: { task: Task; createdBy: number }) {
     this.logger.log(`🆕 Task created event received: ${payload.task.title}`);
     await this.handleEvent('task.created', payload, (p) => {
       const { task, createdBy } = p;
-      const userIds = task.users?.map((user) => user.id).filter((id) => id !== createdBy) || [];
-      if (task.project?.users) {
-        for (const user of task.project.users) {
-          if (user.id !== createdBy && !userIds.includes(user.id)) {
-            userIds.push(user.id);
-          }
-        }
-      }
-      return userIds;
+      return this.permissionService.getTaskCreatedNotificationRecipients(task, createdBy);
     });
   }
 
-  @OnEvent('task.status.changed')
+@OnEvent('task.status.changed')
   async handleTaskStatusUpdatedEvent(payload: {
     task: Task;
     updatedBy: number;
@@ -363,29 +357,11 @@ export class EventsGateway
     this.logger.log(`🔄 Task status changed event received: ${payload.oldStatus} → ${payload.newStatus}`);
     await this.handleEvent('task.status.changed', payload, (p) => {
       const { task, updatedBy, newStatus } = p;
-      // If moved to review, notify only the reviewer (if different from actor)
-      if (newStatus === 'em_revisao') {
-        const reviewerId = (task as any)?.reviewer?.id ?? (task as any)?.task_reviewer_id ?? null;
-        if (reviewerId && reviewerId !== updatedBy) {
-          return [reviewerId];
-        }
-        return [];
-      }
-
-      // Default behavior: notify task and project members (excluding actor)
-      const userIds = task.users?.map((user) => user.id).filter((id) => id !== updatedBy) || [];
-      if (task.project?.users) {
-        for (const user of task.project.users) {
-          if (user.id !== updatedBy && !userIds.includes(user.id)) {
-            userIds.push(user.id);
-          }
-        }
-      }
-      return userIds;
+      return this.permissionService.getTaskStatusUpdatedNotificationRecipients(task, updatedBy, newStatus);
     });
   }
 
-  @OnEvent('comment.created')
+@OnEvent('comment.created')
   async handleCommentCreatedEvent(payload: { comment: Comment; createdBy: number }) {
     this.logger.log(`💬 Comment created event received: ${payload.comment.content.substring(0, 50)}...`);
     this.logger.log(`💬 Debug: Gateway initialized = ${this.isInitialized}`);
@@ -404,26 +380,12 @@ export class EventsGateway
     
     this.logger.log(`💬 Starting notification creation process...`);
     await this.handleEvent('comment.created', payload, (p) => {
-        this.logger.log(`💬 Processing notification logic for comment...`);
         const { comment, createdBy } = p;
-        const userIds = comment.task?.users?.map((user) => user.id).filter((id) => id !== createdBy) || [];
-        this.logger.log(`💬 Users from task: ${userIds.join(', ')}`);
-        
-        if (comment.task?.project?.users) {
-            for (const user of comment.task.project.users) {
-            if (user.id !== createdBy && !userIds.includes(user.id)) {
-                userIds.push(user.id);
-            }
-            }
-            this.logger.log(`💬 Users from project: ${userIds.join(', ')}`);
-        }
-        
-        this.logger.log(`💬 Final user IDs to notify: ${userIds.join(', ')}`);
-        return userIds;
+        return this.permissionService.getCommentCreatedNotificationRecipients(comment, createdBy);
     });
   }
 
-  @OnEvent('task.updated')
+@OnEvent('task.updated')
   async handleTaskUpdatedEvent(payload: {
     task: Task;
     updatedBy: number;
@@ -432,15 +394,7 @@ export class EventsGateway
     this.logger.log(`📝 Task updated event received: ${payload.task.title} - Fields changed: ${Object.keys(payload.changedFields).join(', ')}`);
     await this.handleEvent('task.updated', payload, (p) => {
         const { task, updatedBy } = p;
-        const userIds = task.users?.map((user) => user.id).filter((id) => id !== updatedBy) || [];
-        if (task.project?.users) {
-            for (const user of task.project.users) {
-            if (user.id !== updatedBy && !userIds.includes(user.id)) {
-                userIds.push(user.id);
-            }
-            }
-        }
-        return userIds;
+        return this.permissionService.getTaskUpdatedNotificationRecipients(task, updatedBy);
     });
   }
 }

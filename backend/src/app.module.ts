@@ -14,13 +14,12 @@ import { RoleModule } from './modules/role/role.module';
 import { OccupationModule } from './modules/occupation/occupation.module';
 import { RecurringTaskModule } from './modules/recurring-task/recurring-task.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { CommandsModule } from './commands/commands.module';
 import { EventsModule } from './modules/events/events.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { PermissionModule } from './modules/permission/permission.module';
 
 @Module({
   imports: [
@@ -48,6 +47,7 @@ import { NotificationModule } from './modules/notification/notification.module';
       inject: [ConfigService],
     }),
     // Carregar módulos de eventos e handlers ANTES dos módulos que emitem eventos
+    PermissionModule,
     EventsModule,
     NotificationModule,
     ActivityLogModule,
@@ -64,9 +64,8 @@ import { NotificationModule } from './modules/notification/notification.module';
     SchedulerModule,
     CommandsModule,
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [
-    AppService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
