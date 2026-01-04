@@ -35,7 +35,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { RecurringTask, User } from '@/utils/commonTypes';
+import { RecurringTask, User, Team } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { usePermissions } from '@/hooks/usePermissions';
 import { RecurringTaskForm } from '@/components/forms/RecurringTaskForm';
@@ -49,13 +49,15 @@ export function RecurringTasksList() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false); // Novo estado para o modal de visualização
   const [selectedTask, setSelectedTask] = useState<RecurringTask | null>(null);
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<number | null>(null);
-  
+  const [selectedOccupationFilter, setSelectedOccupationFilter] = useState<number | null>(null);
+
   const permissions = usePermissions();
-  const { recurringTasks: recurringTasksService, projects: projectsService, users: usersService } = useBackendServices();
-  
+  const { recurringTasks: recurringTasksService, projects: projectsService, users: usersService, occupations: occupationsService } = useBackendServices();
+
   const { data: rawRecurringTasks = [], isLoading, isError } = recurringTasksService.useGetRecurringTasks();
   const { data: projects = [] } = projectsService.useGetProjects();
   const { data: users = [] } = usersService.useGetUsers(); // Buscar usuários
+  const { data: occupations = [] } = occupationsService.useGetOccupations(); // Buscar equipes
   const { mutateAsync: deleteRecurringTaskMutation } = recurringTasksService.useDeleteRecurringTask();
 
   const getUserName = (userId: number) => {
@@ -110,13 +112,31 @@ export function RecurringTasksList() {
     }
   };
 
+  const handleOccupationFilterChange = (value: string) => {
+    if (value === 'all') {
+      setSelectedOccupationFilter(null);
+    } else {
+      setSelectedOccupationFilter(Number(value));
+    }
+  };
+
   const recurringTasks = useMemo(() => {
     const tasksToFilter = Array.isArray(rawRecurringTasks?.data) ? rawRecurringTasks.data : [];
-    if (selectedProjectFilter !== null) {
-      return tasksToFilter.filter(task => task.projectId === selectedProjectFilter);
-    }
-    return tasksToFilter;
-  }, [rawRecurringTasks, selectedProjectFilter]);
+    return tasksToFilter.filter(task => {
+      // Filtro por projeto
+      if (selectedProjectFilter !== null && task.projectId !== selectedProjectFilter) {
+        return false;
+      }
+      // Filtro por equipe (occupation_ids no templateData)
+      if (selectedOccupationFilter !== null) {
+        const taskOccupationIds = task.templateData?.occupation_ids || [];
+        if (!taskOccupationIds.includes(selectedOccupationFilter)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [rawRecurringTasks, selectedProjectFilter, selectedOccupationFilter]);
 
   const handleFormSuccess = () => {
     setIsCreateDialogOpen(false);
@@ -178,6 +198,24 @@ export function RecurringTasksList() {
                             .map((project) => (
                             <SelectItem key={project.id} value={String(project.id)}>
                                 {project.title}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Select
+                    value={selectedOccupationFilter ? String(selectedOccupationFilter) : 'all'}
+                    onValueChange={handleOccupationFilterChange}
+                >
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Todas as equipes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todas as equipes</SelectItem>
+                        {occupations
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((occupation) => (
+                            <SelectItem key={occupation.id} value={String(occupation.id)}>
+                                {occupation.name}
                             </SelectItem>
                         ))}
                     </SelectContent>

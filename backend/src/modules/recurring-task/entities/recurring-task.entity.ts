@@ -24,7 +24,7 @@ export interface TaskTemplate {
   priority: PriorityLevel;
   assignee_ids: number[];
   occupation_ids: number[];
-  task_reviewer_id: number;
+  task_reviewer_id?: number;
   start_date?: string;
   due_date?: string;
 }

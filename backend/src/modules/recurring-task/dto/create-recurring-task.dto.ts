@@ -24,8 +24,9 @@ class TaskTemplateDto implements TaskTemplate {
   @IsNumber({}, { each: true })
   occupation_ids: number[];
 
+  @IsOptional()
   @IsNumber({}, { message: 'Revisor deve ser um ID de usuário' })
-  task_reviewer_id: number;
+  task_reviewer_id?: number;
 
   @IsOptional()
   @IsString()

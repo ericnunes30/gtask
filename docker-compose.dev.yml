@@ -71,7 +71,7 @@ services:
       - ./frontend/public:/app/public:delegated
       - ./frontend/index.html:/app/index.html:ro
       - ./frontend/package.json:/app/package.json:ro
-      - ./frontend/vite.config.ts:/app/vite.config.ts:ro
+      # vite.config.ts não precisa de hot-reload, é lido apenas na inicialização
       - ./frontend/tsconfig.json:/app/tsconfig.json:ro
     networks:
       - dev_network

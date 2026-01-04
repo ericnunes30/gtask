@@ -94,7 +94,10 @@ export const useCreateRecurringTask = () => {
         updatedAt: new Date().toISOString(),
       }
 
-      setData(queryKeys.recurringTasks.lists(), (old: any) => [...(old || []), optimisticRecurringTask])
+      setData(queryKeys.recurringTasks.lists(), (old: any) => {
+        const tasksArray = Array.isArray(old) ? old : (old?.data || [])
+        return [...tasksArray, optimisticRecurringTask]
+      })
 
       return { previousRecurringTasks }
     },
@@ -153,11 +156,13 @@ export const useUpdateRecurringTask = () => {
         updatedAt: new Date().toISOString(),
       }))
 
-      setData(queryKeys.recurringTasks.lists(), (old: any[]) =>
-        old?.map(recurringTask =>
+      setData(queryKeys.recurringTasks.lists(), (old: any) => {
+        // Lidar com formato de resposta da API (pode ter .data ou ser array direto)
+        const tasksArray = Array.isArray(old) ? old : (old?.data || [])
+        return tasksArray.map((recurringTask: any) =>
           recurringTask.id === id ? { ...recurringTask, ...data, updatedAt: new Date().toISOString() } : recurringTask
-        ) || []
-      )
+        )
+      })
 
       return { previousRecurringTask, previousRecurringTasks }
     },
@@ -194,9 +199,10 @@ export const useDeleteRecurringTask = () => {
       const recurringTask = queryClient.getQueryData(queryKeys.recurringTasks.detail(id))
 
       // Remover otimisticamente
-      setData(queryKeys.recurringTasks.lists(), (old: any[]) =>
-        old?.filter(rt => rt.id !== id) || []
-      )
+      setData(queryKeys.recurringTasks.lists(), (old: any) => {
+        const tasksArray = Array.isArray(old) ? old : (old?.data || [])
+        return tasksArray.filter((rt: any) => rt.id !== id)
+      })
 
       // Remover do cache individual
       removeData(queryKeys.recurringTasks.detail(id))

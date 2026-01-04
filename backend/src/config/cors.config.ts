@@ -11,13 +11,22 @@ export const corsConfig: CorsOptions = {
       'http://127.0.0.1:8080',
       'http://127.0.0.1:8081',
       'http://192.168.1.116:8080', // Dev environment
-      'http://172.17.176.1:8080'
+      'http://172.17.176.1:8080',
+      /^http:\/\/172\.\d+\.\d+\.\d+:8080/, // Docker internal network
     ];
 
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    // Check if origin is allowed (supports both strings and regex)
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return allowed === origin;
+    });
+
+    if (isAllowed) {
       return callback(null, true);
     }
 

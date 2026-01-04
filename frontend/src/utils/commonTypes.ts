@@ -354,12 +354,12 @@ export type RecurringTaskScheduleType = 'interval' | 'cron';
 
 export interface RecurringTaskTemplateData {
   title: string;
-  description: string;
+  description?: string;
   priority: TaskPriority;
   assignee_ids: number[];
-  occupation_ids?: number[]; // Added to match backend response
-  occupations?: Team[]; // Added to match backend response
-  task_reviewer_id?: number; // Added to match backend DTO
+  occupation_ids: number[];
+  occupations?: Team[]; // Para resposta da API (não usado no envio)
+  task_reviewer_id?: number;
 }
 
 export interface RecurringTask {

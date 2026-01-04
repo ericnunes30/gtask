@@ -43,8 +43,8 @@ import { useBackendServices } from '@/hooks/useBackendServices';
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-// Schema de validação para o formulário
-const recurringTaskFormSchema = z.object({
+// Schema de validação para criação (validação estrita)
+const createRecurringTaskSchema = z.object({
   name: z.string().min(3, "O nome deve ter pelo menos 3 caracteres."),
   schedule_type: z.enum(['daily', 'weekly', 'monthly', 'custom'], { required_error: "Selecione a frequência." }),
   frequency_interval: z.string().optional().nullable(),
@@ -58,34 +58,39 @@ const recurringTaskFormSchema = z.object({
   projectId: z.number({ required_error: "Selecione um projeto." }),
   templateData: z.object({
     title: z.string().min(3, "O título do template deve ter pelo menos 3 caracteres."),
-    description: z.string().min(3, "A descrição do template deve ter pelo menos 3 caracteres."),
+    description: z.string().optional(),
     priority: z.enum(['baixa', 'media', 'alta', 'urgente']),
     assignee_ids: z.array(z.number()).min(1, "Selecione ao menos um responsável."),
-    occupation_ids: z.array(z.number()).optional(),
-    task_reviewer_id: z.number({ required_error: "O revisor da tarefa é obrigatório." }),
+    occupation_ids: z.array(z.number()).min(1, "Selecione ao menos uma equipe."),
+    task_reviewer_id: z.number().optional(),
   })
-}).refine(data => {
-    if (data.schedule_type === 'weekly' && !data.day_of_week) {
-        return !!data.frequency_interval;
-    }
-    return true;
-}, { message: "Selecione um dia da semana para agendamento semanal ou 'Qualquer dia'.", path: ["day_of_week"] })
-.refine(data => {
-    if (data.schedule_type === 'monthly' && !data.day_of_month) {
-        return !!data.frequency_interval;
-    }
-    return true;
-}, { message: "Selecione um dia do mês para agendamento mensal ou 'Qualquer dia'.", path: ["day_of_month"] })
-.refine(data => {
-    if (data.schedule_type === 'custom') {
-        const hasValue = data.custom_interval_value !== null && data.custom_interval_value !== undefined && data.custom_interval_value > 0;
-        const hasUnit = !!data.custom_interval_unit;
-        return hasValue && hasUnit;
-    }
-    return true;
-}, { message: "Para intervalo personalizado, o valor e a unidade são obrigatórios.", path: ["custom_interval_value"] });
+});
 
-type RecurringTaskFormValues = z.infer<typeof recurringTaskFormSchema>;
+// Schema de validação para edição (mais flexível para compatibilidade com dados antigos)
+const updateRecurringTaskSchema = z.object({
+  name: z.string().min(3, "O nome deve ter pelo menos 3 caracteres."),
+  schedule_type: z.enum(['daily', 'weekly', 'monthly', 'custom'], { required_error: "Selecione a frequência." }),
+  frequency_interval: z.string().optional().nullable(),
+  frequency_cron: z.string().optional().nullable(),
+  day_of_week: z.string().optional().nullable(),
+  day_of_month: z.string().optional().nullable(),
+  custom_interval_value: z.number().optional().nullable(),
+  custom_interval_unit: z.enum(['days', 'weeks', 'months']).optional().nullable(),
+  next_due_date: z.string().min(1, "A data da próxima execução é obrigatória."),
+  is_active: z.boolean().default(true),
+  projectId: z.number({ required_error: "Selecione um projeto." }),
+  templateData: z.object({
+    title: z.string().min(3, "O título do template deve ter pelo menos 3 caracteres."),
+    description: z.string().optional(),
+    priority: z.enum(['baixa', 'media', 'alta', 'urgente']),
+    assignee_ids: z.array(z.number()).min(1, "Selecione ao menos um responsável."),
+    occupation_ids: z.array(z.number()).optional(), // Opcional na edição para compatibilidade
+    task_reviewer_id: z.number().optional(),
+  })
+});
+
+// Tipo unificado para valores do formulário (usando o schema de criação como base)
+type RecurringTaskFormValues = z.infer<typeof createRecurringTaskSchema>;
 
 interface RecurringTaskFormProps {
   recurringTaskId?: number;
@@ -160,7 +165,7 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
             templateData: {
                 ...initialData.templateData,
                 assignee_ids: initialData.templateData.assignee_ids || [],
-                occupation_ids: initialData.templateData.occupations?.map((occ: any) => typeof occ === 'object' ? occ.id : occ) || [],
+                occupation_ids: initialData.templateData.occupation_ids || [],
             }
         };
     }
@@ -187,8 +192,9 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
   }, [initialData]);
 
   const form = useForm<RecurringTaskFormValues>({
-    resolver: zodResolver(recurringTaskFormSchema),
+    resolver: zodResolver(recurringTaskId ? updateRecurringTaskSchema : createRecurringTaskSchema),
     defaultValues: initialFormValues,
+    mode: 'onBlur', // Validar ao sair do campo para melhor UX
   });
   
   React.useEffect(() => {
@@ -306,7 +312,7 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
         scheduleTypeForApi = 'cron';
         frequencyCronForApi = '0 9 * * 1-5';
     } else if (values.schedule_type === 'weekly') {
-        if (values.day_of_week) {
+        if (values.day_of_week && values.day_of_week !== 'any') {
             scheduleTypeForApi = 'cron';
             frequencyCronForApi = `0 9 * * ${values.day_of_week}`;
         } else {
@@ -314,7 +320,7 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
             frequencyIntervalForApi = '7 days';
         }
     } else if (values.schedule_type === 'monthly') {
-        if (values.day_of_month) {
+        if (values.day_of_month && values.day_of_month !== 'any') {
             scheduleTypeForApi = 'cron';
             frequencyCronForApi = `0 9 ${values.day_of_month} * *`;
         } else {
@@ -509,8 +515,8 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
                         <FormItem className="w-full">
                             <FormLabel>Dia do Mês (Opcional)</FormLabel>
                             <Select
-                                value={field.value ?? ""}
-                                onValueChange={(value) => field.onChange(value === "" ? null : value)}
+                                value={field.value ?? "any"}
+                                onValueChange={(value) => field.onChange(value === "any" ? null : value)}
                                 disabled={loading}
                             >
                                 <FormControl>
@@ -519,7 +525,7 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    <SelectItem value={null as any}>Qualquer dia (Mensalmente)</SelectItem>
+                                    <SelectItem value="any">Qualquer dia (Mensalmente)</SelectItem>
                                     {Array.from({ length: 30 }, (_, i) => i + 1).map(day => (
                                         <SelectItem key={day} value={String(day)}>{day}</SelectItem>
                                     ))}
@@ -540,8 +546,8 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
                         <FormItem className="w-full">
                             <FormLabel>Dia da Semana (Opcional)</FormLabel>
                             <Select
-                                value={field.value}
-                                onValueChange={(value) => field.onChange(value)}
+                                value={field.value ?? "any"}
+                                onValueChange={(value) => field.onChange(value === "any" ? null : value)}
                                 disabled={loading}
                             >
                                 <FormControl>
@@ -550,7 +556,7 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    <SelectItem value={null as any}>Qualquer dia (Semanalmente)</SelectItem>
+                                    <SelectItem value="any">Qualquer dia (Semanalmente)</SelectItem>
                                     <SelectItem value="1">Segunda-feira</SelectItem>
                                     <SelectItem value="2">Terça-feira</SelectItem>
                                     <SelectItem value="3">Quarta-feira</SelectItem>
@@ -686,15 +692,15 @@ export function RecurringTaskForm({ recurringTaskId, initialData, onSuccess }: R
                 name="templateData.task_reviewer_id"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Revisor da Tarefa</FormLabel>
+                        <FormLabel>Revisor da Tarefa (Opcional)</FormLabel>
                         <Select
-                            value={field.value?.toString()}
-                            onValueChange={(value) => field.onChange(value ? Number(value) : null)}
+                            value={field.value?.toString() || ""}
+                            onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
                             disabled={loading}
                         >
                             <FormControl>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Selecione um revisor" />
+                                    <SelectValue placeholder="Nenhum revisor selecionado" />
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
