@@ -392,13 +392,18 @@ export const TasksList = forwardRef<{ fetchTasks: () => Promise<void> }, TasksLi
         filteredTasks = filteredTasks.filter(task => task.status !== 'concluido');
       }
 
-      // Ocultar tarefas canceladas, pendentes e aguardando cliente
+      // Ocultar tarefas canceladas (todos)
+      // Ocultar pendentes e aguardando cliente apenas para não-admins
       filteredTasks = filteredTasks.filter(
-        task =>
-          task.status !== 'cancelado' &&
-          task.status !== 'pendente' &&
-          task.status !== 'aguardando_cliente'
+        task => task.status !== 'cancelado'
       );
+      if (!permissions.isAdmin) {
+        filteredTasks = filteredTasks.filter(
+          task =>
+            task.status !== 'pendente' &&
+            task.status !== 'aguardando_cliente'
+        );
+      }
  
        // Ordena tarefas com base no modo de visualização
       if (viewMode === 'date') {

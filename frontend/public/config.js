@@ -3,7 +3,7 @@
 window.__ENV__ = window.__ENV__ || {
   // Development environment defaults
   NODE_ENV: 'development',
-  API_URL: 'http://localhost:3000',
+  BACKEND_API_URL: 'http://192.168.1.116:3334',
   // Add any other environment variables needed for development
 };
 
