@@ -62,7 +62,7 @@ services:
     container_name: manager_group_frontend_dev
     environment:
       # URL do backend (acessível externamente via IP da máquina)
-      VITE_BACKEND_API_URL: http://192.168.1.116:3334/api/v1
+      VITE_BACKEND_API_URL: http://192.168.1.116:3334
     ports:
       - "8080:8080"
     volumes:

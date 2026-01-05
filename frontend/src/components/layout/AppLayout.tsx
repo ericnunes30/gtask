@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../sidebar/Sidebar';
 import { Header } from './Header';
 
@@ -8,8 +7,16 @@ interface AppLayoutProps {
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Salvar estado no localStorage sempre que mudar
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };

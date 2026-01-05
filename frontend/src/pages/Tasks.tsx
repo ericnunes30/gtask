@@ -307,13 +307,19 @@ const Tasks = () => {
       tasksToFilter = tasksToFilter.filter(task => task.status !== 'concluido');
     }
 
-    // Always hide canceled, pending and waiting for client tasks
+    // Hide canceled tasks for everyone
+    // Hide pending and waiting for client tasks only for non-admins
     tasksToFilter = tasksToFilter.filter(
-      task =>
-        task.status !== 'cancelado' &&
-        task.status !== 'pendente' &&
-        task.status !== 'aguardando_cliente'
+      task => task.status !== 'cancelado'
     );
+    // Only filter out pending/waiting for non-admins
+    if (!permissions.isAdmin) {
+      tasksToFilter = tasksToFilter.filter(
+        task =>
+          task.status !== 'pendente' &&
+          task.status !== 'aguardando_cliente'
+      );
+    }
 
     // Apply my reviews filter (only for admins and managers)
     if (showMyReviews && currentUserIdAuth) {
@@ -337,7 +343,7 @@ const Tasks = () => {
     }
 
     return tasksToFilter;
-  }, [rawTasks, searchTerm, selectedProjectFilter, selectedPriorityFilter, selectedUserId, showCompleted, showMyReviews, isUserMember, currentUserIdAuth]);
+  }, [rawTasks, searchTerm, selectedProjectFilter, selectedPriorityFilter, selectedUserId, showCompleted, showMyReviews, isUserMember, currentUserIdAuth, permissions.isAdmin]);
 
   return (
     <AppLayout>

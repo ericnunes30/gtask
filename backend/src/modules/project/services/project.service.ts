@@ -4,6 +4,7 @@ import { Repository, In } from 'typeorm';
 import { Project } from '../entities/project.entity';
 import { User } from '../../user/entities/user.entity';
 import { Occupation } from '../../occupation/entities/occupation.entity';
+import { Task } from '../../tasks/entities/task.entity';
 import { CreateProjectDto } from '../dto/create-project.dto';
 import { UpdateProjectDto } from '../dto/update-project.dto';
 
@@ -16,6 +17,8 @@ export class ProjectService {
     private userRepository: Repository<User>,
     @InjectRepository(Occupation)
     private occupationRepository: Repository<Occupation>,
+    @InjectRepository(Task)
+    private taskRepository: Repository<Task>,
   ) {}
 
   async create(createProjectDto: CreateProjectDto): Promise<Project> {
@@ -108,6 +111,13 @@ export class ProjectService {
 
   async remove(id: number): Promise<void> {
     const project = await this.findOne(id);
+
+    // Primeiro, deletar todas as tarefas associadas ao projeto
+    // para evitar violação de foreign key constraint
+    if (project.tasks && project.tasks.length > 0) {
+      await this.taskRepository.delete({ project_id: id });
+    }
+
     await this.projectRepository.remove(project);
   }
 
