@@ -5,6 +5,8 @@ export const ROUTES = {
     register: '/auth/register',
     profile: '/auth/profile',
     verify: '/auth/verify',
+    setupStatus: '/auth/setup-status',
+    setup: '/auth/setup',
   },
   users: '/users',
   roles: '/roles',

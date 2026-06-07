@@ -5,6 +5,16 @@ import { api } from '@/services/backend/api'
 import { ROUTES } from '@/services/backend/routes'
 import { toast } from '@/components/ui/use-toast'
 
+export interface SetupCredentials {
+  name: string
+  email: string
+  password: string
+}
+
+export interface SetupStatusResponse {
+  needsSetup: boolean
+}
+
 const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await api.post(ROUTES.auth.login, credentials);
@@ -37,6 +47,21 @@ const authService = {
     // AuthContext will handle token presence check
     return true; // This will be handled by AuthContext's state
   },
+
+  async checkSetupStatus(): Promise<SetupStatusResponse> {
+    const response = await api.get(ROUTES.auth.setupStatus);
+    return response.data.data || response.data;
+  },
+
+  async setup(data: SetupCredentials): Promise<AuthResponse> {
+    const response = await api.post(ROUTES.auth.setup, data);
+    const { accessToken, refreshToken, user } = response.data.data;
+    return {
+      accessToken,
+      refreshToken,
+      user,
+    };
+  },
 };
 
 export const useLogin = () => {
@@ -56,6 +81,30 @@ export const useLogin = () => {
       const message = error.response?.data?.message || error.message || 'Erro ao fazer login'
       toast({
         title: 'Erro no login',
+        description: message,
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+export const useSetup = () => {
+  const { clear } = useCacheManager()
+
+  return useOptimisticMutation({
+    mutationFn: async (credentials: SetupCredentials) => await authService.setup(credentials),
+
+    onSuccess: (data) => {
+      toast({
+        title: 'Bem-vindo!',
+        description: `Conta de administrador criada com sucesso, ${data.user.name}`,
+      })
+    },
+
+    onError: (error: any) => {
+      const message = error.response?.data?.message || error.message || 'Erro ao criar conta de administrador'
+      toast({
+        title: 'Erro no setup',
         description: message,
         variant: 'destructive',
       })
@@ -126,3 +175,5 @@ export const useAuthStatus = () => {
     isAuthenticated: authService.isAuthenticated() && hasData(queryKeys.users.currentUser),
   }
 }
+
+export { authService }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Login from '@/pages/Login';
+import SetupPage from '@/pages/Setup';
 import NotFound from '@/pages/NotFound';
 import ProtectedRoute from './ProtectedRoute';
 import {
@@ -17,6 +18,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/setup" element={<SetupPage />} />
       <Route
         path="/"
         element={

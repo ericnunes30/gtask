@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Injectable, NotFoundException, InternalServerErrorException, ForbiddenException } from '@nestjs/common';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Repository, In, DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 import { User } from '../entities/user.entity';
@@ -9,6 +9,7 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import { Role } from '../../role/entities/role.entity';
 import { Occupation } from '../../occupation/entities/occupation.entity';
 import { Task } from '../../tasks/entities/task.entity';
+import { SetupDto } from '../../auth/dto/setup.dto';
 
 @Injectable()
 export class UserService {
@@ -19,6 +20,7 @@ export class UserService {
     private readonly roleRepository: Repository<Role>,
     @InjectRepository(Occupation)
     private readonly occupationRepository: Repository<Occupation>,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
 async create(createUserDto: CreateUserDto): Promise<User> {
@@ -52,6 +54,64 @@ async create(createUserDto: CreateUserDto): Promise<User> {
     }
     
     return savedUser;
+  }
+
+  async count(): Promise<number> {
+    return await this.userRepository.count();
+  }
+
+  async createFirstAdmin(data: SetupDto): Promise<User> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const count = await queryRunner.manager.count(User);
+      if (count > 0) {
+        throw new ForbiddenException('Setup already completed. Please login.');
+      }
+
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+
+      const user = queryRunner.manager.create(User, {
+        ...data,
+        password: hashedPassword,
+        is_active: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const savedUser = await queryRunner.manager.save(User, user);
+
+      const adminRole = await queryRunner.manager.findOne(Role, {
+        where: { name: 'ADMIN' },
+      });
+
+      if (!adminRole) {
+        throw new InternalServerErrorException(
+          'ADMIN role not found. Ensure api-security-hardening migration has run.'
+        );
+      }
+
+      await queryRunner.query(
+        `INSERT INTO users_roles (user_id, role_id) VALUES ($1, $2)`,
+        [savedUser.id, adminRole.id]
+      );
+
+      const userWithRoles = await queryRunner.manager.findOne(User, {
+        where: { id: savedUser.id },
+        relations: ['roles'],
+      });
+
+      await queryRunner.commitTransaction();
+
+      return userWithRoles ?? savedUser;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findAll(): Promise<User[]> {

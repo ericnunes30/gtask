@@ -13,8 +13,11 @@ import { TokenPayloadFactory } from './factories/token-payload.factory';
 import { AuthResponseFactory } from './factories/auth-response.factory';
 import { UserValidationFactory } from './factories/user-validation.factory';
 
+import { CommonModule } from '../../common/common.module';
+
 @Module({
   imports: [
+    CommonModule,
     UserModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({

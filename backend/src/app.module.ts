@@ -5,6 +5,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { CommonModule } from './common/common.module';
 import { CommentModule } from './modules/comment/comment.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
@@ -26,6 +27,7 @@ import { PermissionModule } from './modules/permission/permission.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    CommonModule,
     ThrottlerModule.forRoot([{
       ttl: 60000, // 1 minute
       limit: 100, // 100 requests per minute

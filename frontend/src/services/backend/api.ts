@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios';
 
 const runtimeUrl = (typeof window !== 'undefined' && (window as any).__ENV__ && (window as any).__ENV__.BACKEND_API_URL) as string | undefined;
-const API_URL = runtimeUrl || import.meta.env.VITE_BACKEND_API_URL;
+const API_URL = import.meta.env.VITE_BACKEND_API_URL || runtimeUrl;
 
 export const api = axios.create({
   baseURL: API_URL,

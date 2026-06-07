@@ -3,7 +3,10 @@ import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../services/auth.service';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
+import { SetupDto } from '../dto/setup.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
+
+import { SetupGuard } from '../../../common/guards/setup.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -19,6 +22,17 @@ export class AuthController {
     return this.authService.refreshToken(refreshTokenDto.refreshToken);
   }
 
+  @Get('setup-status')
+  async getSetupStatus() {
+    return this.authService.checkSetupStatus();
+  }
+
+  @Post('setup')
+  async setup(@Body() setupDto: SetupDto) {
+    return this.authService.setupFirstUser(setupDto);
+  }
+
+  @UseGuards(SetupGuard)
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
