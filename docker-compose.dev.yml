@@ -1,0 +1,94 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database (já existem dados no backup/docker-compose.yml)
+  postgres:
+    image: postgres:16-alpine
+    container_name: manager_group_db_dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: manager_group
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dev_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend em modo desenvolvimento
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: manager_group_backend_dev
+    environment:
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: manager_group
+      # API
+      PORT: 3334
+      NODE_ENV: development
+      MIGRATIONS_RUN: "true"
+    ports:
+      - "3334:3334"
+    volumes:
+      # Montar o código para hot-reload
+      - ./backend/src:/app/src:delegated
+      - ./backend/package.json:/app/package.json:ro
+      - ./backend/tsconfig.json:/app/tsconfig.json:ro
+      - ./backend/nest-cli.json:/app/nest-cli.json:ro
+    networks:
+      - dev_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Frontend em modo desenvolvimento (Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: manager_group_frontend_dev
+    environment:
+      # URL do backend (acessível externamente via IP da máquina)
+      VITE_BACKEND_API_URL: http://localhost:3334
+      VITE_SOCKET_URL: ws://localhost:3334
+    ports:
+      - "8080:8080"
+    volumes:
+      # Montar o código para hot-reload
+      - ./frontend/src:/app/src:delegated
+      - ./frontend/public:/app/public:delegated
+      - ./frontend/index.html:/app/index.html:ro
+      - ./frontend/package.json:/app/package.json:ro
+      # vite.config.ts não precisa de hot-reload, é lido apenas na inicialização
+      - ./frontend/tsconfig.json:/app/tsconfig.json:ro
+    networks:
+      - dev_network
+    depends_on:
+      - backend
+    restart: unless-stopped
+    # Healthcheck para o Vite dev server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  dev_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
