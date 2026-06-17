@@ -491,6 +491,10 @@ const Tasks = () => {
               <Tabs defaultValue="kanban" className="w-full flex-1 flex flex-col min-h-0" onValueChange={handleTabChange}>
                 <div className="px-7 py-3 flex items-center gap-4 flex-shrink-0">
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    <TabsList>
+                      <TabsTrigger value="kanban">Kanban</TabsTrigger>
+                      <TabsTrigger value="list">Lista</TabsTrigger>
+                    </TabsList>
                     <Select
                       value={viewMode}
                       onValueChange={handleViewModeChange}
@@ -504,11 +508,7 @@ const Tasks = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <TabsList>
-                      <TabsTrigger value="kanban">Kanban</TabsTrigger>
-                      <TabsTrigger value="list">Lista</TabsTrigger>
-                    </TabsList>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
                     <Button
                       variant="outline"
                       size="icon"
