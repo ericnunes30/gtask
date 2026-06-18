@@ -11,21 +11,9 @@ interface PageTransitionProps {
  */
 export const PageTransition: React.FC<PageTransitionProps> = ({
   children,
-  location
 }) => {
-  const [isTransitioning, setIsTransitioning] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsTransitioning(true);
-    const timer = setTimeout(() => {
-      setIsTransitioning(false);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [location]);
-
   return (
-    <div className={`page-transition ${isTransitioning ? 'transitioning' : ''}`}>
+    <div className="page-transition">
       {children}
     </div>
   );
