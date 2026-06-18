@@ -11,6 +11,7 @@ interface SidebarItemProps {
   href: string;
   collapsed: boolean;
   active?: boolean;
+  onClick?: () => void;
 }
 
 export const SidebarItem: React.FC<SidebarItemProps> = ({
@@ -18,7 +19,8 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   label,
   href,
   collapsed,
-  active
+  active,
+  onClick,
 }) => {
   const location = useLocation();
   const { preloadRoute } = useRoutePreload();
@@ -47,10 +49,10 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       onMouseEnter={handleMouseEnter}
       onFocus={handleFocus}
       onClick={(e) => {
-        // Previne navegação se já estiver na página
         if (active) {
           e.preventDefault();
         }
+        onClick?.();
       }}
     >
       <Icon className="h-5 w-5 text-sidebar-foreground" />

@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, Search } from 'lucide-react';
+import { CheckCircle2, Search, Eye } from 'lucide-react';
 
 type Priority = 'baixa' | 'media' | 'alta' | 'urgente';
 
@@ -182,6 +182,18 @@ export const TaskFiltersSidebar: React.FC<TaskFiltersSidebarProps> = ({
       {/* Toggles */}
       <div className="h-px bg-border/40 my-3" />
       <section className="space-y-3">
+        {canShowMyReviews && (
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] text-foreground/80 flex items-center gap-1.5">
+              <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+              Revisões
+            </span>
+            <Switch
+              checked={filters.showMyReviews}
+              onCheckedChange={(checked) => onChange({ ...filters, showMyReviews: checked })}
+            />
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <span className="text-[13px] text-foreground/80 flex items-center gap-1.5">
             <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
@@ -192,15 +204,6 @@ export const TaskFiltersSidebar: React.FC<TaskFiltersSidebarProps> = ({
             onCheckedChange={(checked) => onChange({ ...filters, showCompleted: checked })}
           />
         </div>
-        {canShowMyReviews && (
-          <div className="flex items-center justify-between">
-            <span className="text-[13px] text-foreground/80">Minhas revisões</span>
-            <Switch
-              checked={filters.showMyReviews}
-              onCheckedChange={(checked) => onChange({ ...filters, showMyReviews: checked })}
-            />
-          </div>
-        )}
       </section>
 
       {isLoading && (

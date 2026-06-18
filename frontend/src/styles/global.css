@@ -99,15 +99,20 @@
   }
 
   .sidebar-item {
-    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors;
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-sidebar-foreground/80 hover:text-sidebar-foreground;
   }
 
   .sidebar-item.active {
-    @apply bg-sidebar-accent text-sidebar-accent-foreground;
+    @apply bg-sidebar-accent text-sidebar-accent-foreground relative;
+  }
+
+  .sidebar-item.active::before {
+    content: '';
+    @apply absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-sidebar-primary;
   }
 
   .sidebar-item:hover {
-    @apply bg-sidebar-accent/80 text-sidebar-accent-foreground;
+    @apply bg-sidebar-accent/60 text-sidebar-foreground;
   }
 
   /* Regras globais para garantir texto branco em componentes com fundo escuro no hover/active */

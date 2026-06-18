@@ -1,11 +1,11 @@
-
 import React from 'react';
-import { Briefcase, ListChecks, Users, ChevronLeft, ChevronRight, User, Settings } from 'lucide-react';
+import { Briefcase, ListChecks, Users, ChevronLeft, ChevronRight, User, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/utils/utils';
 import { Button } from '@/components/ui/button';
 import { SidebarItem } from './SidebarItem';
 import { useLocation } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -15,6 +15,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const location = useLocation();
   const permissions = usePermissions();
+  const { logout } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -24,7 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     <aside
       className={cn(
         "bg-sidebar h-screen flex flex-col border-r border-sidebar-border transition-all duration-300 z-30",
-        collapsed ? "w-[70px]" : "w-[260px]"
+        collapsed ? "w-[70px]" : "w-[230px]"
       )}
     >
       <div className="flex items-center justify-between h-[61px] px-4 border-b border-sidebar-border">
@@ -79,13 +80,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
           )}
         </div>
       </nav>
-      <div className="p-2 border-t border-sidebar-border mt-auto">
+      <div className="p-2 border-t border-sidebar-border mt-auto space-y-1">
         <SidebarItem
           icon={Settings}
           label="Configurações"
           href="/settings"
           collapsed={collapsed}
           active={isActive('/settings')}
+        />
+        <SidebarItem
+          icon={LogOut}
+          label="Sair"
+          href="/login"
+          collapsed={collapsed}
+          active={false}
+          onClick={() => logout()}
         />
       </div>
     </aside>
