@@ -12,20 +12,18 @@ import {
   IsArray,
   IsInt,
 } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import { PriorityLevel } from '../../tasks/entities/enums';
 
 /**
  * Validador customizado que aceita tanto YYYY-MM-DD quanto ISO 8601
  */
 @ValidatorConstraint({ name: 'isFlexibleDateString', async: false })
-export class IsFlexibleDateStringConstraint implements ValidatorConstraintInterface {
+export class IsFlexibleDateStringConstraint
+  implements ValidatorConstraintInterface
+{
   validate(value: any): boolean {
-    // Log para debug
-    console.log('[IsFlexibleDateString] Validating value:', value, 'type:', typeof value);
-
     if (!value) {
-      console.log('[IsFlexibleDateString] Value is falsy, returning false');
       return false;
     }
 
@@ -36,7 +34,6 @@ export class IsFlexibleDateStringConstraint implements ValidatorConstraintInterf
         // Tenta criar uma data válida
         const date = new Date(value);
         const isValid = !isNaN(date.getTime());
-        console.log('[IsFlexibleDateString] Simple date format, valid:', isValid);
         return isValid;
       }
 
@@ -44,7 +41,6 @@ export class IsFlexibleDateStringConstraint implements ValidatorConstraintInterf
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
         const date = new Date(value);
         const isValid = !isNaN(date.getTime());
-        console.log('[IsFlexibleDateString] ISO format, valid:', isValid);
         return isValid;
       }
     }
@@ -52,11 +48,9 @@ export class IsFlexibleDateStringConstraint implements ValidatorConstraintInterf
     // Se for Date object
     if (value instanceof Date) {
       const isValid = !isNaN(value.getTime());
-      console.log('[IsFlexibleDateString] Date object, valid:', isValid);
       return isValid;
     }
 
-    console.log('[IsFlexibleDateString] No valid format found, returning false');
     return false;
   }
 
@@ -69,7 +63,7 @@ export class IsFlexibleDateStringConstraint implements ValidatorConstraintInterf
  * Decorator de validação que aceita ambos os formatos de data
  */
 export function IsFlexibleDateString(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -83,7 +77,9 @@ export function IsFlexibleDateString(validationOptions?: ValidationOptions) {
 /**
  * Transforma uma string de data no formato YYYY-MM-DD para ISO 8601
  */
-function transformDate(value: string | Date | null | undefined): string | Date | null | undefined {
+function transformDate(
+  value: string | Date | null | undefined,
+): string | Date | null | undefined {
   // Se for null ou undefined, retorna como está
   if (value === null || value === undefined) {
     return value;

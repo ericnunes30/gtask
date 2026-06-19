@@ -1,4 +1,11 @@
-import { IsString, IsBoolean, IsNumber, Min, Max, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsBoolean,
+  IsNumber,
+  Min,
+  Max,
+  IsOptional,
+} from 'class-validator';
 
 export class WhatsAppConfigDto {
   @IsString()

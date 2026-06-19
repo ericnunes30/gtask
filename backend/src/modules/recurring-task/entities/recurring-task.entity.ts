@@ -1,12 +1,12 @@
-import { 
-  Entity, 
-  Column, 
-  PrimaryGeneratedColumn, 
-  CreateDateColumn, 
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn
+  JoinColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Project } from '../../project/entities/project.entity';
@@ -49,7 +49,7 @@ export class RecurringTask {
   @Column({
     type: 'enum',
     enum: ScheduleType,
-    name: 'schedule_type'
+    name: 'schedule_type',
   })
   schedule_type: ScheduleType;
 
@@ -79,6 +79,6 @@ export class RecurringTask {
   @JoinColumn({ name: 'project_id' })
   project: Project;
 
-  @OneToMany(() => Task, task => task.recurringTask)
+  @OneToMany(() => Task, (task) => task.recurringTask)
   tasks: Task[];
 }

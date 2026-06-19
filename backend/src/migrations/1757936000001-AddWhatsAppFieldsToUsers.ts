@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddWhatsAppFieldsToUsers1757936000001 implements MigrationInterface {
+export class AddWhatsAppFieldsToUsers1757936000001
+  implements MigrationInterface
+{
   name = 'AddWhatsAppFieldsToUsers1757936000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -11,7 +13,7 @@ export class AddWhatsAppFieldsToUsers1757936000001 implements MigrationInterface
         name: 'phone_number',
         type: 'varchar',
         isNullable: true,
-      })
+      }),
     );
 
     // Adicionar coluna whatsapp_notifications_enabled
@@ -21,7 +23,7 @@ export class AddWhatsAppFieldsToUsers1757936000001 implements MigrationInterface
         name: 'whatsapp_notifications_enabled',
         type: 'boolean',
         default: false,
-      })
+      }),
     );
 
     // Adicionar coluna whatsapp_priority_threshold
@@ -31,7 +33,7 @@ export class AddWhatsAppFieldsToUsers1757936000001 implements MigrationInterface
         name: 'whatsapp_priority_threshold',
         type: 'varchar',
         default: "'MEDIUM'",
-      })
+      }),
     );
 
     // Adicionar coluna whatsapp_quiet_hours_start
@@ -41,7 +43,7 @@ export class AddWhatsAppFieldsToUsers1757936000001 implements MigrationInterface
         name: 'whatsapp_quiet_hours_start',
         type: 'varchar',
         isNullable: true,
-      })
+      }),
     );
 
     // Adicionar coluna whatsapp_quiet_hours_end
@@ -51,7 +53,7 @@ export class AddWhatsAppFieldsToUsers1757936000001 implements MigrationInterface
         name: 'whatsapp_quiet_hours_end',
         type: 'varchar',
         isNullable: true,
-      })
+      }),
     );
   }
 

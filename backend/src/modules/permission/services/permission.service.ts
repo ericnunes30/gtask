@@ -10,9 +10,13 @@ export class PermissionService {
    * @param createdBy O ID do usuário que criou a tarefa
    * @returns Array de IDs de usuários que devem ser notificados
    */
-  getTaskCreatedNotificationRecipients(task: Task, createdBy: number): number[] {
+  getTaskCreatedNotificationRecipients(
+    task: Task,
+    createdBy: number,
+  ): number[] {
     // Apenas usuários diretamente atribuídos à tarefa, excluindo o criador
-    const userIds = task.users?.map((user) => user.id).filter((id) => id !== createdBy) || [];
+    const userIds =
+      task.users?.map((user) => user.id).filter((id) => id !== createdBy) || [];
     return userIds;
   }
 
@@ -22,9 +26,15 @@ export class PermissionService {
    * @param createdBy O ID do usuário que criou o comentário
    * @returns Array de IDs de usuários que devem ser notificados
    */
-  getCommentCreatedNotificationRecipients(comment: Comment, createdBy: number): number[] {
+  getCommentCreatedNotificationRecipients(
+    comment: Comment,
+    createdBy: number,
+  ): number[] {
     // Apenas usuários diretamente atribuídos à tarefa, excluindo o autor do comentário
-    const userIds = comment.task?.users?.map((user) => user.id).filter((id) => id !== createdBy) || [];
+    const userIds =
+      comment.task?.users
+        ?.map((user) => user.id)
+        .filter((id) => id !== createdBy) || [];
     return userIds;
   }
 
@@ -42,7 +52,8 @@ export class PermissionService {
   ): number[] {
     // Se movido para revisão, notificar apenas o revisor (se diferente do autor)
     if (newStatus === 'em_revisao') {
-      const reviewerId = (task as any)?.reviewer?.id ?? (task as any)?.task_reviewer_id ?? null;
+      const reviewerId =
+        (task as any)?.reviewer?.id ?? (task as any)?.task_reviewer_id ?? null;
       if (reviewerId && reviewerId !== updatedBy) {
         return [reviewerId];
       }
@@ -50,7 +61,8 @@ export class PermissionService {
     }
 
     // Comportamento padrão: notificar usuários atribuídos à tarefa (excluindo quem fez a mudança)
-    const userIds = task.users?.map((user) => user.id).filter((id) => id !== updatedBy) || [];
+    const userIds =
+      task.users?.map((user) => user.id).filter((id) => id !== updatedBy) || [];
     return userIds;
   }
 
@@ -60,9 +72,13 @@ export class PermissionService {
    * @param updatedBy O ID do usuário que atualizou a tarefa
    * @returns Array de IDs de usuários que devem ser notificados
    */
-  getTaskUpdatedNotificationRecipients(task: Task, updatedBy: number): number[] {
+  getTaskUpdatedNotificationRecipients(
+    task: Task,
+    updatedBy: number,
+  ): number[] {
     // Apenas usuários diretamente atribuídos à tarefa, excluindo quem fez a atualização
-    const userIds = task.users?.map((user) => user.id).filter((id) => id !== updatedBy) || [];
+    const userIds =
+      task.users?.map((user) => user.id).filter((id) => id !== updatedBy) || [];
     return userIds;
   }
 }

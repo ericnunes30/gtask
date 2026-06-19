@@ -1,14 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { 
-  StructuredNotification, 
-  NotificationStrategy, 
+import {
+  StructuredNotification,
+  NotificationStrategy,
   NotificationPriority,
   TaskCreatedPayload,
   TaskStatusUpdatedPayload,
   CommentCreatedPayload,
   TimerEventPayload,
   NotificationType,
-  NotificationCategory
+  NotificationCategory,
 } from '../interfaces/notification.types';
 
 export abstract class BaseNotificationStrategy implements NotificationStrategy {
@@ -24,7 +24,7 @@ export abstract class BaseNotificationStrategy implements NotificationStrategy {
     priority: NotificationPriority,
     data: any,
     metadata: any,
-    userId: number
+    userId: number,
   ): StructuredNotification {
     return {
       id: 0,
@@ -38,10 +38,7 @@ export abstract class BaseNotificationStrategy implements NotificationStrategy {
     };
   }
 
-  protected createTaskRelatedEntities(
-    task: any,
-    performer?: any
-  ): any[] {
+  protected createTaskRelatedEntities(task: any, _performer?: any): any[] {
     const entities: any[] = [
       {
         type: 'task',
@@ -49,16 +46,16 @@ export abstract class BaseNotificationStrategy implements NotificationStrategy {
         name: task.title,
         metadata: {
           status: task.status,
-          priority: task.priority
-        }
-      }
+          priority: task.priority,
+        },
+      },
     ];
 
     if (task.project) {
       entities.push({
         type: 'project',
         id: task.project.id,
-        name: task.project.title
+        name: task.project.title,
       });
     }
 
@@ -68,29 +65,29 @@ export abstract class BaseNotificationStrategy implements NotificationStrategy {
   protected createNotificationContext(
     performer: any,
     source: string,
-    additionalData?: Record<string, any>
+    additionalData?: Record<string, any>,
   ): any {
     return {
-      performer: performer ? {
-        id: performer.id,
-        name: performer.name,
-        email: performer.email,
-        avatar: performer.avatar
-      } : undefined,
+      performer: performer
+        ? {
+            id: performer.id,
+            name: performer.name,
+            email: performer.email,
+            avatar: performer.avatar,
+          }
+        : undefined,
       timestamp: new Date().toISOString(),
       source,
-      additionalData
+      additionalData,
     };
   }
 
-  protected createTaskMetadata(
-    tags: string[] = []
-  ): any {
+  protected createTaskMetadata(tags: string[] = []): any {
     return {
       source: 'task_system',
       category: 'task' as any,
       tags: ['task', ...tags],
-      version: '1.0'
+      version: '1.0',
     };
   }
 }
@@ -100,12 +97,14 @@ export class TaskCreatedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.TASK_CREATED;
 
   validate(payload: any): boolean {
-    return payload && 
-           payload.task && 
-           payload.task.id && 
-           payload.task.title &&
-           payload.createdBy &&
-           typeof payload.createdBy === 'number';
+    return (
+      payload &&
+      payload.task &&
+      payload.task.id &&
+      payload.task.title &&
+      payload.createdBy &&
+      typeof payload.createdBy === 'number'
+    );
   }
 
   create(payload: TaskCreatedPayload): StructuredNotification {
@@ -120,7 +119,7 @@ export class TaskCreatedStrategy extends BaseNotificationStrategy {
       actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: task.title,
       taskId: task.id,
-      projectTitle: task.project?.title
+      projectTitle: task.project?.title,
     };
 
     const metadata = this.createTaskMetadata(['created']);
@@ -133,19 +132,19 @@ export class TaskCreatedStrategy extends BaseNotificationStrategy {
       this.getPriority(payload),
       data,
       metadata,
-      createdBy
+      createdBy,
     );
   }
 
   getPriority(payload: TaskCreatedPayload): NotificationPriority {
     // Prioridade baseada na urgência da tarefa
     const priorityMap: Record<string, NotificationPriority> = {
-      'urgente': NotificationPriority.URGENT,
-      'alta': NotificationPriority.HIGH,
-      'media': NotificationPriority.MEDIUM,
-      'baixa': NotificationPriority.LOW
+      urgente: NotificationPriority.URGENT,
+      alta: NotificationPriority.HIGH,
+      media: NotificationPriority.MEDIUM,
+      baixa: NotificationPriority.LOW,
     };
-    
+
     return priorityMap[payload.task.priority] || NotificationPriority.MEDIUM;
   }
 }
@@ -155,12 +154,14 @@ export class TaskStatusUpdatedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.TASK_STATUS_CHANGED;
 
   validate(payload: any): boolean {
-    return payload && 
-           payload.task && 
-           payload.task.id && 
-           payload.oldStatus &&
-           payload.newStatus &&
-           payload.updatedBy;
+    return (
+      payload &&
+      payload.task &&
+      payload.task.id &&
+      payload.oldStatus &&
+      payload.newStatus &&
+      payload.updatedBy
+    );
   }
 
   create(payload: TaskStatusUpdatedPayload): StructuredNotification {
@@ -176,7 +177,7 @@ export class TaskStatusUpdatedStrategy extends BaseNotificationStrategy {
       taskTitle: task.title,
       taskId: task.id,
       oldStatus: oldStatus,
-      newStatus: newStatus
+      newStatus: newStatus,
     };
 
     const metadata = this.createTaskMetadata(['status_updated']);
@@ -186,26 +187,32 @@ export class TaskStatusUpdatedStrategy extends BaseNotificationStrategy {
 
     return this.createBaseNotification(
       this.type,
-      this.getPriority({oldStatus, newStatus}),
+      this.getPriority({ oldStatus, newStatus }),
       data,
       metadata,
-      updatedBy
+      updatedBy,
     );
   }
 
-  getPriority(payload: {oldStatus: string, newStatus: string}): NotificationPriority {
+  getPriority(payload: {
+    oldStatus: string;
+    newStatus: string;
+  }): NotificationPriority {
     // Prioridade alta para mudanças críticas de status
     const criticalStatuses = ['concluido', 'cancelado', 'em_revisao'];
     const mediumStatuses = ['em_andamento', 'aguardando_cliente'];
-    
+
     if (criticalStatuses.includes(payload.newStatus)) {
       return NotificationPriority.HIGH;
     }
-    
-    if (mediumStatuses.includes(payload.newStatus) && payload.oldStatus === 'pendente') {
+
+    if (
+      mediumStatuses.includes(payload.newStatus) &&
+      payload.oldStatus === 'pendente'
+    ) {
       return NotificationPriority.MEDIUM;
     }
-    
+
     return NotificationPriority.LOW;
   }
 }
@@ -215,12 +222,14 @@ export class CommentCreatedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.COMMENT_CREATED;
 
   validate(payload: any): boolean {
-    return payload && 
-           payload.comment && 
-           payload.comment.id && 
-           payload.comment.content &&
-           payload.comment.task &&
-           payload.createdBy;
+    return (
+      payload &&
+      payload.comment &&
+      payload.comment.id &&
+      payload.comment.content &&
+      payload.comment.task &&
+      payload.createdBy
+    );
   }
 
   create(payload: CommentCreatedPayload): StructuredNotification {
@@ -235,16 +244,17 @@ export class CommentCreatedStrategy extends BaseNotificationStrategy {
       actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: comment.task.title,
       taskId: comment.task.id,
-      commentSnippet: comment.content.length > 50 ?
-        comment.content.substring(0, 47) + '...' :
-        comment.content
+      commentSnippet:
+        comment.content.length > 50
+          ? comment.content.substring(0, 47) + '...'
+          : comment.content,
     };
 
     const metadata = {
       source: 'comment_system',
       category: NotificationCategory.COMMENT,
       tags: ['comment', 'created', 'task'],
-      version: '1.0'
+      version: '1.0',
     };
 
     return this.createBaseNotification(
@@ -252,11 +262,11 @@ export class CommentCreatedStrategy extends BaseNotificationStrategy {
       this.getPriority(payload),
       data,
       metadata,
-      createdBy
+      createdBy,
     );
   }
 
-  getPriority(payload: CommentCreatedPayload): NotificationPriority {
+  getPriority(_payload: CommentCreatedPayload): NotificationPriority {
     // Comentários geralmente têm prioridade média
     return NotificationPriority.MEDIUM;
   }
@@ -267,10 +277,7 @@ export class TimerStartedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.TIMER_STARTED;
 
   validate(payload: any): boolean {
-    return payload && 
-           payload.task && 
-           payload.task.id && 
-           payload.userId;
+    return payload && payload.task && payload.task.id && payload.userId;
   }
 
   create(payload: TimerEventPayload): StructuredNotification {
@@ -290,9 +297,9 @@ export class TimerStartedStrategy extends BaseNotificationStrategy {
           newValue: {
             taskId: task.id,
             duration: duration || 0,
-            status: 'running'
-          }
-        }
+            status: 'running',
+          },
+        },
       },
       relatedEntities: [
         {
@@ -302,21 +309,21 @@ export class TimerStartedStrategy extends BaseNotificationStrategy {
           metadata: {
             taskId: task.id,
             duration: duration || 0,
-            status: 'running'
-          }
+            status: 'running',
+          },
         },
-        ...this.createTaskRelatedEntities(task, performer)
+        ...this.createTaskRelatedEntities(task, performer),
       ],
       context: this.createNotificationContext(performer, 'timer_start', {
-        duration
-      })
+        duration,
+      }),
     };
 
     const metadata = {
       source: 'timer_system',
       category: NotificationCategory.TIMER,
       tags: ['timer', 'started', 'task'],
-      version: '1.0'
+      version: '1.0',
     };
 
     return this.createBaseNotification(
@@ -324,11 +331,11 @@ export class TimerStartedStrategy extends BaseNotificationStrategy {
       this.getPriority(payload),
       data,
       metadata,
-      userId
+      userId,
     );
   }
 
-  getPriority(payload: TimerEventPayload): NotificationPriority {
+  getPriority(_payload: TimerEventPayload): NotificationPriority {
     return NotificationPriority.LOW;
   }
 }
@@ -338,10 +345,7 @@ export class TimerPausedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.TIMER_PAUSED;
 
   validate(payload: any): boolean {
-    return payload && 
-           payload.task && 
-           payload.task.id && 
-           payload.userId;
+    return payload && payload.task && payload.task.id && payload.userId;
   }
 
   create(payload: TimerEventPayload): StructuredNotification {
@@ -359,14 +363,14 @@ export class TimerPausedStrategy extends BaseNotificationStrategy {
         timer: {
           oldValue: {
             taskId: task.id,
-            status: 'running'
+            status: 'running',
           },
           newValue: {
             taskId: task.id,
             duration: duration || 0,
-            status: 'paused'
-          }
-        }
+            status: 'paused',
+          },
+        },
       },
       relatedEntities: [
         {
@@ -376,21 +380,21 @@ export class TimerPausedStrategy extends BaseNotificationStrategy {
           metadata: {
             taskId: task.id,
             duration: duration || 0,
-            status: 'paused'
-          }
+            status: 'paused',
+          },
         },
-        ...this.createTaskRelatedEntities(task, performer)
+        ...this.createTaskRelatedEntities(task, performer),
       ],
       context: this.createNotificationContext(performer, 'timer_pause', {
-        duration
-      })
+        duration,
+      }),
     };
 
     const metadata = {
       source: 'timer_system',
       category: NotificationCategory.TIMER,
       tags: ['timer', 'paused', 'task'],
-      version: '1.0'
+      version: '1.0',
     };
 
     return this.createBaseNotification(
@@ -398,11 +402,11 @@ export class TimerPausedStrategy extends BaseNotificationStrategy {
       this.getPriority(payload),
       data,
       metadata,
-      userId
+      userId,
     );
   }
 
-  getPriority(payload: TimerEventPayload): NotificationPriority {
+  getPriority(_payload: TimerEventPayload): NotificationPriority {
     return NotificationPriority.LOW;
   }
 }
@@ -412,13 +416,15 @@ export class TaskUpdatedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.TASK_UPDATED;
 
   validate(payload: any): boolean {
-    return payload && 
-           payload.task && 
-           payload.task.id && 
-           payload.task.title &&
-           payload.updatedBy &&
-           typeof payload.updatedBy === 'number' &&
-           Array.isArray(payload.changedFields);
+    return (
+      payload &&
+      payload.task &&
+      payload.task.id &&
+      payload.task.title &&
+      payload.updatedBy &&
+      typeof payload.updatedBy === 'number' &&
+      Array.isArray(payload.changedFields)
+    );
   }
 
   create(payload: any): StructuredNotification {
@@ -436,15 +442,15 @@ export class TaskUpdatedStrategy extends BaseNotificationStrategy {
       changedFields: changedFields.map((field: any) => ({
         field: field.field,
         oldValue: field.oldValue,
-        newValue: field.newValue
-      }))
+        newValue: field.newValue,
+      })),
     };
 
     const metadata = {
       source: 'task_system',
       category: NotificationCategory.TASK,
       tags: ['task', 'updated'],
-      version: '1.0'
+      version: '1.0',
     };
 
     return this.createBaseNotification(
@@ -452,13 +458,12 @@ export class TaskUpdatedStrategy extends BaseNotificationStrategy {
       NotificationPriority.MEDIUM, // Prioridade padrão para atualizações
       data,
       metadata,
-      updatedBy
+      updatedBy,
     );
   }
 
-  getPriority(payload: any): NotificationPriority {
+  getPriority(_payload: any): NotificationPriority {
     // Prioridade pode ser ajustada com base nos campos alterados
     return NotificationPriority.MEDIUM;
   }
 }
-

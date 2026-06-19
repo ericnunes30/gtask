@@ -1,6 +1,11 @@
 import { corsConfig } from './config/cors.config';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, HttpStatus, BadRequestException } from '@nestjs/common';
+import {
+  ValidationPipe,
+  HttpStatus,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -9,7 +14,7 @@ import * as fs from 'fs';
 import { initSentry } from './config/sentry.config';
 
 async function bootstrap() {
-  console.log('[main.ts] Bootstrap function started.');
+  Logger.log('[main.ts] Bootstrap function started.');
   // Initialize Sentry (no-op if SENTRY_DSN is not set)
   initSentry();
   const app = await NestFactory.create(AppModule);
@@ -49,9 +54,11 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   const port = process.env.PORT || 3334;
-  console.log(`[main.ts] Application about to listen on port ${port}.`);
+  Logger.log(`[main.ts] Application about to listen on port ${port}.`);
   await app.listen(port);
 
-  console.log(`Application running on: http://localhost:${port}/${process.env.API_PREFIX || 'api/v1'}`);
+  Logger.log(
+    `Application running on: http://localhost:${port}/${process.env.API_PREFIX || 'api/v1'}`,
+  );
 }
 bootstrap();

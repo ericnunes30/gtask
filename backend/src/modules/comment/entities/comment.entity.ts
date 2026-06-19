@@ -1,8 +1,8 @@
-import { 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  Column, 
-  ManyToOne, 
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
   OneToMany,
   ManyToMany,
   JoinColumn,
@@ -10,7 +10,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   BeforeInsert,
-  BeforeUpdate
+  BeforeUpdate,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Task } from '../../tasks/entities/task.entity';
@@ -54,17 +54,17 @@ export class Comment {
   @JoinColumn({ name: 'parent_id' })
   parentComment: Comment;
 
-  @OneToMany(() => Comment, comment => comment.parentComment)
+  @OneToMany(() => Comment, (comment) => comment.parentComment)
   replies: Comment[];
 
-  @OneToMany(() => CommentLike, commentLike => commentLike.comment)
+  @OneToMany(() => CommentLike, (commentLike) => commentLike.comment)
   likes: CommentLike[];
 
   @ManyToMany(() => User)
   @JoinTable({
     name: 'comment_user_mentions',
     joinColumn: { name: 'comment_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' }
+    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
   })
   mentionedUsers: User[];
 

@@ -1,4 +1,14 @@
-import { IsString, IsEnum, IsOptional, IsBoolean, IsNumber, ValidateNested, IsArray, IsNotEmpty, ArrayMinSize } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsBoolean,
+  IsNumber,
+  ValidateNested,
+  IsArray,
+  IsNotEmpty,
+  ArrayMinSize,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ScheduleType, TaskTemplate } from '../entities/recurring-task.entity';
 import { PriorityLevel } from '../../tasks/entities/enums';
@@ -15,7 +25,9 @@ class TaskTemplateDto implements TaskTemplate {
   priority: PriorityLevel;
 
   @IsArray({ message: 'Responsáveis devem ser um array de IDs' })
-  @ArrayMinSize(1, { message: 'Pelo menos um responsável deve ser selecionado' })
+  @ArrayMinSize(1, {
+    message: 'Pelo menos um responsável deve ser selecionado',
+  })
   @IsNumber({}, { each: true })
   assignee_ids: number[];
 

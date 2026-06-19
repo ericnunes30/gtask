@@ -58,12 +58,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
           // If authentication attaches user to request, record the id (no PII)
           const anyReq: any = request as any;
           if (anyReq.user && (anyReq.user.id || anyReq.user.userId)) {
-            Sentry.setUser({ id: String(anyReq.user.id || anyReq.user.userId) });
+            Sentry.setUser({
+              id: String(anyReq.user.id || anyReq.user.userId),
+            });
           }
           const err =
             exception instanceof Error
               ? exception
-              : new Error(typeof exception === 'string' ? exception : 'Unknown error');
+              : new Error(
+                  typeof exception === 'string' ? exception : 'Unknown error',
+                );
           Sentry.captureException(err);
         });
       }

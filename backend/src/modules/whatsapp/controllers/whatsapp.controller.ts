@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, UseGuards, HttpStatus, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  HttpStatus,
+  HttpCode,
+} from '@nestjs/common';
 import { WhatsAppService } from '../services/whatsapp.service';
 import { WhatsAppConfigDto } from '../dto/whatsapp-config.dto';
 import { SendMessageDto } from '../dto/send-message.dto';
@@ -22,7 +30,12 @@ export class WhatsAppController {
   }
 
   @Post('send')
-  async sendMessage(@Body() sendMessageDto: SendMessageDto): Promise<WhatsAppResponse> {
-    return this.whatsappService.sendMessage(sendMessageDto.number, sendMessageDto.text);
+  async sendMessage(
+    @Body() sendMessageDto: SendMessageDto,
+  ): Promise<WhatsAppResponse> {
+    return this.whatsappService.sendMessage(
+      sendMessageDto.number,
+      sendMessageDto.text,
+    );
   }
 }

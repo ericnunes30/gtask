@@ -9,10 +9,7 @@ import { CommentCreator } from './services/comment-creator.abstract';
 import { CommentCreationDecorator } from './decorators/comment-creation.decorator';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Comment, CommentLike]),
-    UserModule
-  ],
+  imports: [TypeOrmModule.forFeature([Comment, CommentLike]), UserModule],
   controllers: [CommentController],
   providers: [
     CommentService,
@@ -21,6 +18,6 @@ import { CommentCreationDecorator } from './decorators/comment-creation.decorato
       useClass: CommentCreationDecorator,
     },
   ],
-  exports: [CommentService, CommentCreator]
+  exports: [CommentService, CommentCreator],
 })
 export class CommentModule {}

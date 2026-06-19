@@ -17,7 +17,9 @@ export class ActivityLogListener {
 
   @OnEvent('task.created')
   async handleTaskCreatedEvent(payload: { task: Task; createdBy: number }) {
-    this.logger.log(`ActivityLogListener: Handling task.created event for task #${payload.task.id}`);
+    this.logger.log(
+      `ActivityLogListener: Handling task.created event for task #${payload.task.id}`,
+    );
     const { task, createdBy } = payload;
 
     const log = this.activityLogRepository.create({
@@ -30,20 +32,28 @@ export class ActivityLogListener {
         status: task.status,
         priority: task.priority,
         projectId: task.project_id,
-      }
+      },
     });
 
     try {
       await this.activityLogRepository.save(log);
       this.logger.log(`Activity log saved for new task #${task.id}`);
     } catch (error) {
-      this.logger.error(`Failed to save activity log for new task #${task.id}`, error.stack);
+      this.logger.error(
+        `Failed to save activity log for new task #${task.id}`,
+        error.stack,
+      );
     }
   }
 
   @OnEvent('comment.created')
-  async handleCommentCreatedEvent(payload: { comment: Comment; createdBy: number }) {
-    this.logger.log(`ActivityLogListener: Handling comment.created event for task #${payload.comment.task_id}`);
+  async handleCommentCreatedEvent(payload: {
+    comment: Comment;
+    createdBy: number;
+  }) {
+    this.logger.log(
+      `ActivityLogListener: Handling comment.created event for task #${payload.comment.task_id}`,
+    );
     const { comment, createdBy } = payload;
 
     const log = this.activityLogRepository.create({
@@ -55,15 +65,26 @@ export class ActivityLogListener {
 
     try {
       await this.activityLogRepository.save(log);
-      this.logger.log(`Activity log for new comment on task #${comment.task_id} saved`);
+      this.logger.log(
+        `Activity log for new comment on task #${comment.task_id} saved`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to save activity log for new comment on task #${comment.task_id}`, error.stack);
+      this.logger.error(
+        `Failed to save activity log for new comment on task #${comment.task_id}`,
+        error.stack,
+      );
     }
   }
 
   @OnEvent('task.updated')
-  async handleTaskUpdatedEvent(payload: { task: Task; updatedBy: number; changedFields: Record<string, { oldValue: any; newValue: any }> }) {
-    this.logger.log(`ActivityLogListener: Handling task.updated event for task #${payload.task.id}`);
+  async handleTaskUpdatedEvent(payload: {
+    task: Task;
+    updatedBy: number;
+    changedFields: Record<string, { oldValue: any; newValue: any }>;
+  }) {
+    this.logger.log(
+      `ActivityLogListener: Handling task.updated event for task #${payload.task.id}`,
+    );
     const { task, updatedBy, changedFields } = payload;
 
     for (const [field, changes] of Object.entries(changedFields)) {
@@ -78,16 +99,28 @@ export class ActivityLogListener {
 
       try {
         await this.activityLogRepository.save(log);
-        this.logger.log(`Activity log saved for task #${task.id} field '${field}' update`);
+        this.logger.log(
+          `Activity log saved for task #${task.id} field '${field}' update`,
+        );
       } catch (error) {
-        this.logger.error(`Failed to save activity log for task #${task.id} field '${field}' update`, error.stack);
+        this.logger.error(
+          `Failed to save activity log for task #${task.id} field '${field}' update`,
+          error.stack,
+        );
       }
     }
   }
 
   @OnEvent('task.status.updated')
-  async handleTaskStatusUpdatedEvent(payload: { task: Task; updatedBy: number; oldStatus: string; newStatus: string }) {
-    this.logger.log(`ActivityLogListener: Handling task.status.updated event for task #${payload.task.id}`);
+  async handleTaskStatusUpdatedEvent(payload: {
+    task: Task;
+    updatedBy: number;
+    oldStatus: string;
+    newStatus: string;
+  }) {
+    this.logger.log(
+      `ActivityLogListener: Handling task.status.updated event for task #${payload.task.id}`,
+    );
     const { task, updatedBy, oldStatus, newStatus } = payload;
 
     const log = this.activityLogRepository.create({
@@ -103,27 +136,43 @@ export class ActivityLogListener {
       await this.activityLogRepository.save(log);
       this.logger.log(`Activity log saved for task #${task.id} status update`);
     } catch (error) {
-      this.logger.error(`Failed to save activity log for task #${task.id} status update`, error.stack);
+      this.logger.error(
+        `Failed to save activity log for task #${task.id} status update`,
+        error.stack,
+      );
     }
   }
 
   @OnEvent('task.assignees.updated')
-  async handleTaskAssigneesUpdatedEvent(payload: { task: Task; updatedBy: number; action: 'set' | 'remove'; userIds: number[] }) {
-    this.logger.log(`ActivityLogListener: Handling task.assignees.updated event for task #${payload.task.id}`);
+  async handleTaskAssigneesUpdatedEvent(payload: {
+    task: Task;
+    updatedBy: number;
+    action: 'set' | 'remove';
+    userIds: number[];
+  }) {
+    this.logger.log(
+      `ActivityLogListener: Handling task.assignees.updated event for task #${payload.task.id}`,
+    );
     const { task, updatedBy, action, userIds } = payload;
 
     const log = this.activityLogRepository.create({
       userId: updatedBy,
       taskId: task.id,
-      actionType: action === 'set' ? 'TASK_ASSIGNEES_SET' : 'TASK_ASSIGNEES_REMOVED',
+      actionType:
+        action === 'set' ? 'TASK_ASSIGNEES_SET' : 'TASK_ASSIGNEES_REMOVED',
       newValue: JSON.stringify(userIds),
     });
 
     try {
       await this.activityLogRepository.save(log);
-      this.logger.log(`Activity log saved for task #${task.id} assignees ${action}`);
+      this.logger.log(
+        `Activity log saved for task #${task.id} assignees ${action}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to save activity log for task #${task.id} assignees ${action}`, error.stack);
+      this.logger.error(
+        `Failed to save activity log for task #${task.id} assignees ${action}`,
+        error.stack,
+      );
     }
   }
 }

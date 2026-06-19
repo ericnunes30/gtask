@@ -12,10 +12,10 @@ import { RecurringTaskUpdateFactory } from './factories/recurring-task-update.fa
   imports: [TypeOrmModule.forFeature([RecurringTask, Occupation])],
   controllers: [RecurringTaskController],
   providers: [
-    RecurringTaskService, 
-    OccupationEnhancer, 
-    RecurringTaskCreationFactory, 
-    RecurringTaskUpdateFactory
+    RecurringTaskService,
+    OccupationEnhancer,
+    RecurringTaskCreationFactory,
+    RecurringTaskUpdateFactory,
   ],
   exports: [RecurringTaskService, TypeOrmModule],
 })

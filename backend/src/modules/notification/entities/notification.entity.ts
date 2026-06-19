@@ -5,17 +5,17 @@ import {
   ManyToOne,
   CreateDateColumn,
   Index,
-  JoinColumn
+  JoinColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import {
   NotificationType,
-  NotificationPriority
+  NotificationPriority,
 } from '../interfaces/notification.types';
 import type {
   NotificationData,
   NotificationMetadata,
-  StructuredNotification
+  StructuredNotification,
 } from '../interfaces/notification.types';
 
 @Entity('structured_notifications')
@@ -38,7 +38,7 @@ export class StructuredNotificationEntity {
   @Column({ type: 'jsonb' })
   metadata: NotificationMetadata;
 
-  @ManyToOne(() => User, user => user.structuredNotifications)
+  @ManyToOne(() => User, (user) => user.structuredNotifications)
   @JoinColumn({ name: 'user_id' })
   user: User;
 
@@ -51,16 +51,24 @@ export class StructuredNotificationEntity {
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt: Date;
 
-  @Column({ name: 'expires_at', nullable: true, type: 'timestamp with time zone' })
+  @Column({
+    name: 'expires_at',
+    nullable: true,
+    type: 'timestamp with time zone',
+  })
   expiresAt?: Date;
 
-  @Column({ name: 'delivered_at', nullable: true, type: 'timestamp with time zone' })
+  @Column({
+    name: 'delivered_at',
+    nullable: true,
+    type: 'timestamp with time zone',
+  })
   deliveredAt?: Date;
 
   @Column({ name: 'read_at', nullable: true, type: 'timestamp with time zone' })
   readAt?: Date;
 
-  // Método para converter de entidade para domain object
+  // Converte a entidade para domain object
   toDomain(): StructuredNotification {
     // Validar dados antes de retornar
     if (!this.data || typeof this.data !== 'object') {
@@ -68,7 +76,9 @@ export class StructuredNotificationEntity {
     }
 
     if (!this.metadata || typeof this.metadata !== 'object') {
-      throw new Error(`Invalid notification metadata for notification ${this.id}`);
+      throw new Error(
+        `Invalid notification metadata for notification ${this.id}`,
+      );
     }
 
     return {
@@ -86,8 +96,10 @@ export class StructuredNotificationEntity {
     };
   }
 
-  // Método estático para criar entidade a partir de domain object
-  static fromDomain(domain: StructuredNotification): StructuredNotificationEntity {
+  // Cria entidade a partir de domain object
+  static fromDomain(
+    domain: StructuredNotification,
+  ): StructuredNotificationEntity {
     const entity = new StructuredNotificationEntity();
     // Evita forçar inserção com id=0 (deixe o banco gerar o ID)
     if (typeof domain.id === 'number' && domain.id > 0) {

@@ -1,11 +1,11 @@
-import { 
-  Entity, 
-  Column, 
-  PrimaryGeneratedColumn, 
-  CreateDateColumn, 
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
   UpdateDateColumn,
   ManyToMany,
-  JoinTable
+  JoinTable,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Project } from '../../project/entities/project.entity';
@@ -25,27 +25,27 @@ export class Occupation {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @ManyToMany(() => User, user => user.occupations)
+  @ManyToMany(() => User, (user) => user.occupations)
   @JoinTable({
     name: 'users_occupations',
     joinColumn: { name: 'occupation_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' }
+    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
   })
   users: User[];
 
-  @ManyToMany(() => Project, project => project.occupations)
+  @ManyToMany(() => Project, (project) => project.occupations)
   @JoinTable({
     name: 'occupations_projects',
     joinColumn: { name: 'occupation_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'project_id', referencedColumnName: 'id' }
+    inverseJoinColumn: { name: 'project_id', referencedColumnName: 'id' },
   })
   projects: Project[];
 
-  @ManyToMany(() => Task, task => task.occupations)
+  @ManyToMany(() => Task, (task) => task.occupations)
   @JoinTable({
     name: 'occupations_tasks',
     joinColumn: { name: 'occupation_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'task_id', referencedColumnName: 'id' }
+    inverseJoinColumn: { name: 'task_id', referencedColumnName: 'id' },
   })
   tasks: Task[];
 }

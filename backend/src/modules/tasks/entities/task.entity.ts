@@ -1,14 +1,14 @@
-import { 
-  Entity, 
-  Column, 
-  PrimaryGeneratedColumn, 
-  CreateDateColumn, 
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
   ManyToMany,
   OneToMany,
   JoinTable,
-  JoinColumn
+  JoinColumn,
 } from 'typeorm';
 import { PriorityLevel, Status } from './enums';
 
@@ -66,9 +66,9 @@ export class Task {
   @Column({ nullable: true, type: 'varchar', length: 500 })
   video_url: string | null;
 
-  @Column({ 
-    type: 'jsonb', 
-    nullable: true 
+  @Column({
+    type: 'jsonb',
+    nullable: true,
   })
   useful_links: Array<{ title: string; url: string }> | null;
 
@@ -100,20 +100,20 @@ export class Task {
   @JoinTable({
     name: 'task_user',
     joinColumn: { name: 'task_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' }
+    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
   })
   users: User[];
 
-  @ManyToMany(() => Occupation, occupation => occupation.tasks)
+  @ManyToMany(() => Occupation, (occupation) => occupation.tasks)
   occupations: Occupation[];
 
-  @OneToMany(() => Comment, comment => comment.task)
+  @OneToMany(() => Comment, (comment) => comment.task)
   comments: Comment[];
 
-  @OneToMany(() => ActivityLog, activityLog => activityLog.task)
+  @OneToMany(() => ActivityLog, (activityLog) => activityLog.task)
   activityLogs: ActivityLog[];
 
-  // Método de serialização personalizado para garantir que o campo timer seja incluído
+  // Serialização personalizada para garantir que o campo timer seja incluído
   toJSON() {
     return {
       ...this,

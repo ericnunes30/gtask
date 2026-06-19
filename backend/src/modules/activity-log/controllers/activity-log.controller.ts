@@ -14,14 +14,14 @@ export class ActivityLogController {
     @Query('userId') userId?: number,
     @Query('actionType') actionType?: string,
     @Query('page') page: number = 1,
-    @Query('limit') limit: number = 20
+    @Query('limit') limit: number = 20,
   ): Promise<ActivityLog[]> {
     return this.activityLogService.findAll({
       taskId,
       userId,
       actionType,
       page,
-      limit
+      limit,
     });
   }
 
@@ -29,7 +29,7 @@ export class ActivityLogController {
   async getActivityLogsByTask(
     @Param('taskId') taskId: number,
     @Query('page') page: number = 1,
-    @Query('limit') limit: number = 20
+    @Query('limit') limit: number = 20,
   ): Promise<ActivityLog[]> {
     return this.activityLogService.findByTaskId(taskId, page, limit);
   }

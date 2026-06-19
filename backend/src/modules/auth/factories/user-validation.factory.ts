@@ -20,18 +20,25 @@ export class StandardUserValidationStrategy implements UserValidationStrategy {
 
   async validate(email: string, password: string): Promise<any> {
     const user = await this.userService.findByEmail(email);
-    if (user && user.password && await this.verifyPassword(password, user.password)) {
-      const { password, ...result } = user;
+    if (
+      user &&
+      user.password &&
+      (await this.verifyPassword(password, user.password))
+    ) {
+      const { password: _password, ...result } = user;
       return result;
     }
     return null;
   }
 
-  private async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
+  private async verifyPassword(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
     try {
       const strategy = this.passwordFactory.getStrategy(hashedPassword);
       return await strategy.verify(plainPassword, hashedPassword);
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -51,12 +58,12 @@ export class UserValidationFactory {
   }
 
   async validateUser(email: string, password: string): Promise<any> {
-    const strategy = this.strategies.find(s => s.canHandle(email, password));
-    
+    const strategy = this.strategies.find((s) => s.canHandle(email, password));
+
     if (!strategy) {
       throw new Error(`No user validation strategy found for email: ${email}`);
     }
-    
+
     return await strategy.validate(email, password);
   }
 }

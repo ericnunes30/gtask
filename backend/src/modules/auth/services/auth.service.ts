@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, Logger, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  Logger,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../../user/services/user.service';
 import { LoginDto } from '../dto/login.dto';
@@ -37,11 +42,18 @@ export class AuthService {
 
     const user = await this.userService.createFirstAdmin(setupDto);
 
-    const accessTokenPayload = this.tokenPayloadFactory.createPayload(user, 'extended');
+    const accessTokenPayload = this.tokenPayloadFactory.createPayload(
+      user,
+      'extended',
+    );
     const refreshTokenPayload = { sub: user.id };
 
-    const accessToken = this.jwtService.sign(accessTokenPayload, { expiresIn: '15m' });
-    const refreshToken = this.jwtService.sign(refreshTokenPayload, { expiresIn: '7d' });
+    const accessToken = this.jwtService.sign(accessTokenPayload, {
+      expiresIn: '15m',
+    });
+    const refreshToken = this.jwtService.sign(refreshTokenPayload, {
+      expiresIn: '7d',
+    });
 
     this.logger.log(`Setup completed for first admin user: ${user.email}`);
 
@@ -59,13 +71,22 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const accessTokenPayload = this.tokenPayloadFactory.createPayload(user, 'extended');
+    const accessTokenPayload = this.tokenPayloadFactory.createPayload(
+      user,
+      'extended',
+    );
     const refreshTokenPayload = { sub: user.id }; // Minimal payload for refresh token
 
-    const accessToken = this.jwtService.sign(accessTokenPayload, { expiresIn: '15m' });
-    const refreshToken = this.jwtService.sign(refreshTokenPayload, { expiresIn: '7d' });
+    const accessToken = this.jwtService.sign(accessTokenPayload, {
+      expiresIn: '15m',
+    });
+    const refreshToken = this.jwtService.sign(refreshTokenPayload, {
+      expiresIn: '7d',
+    });
 
-    this.logger.log(`Successfully created access and refresh tokens for user ${user.email}`);
+    this.logger.log(
+      `Successfully created access and refresh tokens for user ${user.email}`,
+    );
 
     return {
       accessToken,
@@ -82,11 +103,16 @@ export class AuthService {
         throw new UnauthorizedException('Invalid user');
       }
 
-      const newAccessTokenPayload = this.tokenPayloadFactory.createPayload(user, 'extended');
-      const newAccessToken = this.jwtService.sign(newAccessTokenPayload, { expiresIn: '15m' });
+      const newAccessTokenPayload = this.tokenPayloadFactory.createPayload(
+        user,
+        'extended',
+      );
+      const newAccessToken = this.jwtService.sign(newAccessTokenPayload, {
+        expiresIn: '15m',
+      });
 
       return { accessToken: newAccessToken };
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
@@ -99,7 +125,7 @@ export class AuthService {
   async verifyToken(token: string) {
     try {
       return this.jwtService.verify(token);
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid token');
     }
   }

@@ -17,16 +17,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
 
     if (!secret) {
-      this.logger.warn('JWT_SECRET not found in environment variables. Using default secret.');
+      this.logger.warn(
+        'JWT_SECRET not found in environment variables. Using default secret.',
+      );
     }
   }
 
   async validate(payload: any) {
     // Corrigido para retornar o payload com a propriedade `sub` que a aplicação espera
-    return { 
-      sub: payload.sub, 
+    return {
+      sub: payload.sub,
       email: payload.email,
-      name: payload.name 
+      name: payload.name,
     };
   }
 }

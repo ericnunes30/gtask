@@ -32,7 +32,10 @@ export class OccupationService {
       this.logger.log(`Found ${occupations.length} occupations`);
       return occupations;
     } catch (error) {
-      this.logger.error(`Error finding all occupations: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error finding all occupations: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -43,16 +46,19 @@ export class OccupationService {
       where: { id },
       relations: ['users', 'projects', 'tasks'],
     });
-    
+
     if (!occupation) {
       this.logger.warn(`Occupation with ID ${id} not found`);
       throw new NotFoundException(`Ocupação com ID ${id} não encontrada`);
     }
-    
+
     return occupation;
   }
 
-  async update(id: number, updateOccupationDto: UpdateOccupationDto): Promise<Occupation> {
+  async update(
+    id: number,
+    updateOccupationDto: UpdateOccupationDto,
+  ): Promise<Occupation> {
     this.logger.log(`Updating occupation with ID: ${id}`);
     const occupation = await this.findOne(id);
     Object.assign(occupation, updateOccupationDto);
@@ -65,32 +71,41 @@ export class OccupationService {
     await this.occupationRepository.remove(occupation);
   }
 
-  async addUserToOccupation(occupationId: number, userId: number): Promise<Occupation> {
+  async addUserToOccupation(
+    occupationId: number,
+    userId: number,
+  ): Promise<Occupation> {
     this.logger.log(`Adding user ${userId} to occupation ${occupationId}`);
-    
+
     // Buscar a ocupação com os usuários atuais
     const occupation = await this.occupationRepository.findOne({
       where: { id: occupationId },
       relations: ['users'],
     });
-    
+
     if (!occupation) {
-      throw new NotFoundException(`Ocupação com ID ${occupationId} não encontrada`);
+      throw new NotFoundException(
+        `Ocupação com ID ${occupationId} não encontrada`,
+      );
     }
 
     // Buscar o usuário
     const user = await this.userRepository.findOne({
       where: { id: userId },
     });
-    
+
     if (!user) {
       throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
     }
 
     // Verificar se o usuário já está na ocupação
-    const userAlreadyInOccupation = occupation.users?.some(u => u.id === userId);
+    const userAlreadyInOccupation = occupation.users?.some(
+      (u) => u.id === userId,
+    );
     if (userAlreadyInOccupation) {
-      this.logger.warn(`User ${userId} is already in occupation ${occupationId}`);
+      this.logger.warn(
+        `User ${userId} is already in occupation ${occupationId}`,
+      );
       return occupation; // Retorna a ocupação sem modificar
     }
 
@@ -99,32 +114,39 @@ export class OccupationService {
       occupation.users = [];
     }
     occupation.users.push(user);
-    
+
     return await this.occupationRepository.save(occupation);
   }
 
-  async removeUserFromOccupation(occupationId: number, userId: number): Promise<void> {
+  async removeUserFromOccupation(
+    occupationId: number,
+    userId: number,
+  ): Promise<void> {
     this.logger.log(`Removing user ${userId} from occupation ${occupationId}`);
-    
+
     // Buscar a ocupação com os usuários atuais
     const occupation = await this.occupationRepository.findOne({
       where: { id: occupationId },
       relations: ['users'],
     });
-    
+
     if (!occupation) {
-      throw new NotFoundException(`Ocupação com ID ${occupationId} não encontrada`);
+      throw new NotFoundException(
+        `Ocupação com ID ${occupationId} não encontrada`,
+      );
     }
 
     // Verificar se o usuário está na ocupação
-    const userIndex = occupation.users?.findIndex(u => u.id === userId);
+    const userIndex = occupation.users?.findIndex((u) => u.id === userId);
     if (userIndex === -1 || userIndex === undefined) {
-      throw new NotFoundException(`Usuário com ID ${userId} não encontrado na ocupação`);
+      throw new NotFoundException(
+        `Usuário com ID ${userId} não encontrado na ocupação`,
+      );
     }
 
     // Remover o usuário da ocupação
     occupation.users.splice(userIndex, 1);
-    
+
     await this.occupationRepository.save(occupation);
   }
 }

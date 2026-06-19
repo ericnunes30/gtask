@@ -1,8 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateStructuredNotificationsTable1756992000000 implements MigrationInterface {
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+export class CreateStructuredNotificationsTable1756992000000
+  implements MigrationInterface
+{
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TABLE structured_notifications (
                 id SERIAL PRIMARY KEY,
                 type VARCHAR(50) NOT NULL,
@@ -60,9 +62,9 @@ export class CreateStructuredNotificationsTable1756992000000 implements Migratio
             ADD CONSTRAINT chk_structured_notifications_priority 
             CHECK (priority IN ('low', 'medium', 'high', 'urgent'));
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP TABLE structured_notifications`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP TABLE structured_notifications`);
+  }
 }

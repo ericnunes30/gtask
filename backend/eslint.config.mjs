@@ -28,7 +28,22 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn'
+      '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
+  // Scripts CLI e migrations: console.log e permitido (saida de terminal / one-off)
+  {
+    files: ['src/commands/**', 'src/migrations/**'],
+    rules: {
+      'no-console': 'off',
     },
   },
 );

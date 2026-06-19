@@ -15,12 +15,14 @@ export class PasswordVerificationFactory {
   }
 
   getStrategy(hashedPassword: string): PasswordVerificationStrategy {
-    const strategy = this.strategies.find(s => s.canHandle(hashedPassword));
-    
+    const strategy = this.strategies.find((s) => s.canHandle(hashedPassword));
+
     if (!strategy) {
-      throw new Error(`No password verification strategy found for hash: ${hashedPassword.substring(0, 10)}...`);
+      throw new Error(
+        `No password verification strategy found for hash: ${hashedPassword.substring(0, 10)}...`,
+      );
     }
-    
+
     return strategy;
   }
 }

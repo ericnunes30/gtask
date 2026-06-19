@@ -1,4 +1,14 @@
-import { IsEnum, IsNumber, IsOptional, IsBoolean, IsObject, IsDateString, IsString, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  IsObject,
+  IsDateString,
+  IsString,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import {
   NotificationType,
@@ -7,7 +17,7 @@ import {
   TaskCreatedData,
   TaskStatusUpdatedData,
   CommentCreatedData,
-  TaskUpdatedData
+  TaskUpdatedData,
 } from '../interfaces/notification.types';
 
 // DTOs para os novos formatos de dados
@@ -77,7 +87,7 @@ class ChangedFieldDto {
 }
 
 // Tipo para o campo data que pode ser a estrutura antiga ou as novas estruturas
-type NotificationDataDto = 
+type NotificationDataDto =
   | {
       entityType: string;
       entityId: number;

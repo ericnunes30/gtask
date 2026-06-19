@@ -18,7 +18,7 @@ export class OccupationEnhancer implements RecurringTaskEnhancer {
       task.templateData.occupation_ids.length > 0
     ) {
       const occupations = await this.occupationRepository.findByIds(
-        task.templateData.occupation_ids
+        task.templateData.occupation_ids,
       );
       (task.templateData as any).occupations = occupations;
     }
@@ -26,6 +26,6 @@ export class OccupationEnhancer implements RecurringTaskEnhancer {
   }
 
   async enhanceMany(tasks: RecurringTask[]): Promise<RecurringTask[]> {
-    return Promise.all(tasks.map(task => this.enhance(task)));
+    return Promise.all(tasks.map((task) => this.enhance(task)));
   }
 }

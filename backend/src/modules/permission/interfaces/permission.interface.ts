@@ -7,8 +7,21 @@ export interface PermissionChecker {
 }
 
 export interface NotificationRecipientFilter {
-  filterTaskCreatedRecipients(taskId: number, createdBy: number): Promise<number[]>;
-  filterTaskUpdatedRecipients(taskId: number, updatedBy: number): Promise<number[]>;
-  filterTaskStatusChangedRecipients(taskId: number, updatedBy: number, newStatus: string): Promise<number[]>;
-  filterCommentCreatedRecipients(commentId: number, createdBy: number): Promise<number[]>;
+  filterTaskCreatedRecipients(
+    taskId: number,
+    createdBy: number,
+  ): Promise<number[]>;
+  filterTaskUpdatedRecipients(
+    taskId: number,
+    updatedBy: number,
+  ): Promise<number[]>;
+  filterTaskStatusChangedRecipients(
+    taskId: number,
+    updatedBy: number,
+    newStatus: string,
+  ): Promise<number[]>;
+  filterCommentCreatedRecipients(
+    commentId: number,
+    createdBy: number,
+  ): Promise<number[]>;
 }

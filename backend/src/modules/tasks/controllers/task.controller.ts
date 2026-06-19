@@ -1,4 +1,17 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Query, Patch, Logger, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+  Query,
+  Patch,
+  Logger,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
 import { TaskCreator } from '../services/task-creator.abstract';
@@ -23,7 +36,10 @@ export class TaskController {
   }
 
   @Get()
-  findAll(@Query('project') projectId?: string, @Query('status') status?: string) {
+  findAll(
+    @Query('project') projectId?: string,
+    @Query('status') status?: string,
+  ) {
     if (projectId) {
       return this.taskService.findByProject(+projectId);
     }
@@ -40,21 +56,37 @@ export class TaskController {
 
   @Put(':id')
   @UseGuards(AuthGuard('jwt'))
-  update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto, @Request() req) {
+  update(
+    @Param('id') id: string,
+    @Body() updateTaskDto: UpdateTaskDto,
+    @Request() req,
+  ) {
     return this.taskUpdater.update(+id, updateTaskDto, req.user.sub);
   }
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'))
-  async patch(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto, @Request() req) {
+  async patch(
+    @Param('id') id: string,
+    @Body() updateTaskDto: UpdateTaskDto,
+    @Request() req,
+  ) {
     this.logger.log(`[PATCH /tasks/:id] Received request for task ID: ${id}`);
-    this.logger.log(`[PATCH /tasks/:id] Request body: ${JSON.stringify(updateTaskDto)}`);
+    this.logger.log(
+      `[PATCH /tasks/:id] Request body: ${JSON.stringify(updateTaskDto)}`,
+    );
     try {
-      const updatedTask = await this.taskUpdater.update(+id, updateTaskDto, req.user.sub);
+      const updatedTask = await this.taskUpdater.update(
+        +id,
+        updateTaskDto,
+        req.user.sub,
+      );
       this.logger.log(`[PATCH /tasks/:id] Task ID ${id} updated successfully.`);
       return updatedTask;
     } catch (error) {
-      this.logger.error(`[PATCH /tasks/:id] Error updating task ID ${id}: ${error.message}`);
+      this.logger.error(
+        `[PATCH /tasks/:id] Error updating task ID ${id}: ${error.message}`,
+      );
       throw error; // Re-throw the error so NestJS can handle it
     }
   }

@@ -31,13 +31,13 @@ import { CommonModule } from '../../common/common.module';
   ],
   controllers: [AuthController],
   providers: [
-    AuthService, 
-    JwtStrategy, 
-    LocalStrategy, 
+    AuthService,
+    JwtStrategy,
+    LocalStrategy,
     PasswordVerificationFactory,
     TokenPayloadFactory,
     AuthResponseFactory,
-    UserValidationFactory
+    UserValidationFactory,
   ],
   exports: [AuthService],
 })

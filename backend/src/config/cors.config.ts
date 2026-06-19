@@ -19,7 +19,7 @@ export const corsConfig: CorsOptions = {
     if (!origin) return callback(null, true);
 
     // Check if origin is allowed (supports both strings and regex)
-    const isAllowed = allowedOrigins.some(allowed => {
+    const isAllowed = allowedOrigins.some((allowed) => {
       if (allowed instanceof RegExp) {
         return allowed.test(origin);
       }
@@ -31,7 +31,10 @@ export const corsConfig: CorsOptions = {
     }
 
     // In development, allow all localhost origins
-    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+    if (
+      process.env.NODE_ENV === 'development' &&
+      origin.includes('localhost')
+    ) {
       return callback(null, true);
     }
 

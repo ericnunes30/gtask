@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await CommandFactory.run(AppModule, {
+  await CommandFactory.run(AppModule, {
     logger: new Logger('Console'),
   });
 

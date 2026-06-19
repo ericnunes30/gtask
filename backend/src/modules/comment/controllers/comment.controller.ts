@@ -30,8 +30,12 @@ export class CommentController {
   @Post()
   @UseGuards(JwtAuthGuard)
   create(@Body() createCommentDto: CreateCommentDto, @Request() req) {
-    this.logger.log(`[POST /comments] Received request from User #${req.user.sub}`);
-    this.logger.log(`[POST /comments] DTO: ${JSON.stringify(createCommentDto)}`);
+    this.logger.log(
+      `[POST /comments] Received request from User #${req.user.sub}`,
+    );
+    this.logger.log(
+      `[POST /comments] DTO: ${JSON.stringify(createCommentDto)}`,
+    );
     return this.commentCreator.create(createCommentDto, req.user.sub);
   }
 
@@ -61,7 +65,7 @@ export class CommentController {
     return this.commentService.remove(id);
   }
 
-@Post(':id/like')
+  @Post(':id/like')
   @UseGuards(JwtAuthGuard)
   likeComment(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.commentService.likeComment(id, req.user.sub);

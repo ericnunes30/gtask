@@ -35,7 +35,7 @@ export class AuthenticatedSocketAdapter extends IoAdapter {
         // Anexamos o payload do usuário ao objeto do socket para uso posterior
         socket.user = userPayload;
         next();
-      } catch (error) {
+      } catch {
         next(new Error('Authentication error: Invalid token'));
       }
     });

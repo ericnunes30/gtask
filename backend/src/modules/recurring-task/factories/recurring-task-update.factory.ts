@@ -8,7 +8,9 @@ export interface RecurringTaskUpdateStrategy {
 }
 
 @Injectable()
-export class DefaultRecurringTaskUpdateStrategy implements RecurringTaskUpdateStrategy {
+export class DefaultRecurringTaskUpdateStrategy
+  implements RecurringTaskUpdateStrategy
+{
   canHandle(): boolean {
     return true; // fallback strategy
   }
@@ -17,27 +19,37 @@ export class DefaultRecurringTaskUpdateStrategy implements RecurringTaskUpdateSt
     this.updateNextDueDate(task, dto);
     this.updateTemplateData(task, dto);
     this.updateBasicFields(task, dto);
-    
+
     return task;
   }
 
-  private updateNextDueDate(task: RecurringTask, dto: UpdateRecurringTaskDto): void {
+  private updateNextDueDate(
+    task: RecurringTask,
+    dto: UpdateRecurringTaskDto,
+  ): void {
     if (dto.next_due_date) {
       task.next_due_date = new Date(dto.next_due_date);
     }
   }
 
-  private updateTemplateData(task: RecurringTask, dto: UpdateRecurringTaskDto): void {
+  private updateTemplateData(
+    task: RecurringTask,
+    dto: UpdateRecurringTaskDto,
+  ): void {
     if (dto.templateData) {
       task.templateData = {
         ...task.templateData,
         ...dto.templateData,
-        occupation_ids: dto.templateData.occupation_ids || task.templateData.occupation_ids,
+        occupation_ids:
+          dto.templateData.occupation_ids || task.templateData.occupation_ids,
       };
     }
   }
 
-  private updateBasicFields(task: RecurringTask, dto: UpdateRecurringTaskDto): void {
+  private updateBasicFields(
+    task: RecurringTask,
+    dto: UpdateRecurringTaskDto,
+  ): void {
     // Lida com is_active explicitamente para garantir a atualização
     if (dto.is_active !== null && dto.is_active !== undefined) {
       task.is_active = dto.is_active;
@@ -66,13 +78,16 @@ export class RecurringTaskUpdateFactory {
     ];
   }
 
-  updateRecurringTask(task: RecurringTask, dto: UpdateRecurringTaskDto): RecurringTask {
-    const strategy = this.strategies.find(s => s.canHandle(dto));
-    
+  updateRecurringTask(
+    task: RecurringTask,
+    dto: UpdateRecurringTaskDto,
+  ): RecurringTask {
+    const strategy = this.strategies.find((s) => s.canHandle(dto));
+
     if (!strategy) {
       throw new Error(`No update strategy found for recurring task update`);
     }
-    
+
     return strategy.update(task, dto);
   }
 }

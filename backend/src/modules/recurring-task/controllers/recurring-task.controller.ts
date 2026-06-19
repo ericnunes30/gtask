@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request as NestRequest, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Request as NestRequest,
+  Logger,
+} from '@nestjs/common';
 import { RecurringTaskService } from '../services/recurring-task.service';
 import { CreateRecurringTaskDto } from '../dto/create-recurring-task.dto';
 import { UpdateRecurringTaskDto } from '../dto/update-recurring-task.dto';
@@ -19,10 +30,19 @@ export class RecurringTaskController {
     return this.recurringTaskService.findOne(+id);
   }
 
-@Post()
-  async create(@Body() createRecurringTaskDto: CreateRecurringTaskDto, @NestRequest() req) {
-    Logger.log(`Received createRecurringTaskDto: ${JSON.stringify(createRecurringTaskDto)}`, 'RecurringTaskController');
-    return this.recurringTaskService.create(createRecurringTaskDto, req.user.sub);
+  @Post()
+  async create(
+    @Body() createRecurringTaskDto: CreateRecurringTaskDto,
+    @NestRequest() req,
+  ) {
+    Logger.log(
+      `Received createRecurringTaskDto: ${JSON.stringify(createRecurringTaskDto)}`,
+      'RecurringTaskController',
+    );
+    return this.recurringTaskService.create(
+      createRecurringTaskDto,
+      req.user.sub,
+    );
   }
 
   @Put(':id')

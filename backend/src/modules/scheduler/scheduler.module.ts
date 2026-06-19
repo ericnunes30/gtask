@@ -1,4 +1,3 @@
-
 import { Module } from '@nestjs/common';
 import { TaskSchedulerService } from './scheduler.service';
 import { RecurringTaskModule } from '../recurring-task/recurring-task.module';

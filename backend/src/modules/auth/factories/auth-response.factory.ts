@@ -56,12 +56,14 @@ export class AuthResponseFactory {
   }
 
   createLoginResponse(accessToken: string, user: any, context?: string): any {
-    const strategy = this.strategies.find(s => s.canHandle(context));
-    
+    const strategy = this.strategies.find((s) => s.canHandle(context));
+
     if (!strategy) {
-      throw new Error(`No auth response strategy found for context: ${context}`);
+      throw new Error(
+        `No auth response strategy found for context: ${context}`,
+      );
     }
-    
+
     return strategy.createResponse(accessToken, user);
   }
 }

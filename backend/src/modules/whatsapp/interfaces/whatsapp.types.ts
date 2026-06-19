@@ -30,7 +30,7 @@ export enum NotificationPriority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  URGENT = 'urgent'
+  URGENT = 'urgent',
 }
 
 export enum NotificationType {
@@ -38,7 +38,7 @@ export enum NotificationType {
   TASK_STATUS_CHANGED = 'task.status.changed',
   COMMENT_CREATED = 'comment.created',
   TIMER_STARTED = 'timer.started',
-  TIMER_PAUSED = 'timer.paused'
+  TIMER_PAUSED = 'timer.paused',
 }
 
 export interface MessageTemplate {

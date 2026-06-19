@@ -8,14 +8,14 @@ export enum NotificationType {
   TIMER_PAUSED = 'timer.paused',
   TIMER_COMPLETED = 'timer.completed',
   USER_MENTIONED = 'user.mentioned',
-  PROJECT_UPDATED = 'project.updated'
+  PROJECT_UPDATED = 'project.updated',
 }
 
 export enum NotificationPriority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  URGENT = 'urgent'
+  URGENT = 'urgent',
 }
 
 export enum NotificationCategory {
@@ -24,7 +24,7 @@ export enum NotificationCategory {
   TIMER = 'timer',
   SYSTEM = 'system',
   USER = 'user',
-  PROJECT = 'project'
+  PROJECT = 'project',
 }
 
 export interface ChangeValue {
@@ -87,7 +87,7 @@ export interface TaskUpdatedData {
 }
 
 // Tipo para o campo data que pode ser a estrutura antiga ou as novas estruturas
-export type NotificationData = 
+export type NotificationData =
   | {
       entityType: string;
       entityId: number;
@@ -154,8 +154,7 @@ export interface TaskCreatedPayload {
     project?: {
       id: number;
       title: string;
-  
-  };
+    };
   };
   createdBy: number;
   performer?: Performer;

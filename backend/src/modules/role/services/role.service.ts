@@ -29,7 +29,10 @@ export class RoleService {
       this.logger.log(`Found ${roles.length} roles`);
       return roles;
     } catch (error) {
-      this.logger.error(`Error finding all roles: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error finding all roles: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -40,12 +43,12 @@ export class RoleService {
       where: { id },
       relations: ['users'],
     });
-    
+
     if (!role) {
       this.logger.warn(`Role with ID ${id} not found`);
       throw new NotFoundException(`Função com ID ${id} não encontrada`);
     }
-    
+
     return role;
   }
 

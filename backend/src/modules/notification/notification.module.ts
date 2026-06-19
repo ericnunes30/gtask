@@ -8,13 +8,13 @@ import { DebugLoggerService } from './services/debug-logger.service';
 import { NotificationController } from './controllers/notification.controller';
 import { NotificationFactory } from './factories/notification.factory';
 import { StructuredNotificationEntity } from './entities/notification.entity';
-import { 
-  TaskCreatedStrategy, 
-  TaskStatusUpdatedStrategy, 
-  CommentCreatedStrategy, 
-  TimerStartedStrategy, 
+import {
+  TaskCreatedStrategy,
+  TaskStatusUpdatedStrategy,
+  CommentCreatedStrategy,
+  TimerStartedStrategy,
   TimerPausedStrategy,
-  TaskUpdatedStrategy
+  TaskUpdatedStrategy,
 } from './factories/strategies';
 
 const strategies = [
@@ -50,13 +50,7 @@ const strategies = [
       inject: strategies,
     },
   ],
-  controllers: [
-    NotificationController,
-  ],
-  exports: [
-    NotificationService,
-    DebugLoggerService,
-    NotificationFactory,
-  ],
+  controllers: [NotificationController],
+  exports: [NotificationService, DebugLoggerService, NotificationFactory],
 })
 export class NotificationModule {}

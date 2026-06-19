@@ -1,13 +1,13 @@
-import { 
-  Entity, 
-  Column, 
-  PrimaryGeneratedColumn, 
-  CreateDateColumn, 
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
   ManyToOne,
   JoinColumn,
   Unique,
   AfterInsert,
-  AfterRemove
+  AfterRemove,
 } from 'typeorm';
 import { Comment } from './comment.entity';
 import { User } from '../../user/entities/user.entity';

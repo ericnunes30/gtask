@@ -4,7 +4,11 @@ import { Task } from '../entities/task.entity';
 
 export interface TaskTimerUpdateStrategy {
   canHandle(repository: any): boolean;
-  execute(id: number, timerValue: number, repository: Repository<Task>): Promise<Task>;
+  execute(
+    id: number,
+    timerValue: number,
+    repository: Repository<Task>,
+  ): Promise<Task>;
 }
 
 @Injectable()
@@ -13,24 +17,28 @@ export class RepositoryTimerUpdateStrategy implements TaskTimerUpdateStrategy {
     return typeof repository.update === 'function';
   }
 
-  async execute(id: number, timerValue: number, repository: Repository<Task>): Promise<Task> {
+  async execute(
+    id: number,
+    timerValue: number,
+    repository: Repository<Task>,
+  ): Promise<Task> {
     const repoAny = repository as any;
-    
+
     const existenceCheck = await repoAny.findOne({
       where: { id },
       relations: ['users'],
     });
-    
+
     if (!existenceCheck) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
     await repoAny.update(id, { timer: timerValue });
-    
-    return await repoAny.findOne({
+
+    return (await repoAny.findOne({
       where: { id },
       relations: ['project', 'reviewer', 'users', 'occupations'],
-    }) as Task;
+    })) as Task;
   }
 }
 
@@ -40,12 +48,16 @@ export class EntityTimerUpdateStrategy implements TaskTimerUpdateStrategy {
     return true; // fallback strategy
   }
 
-  async execute(id: number, timerValue: number, repository: Repository<Task>): Promise<Task> {
+  async execute(
+    id: number,
+    timerValue: number,
+    repository: Repository<Task>,
+  ): Promise<Task> {
     const fullTask = await repository.findOne({
       where: { id },
       relations: ['project', 'reviewer', 'users', 'occupations'],
     });
-    
+
     if (!fullTask) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }

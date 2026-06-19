@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { User } from '../../user/entities/user.entity';
 
 export interface TokenPayloadStrategy {
   canHandle(user: any, context?: string): boolean;
@@ -32,7 +31,7 @@ export class ExtendedTokenPayloadStrategy implements TokenPayloadStrategy {
       email: user.email,
       sub: user.id,
       name: user.name,
-      roles: user.roles?.map(role => role.name) || [],
+      roles: user.roles?.map((role) => role.name) || [],
     };
   }
 }
@@ -49,12 +48,12 @@ export class TokenPayloadFactory {
   }
 
   createPayload(user: any, context?: string): any {
-    const strategy = this.strategies.find(s => s.canHandle(user, context));
-    
+    const strategy = this.strategies.find((s) => s.canHandle(user, context));
+
     if (!strategy) {
       throw new Error(`No token payload strategy found for user: ${user.id}`);
     }
-    
+
     return strategy.createPayload(user);
   }
 }

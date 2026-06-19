@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToMany,
+  JoinTable,
+  OneToMany,
+} from 'typeorm';
 import { Occupation } from '../../occupation/entities/occupation.entity';
 import { Role } from '../../role/entities/role.entity';
 import { Task } from '../../tasks/entities/task.entity';
@@ -32,13 +41,25 @@ export class User {
   @Column({ nullable: true, type: 'varchar' })
   whatsapp?: string;
 
-  @Column({ name: 'whatsapp_notifications_enabled', default: false, type: 'boolean' })
+  @Column({
+    name: 'whatsapp_notifications_enabled',
+    default: false,
+    type: 'boolean',
+  })
   whatsappNotificationsEnabled: boolean;
 
-  @Column({ name: 'whatsapp_priority_threshold', default: 'MEDIUM', type: 'varchar' })
+  @Column({
+    name: 'whatsapp_priority_threshold',
+    default: 'MEDIUM',
+    type: 'varchar',
+  })
   whatsappPriorityThreshold: string;
 
-  @Column({ name: 'whatsapp_quiet_hours_start', nullable: true, type: 'varchar' })
+  @Column({
+    name: 'whatsapp_quiet_hours_start',
+    nullable: true,
+    type: 'varchar',
+  })
   whatsappQuietHoursStart?: string;
 
   @Column({ name: 'whatsapp_quiet_hours_end', nullable: true, type: 'varchar' })
@@ -64,6 +85,9 @@ export class User {
   @OneToMany(() => Comment, (comment) => comment.user)
   comments: Comment[];
 
-  @OneToMany(() => StructuredNotificationEntity, (notification) => notification.user)
+  @OneToMany(
+    () => StructuredNotificationEntity,
+    (notification) => notification.user,
+  )
   structuredNotifications: StructuredNotificationEntity[];
 }
