@@ -6,6 +6,16 @@ import {
 } from '../interfaces/whatsapp.types';
 import { StructuredNotificationEntity } from '../../notification/entities/notification.entity';
 
+/**
+ * Type guard: verifica se um valor e um enum string valido.
+ */
+function isEnumValue<T extends Record<string, string>>(
+  value: unknown,
+  enumObj: T,
+): value is T[keyof T] {
+  return typeof value === 'string' && Object.values(enumObj).includes(value);
+}
+
 @Injectable()
 export class MessageFormatterService {
   private readonly templates: Map<NotificationType, MessageTemplate> = new Map([
@@ -52,67 +62,60 @@ export class MessageFormatterService {
   ]);
 
   formatMessage(notification: StructuredNotificationEntity): string {
-    const template = this.templates.get(notification.type as NotificationType);
+    const type = isEnumValue(notification.type, NotificationType)
+      ? notification.type
+      : undefined;
+    const template = type ? this.templates.get(type) : undefined;
 
     if (!template) {
-      // Obter título dos dados da notificação
       const title = this.extractTitleFromData(notification.data);
       return `📢 Notificação: ${title}`;
     }
 
     let message = template.template;
 
-    // Substituir placeholders com dados da notificação
     const title = this.extractTitleFromData(notification.data);
     message = message.replace('{title}', title);
 
-    if (notification.data && typeof notification.data === 'object') {
-      // Para mudança de status
-      if ('newStatus' in notification.data && notification.data.newStatus) {
-        message = message.replace('{new_status}', notification.data.newStatus);
+    const data = notification.data as Record<string, unknown> | null;
+    if (data && typeof data === 'object') {
+      if (typeof data.newStatus === 'string') {
+        message = message.replace('{new_status}', data.newStatus);
       }
-      // Para comentários
-      if (
-        'commentSnippet' in notification.data &&
-        notification.data.commentSnippet
-      ) {
-        message += `\n\n"${notification.data.commentSnippet}"`;
+      if (typeof data.commentSnippet === 'string') {
+        message += `\n\n"${data.commentSnippet}"`;
       }
     }
 
-    // Adicionar prioridade visual
-    if (
-      (notification.priority as NotificationPriority) ===
-      NotificationPriority.HIGH
-    ) {
-      message = `🔴 ${message}`;
-    } else if (
-      (notification.priority as NotificationPriority) ===
-      NotificationPriority.URGENT
-    ) {
-      message = `🚨 ${message}`;
+    if (isEnumValue(notification.priority, NotificationPriority)) {
+      const priority: NotificationPriority = notification.priority;
+      if (priority === NotificationPriority.HIGH) {
+        message = `🔴 ${message}`;
+      } else if (priority === NotificationPriority.URGENT) {
+        message = `🚨 ${message}`;
+      }
     }
 
     return message;
   }
 
-  private extractTitleFromData(data: any): string {
+  private extractTitleFromData(data: unknown): string {
     if (!data || typeof data !== 'object') {
       return 'Notificação';
     }
 
-    // Verificar diferentes possíveis campos de título
-    if ('taskTitle' in data) return data.taskTitle;
-    if ('title' in data) return data.title;
-    if (
-      'entityType' in data &&
-      data.entityType === 'task' &&
-      data.relatedEntities
-    ) {
-      const taskEntity = data.relatedEntities.find(
-        (e: any) => e.type === 'task',
-      );
-      if (taskEntity && taskEntity.name) return taskEntity.name;
+    const d = data as Record<string, unknown>;
+
+    if (typeof d.taskTitle === 'string') return d.taskTitle;
+    if (typeof d.title === 'string') return d.title;
+
+    if (d.entityType === 'task' && Array.isArray(d.relatedEntities)) {
+      const taskEntity = (
+        d.relatedEntities as Array<Record<string, unknown>>
+      ).find((e) => e.type === 'task');
+      if (taskEntity && typeof taskEntity.name === 'string') {
+        return taskEntity.name;
+      }
     }
 
     return 'Notificação';

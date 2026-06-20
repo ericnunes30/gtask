@@ -6,6 +6,7 @@ import { User } from '../../user/entities/user.entity';
 import { Occupation } from '../../occupation/entities/occupation.entity';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
+import { Status } from '../entities/enums';
 import { TaskStrategyFactory } from '../strategies/task-strategy.factory';
 import { TaskCreationFactory } from '../factories/task-creation.factory';
 import { TaskCreator } from './task-creator.abstract';
@@ -99,7 +100,7 @@ export class TaskService extends TaskCreator implements TaskUpdater {
     }
 
     // Raw SQL para buscar comentários e suas respostas
-    const comments = await this.dataSource.query(
+    const comments = (await this.dataSource.query(
       `
       WITH RECURSIVE comment_tree AS (
         SELECT
@@ -118,7 +119,7 @@ export class TaskService extends TaskCreator implements TaskUpdater {
         LEFT JOIN users u ON u.id = c.user_id
         JOIN comment_tree ct ON ct.id = c.parent_id
       )
-      SELECT 
+      SELECT
         *,
         (SELECT json_agg(json_build_object(
           'id', cl.id,
@@ -128,7 +129,7 @@ export class TaskService extends TaskCreator implements TaskUpdater {
       FROM comment_tree;
     `,
       [id],
-    );
+    )) as unknown as CommentNode[];
 
     // Estrutura os comentários em formato aninhado
     const commentsMap = new Map<number, CommentNode>();
@@ -146,12 +147,13 @@ export class TaskService extends TaskCreator implements TaskUpdater {
       }
     });
 
-    (task as any).comments = topLevelComments;
+    (task as unknown as { comments: CommentNode[] }).comments =
+      topLevelComments;
 
     // Buscar activity logs da tarefa
-    const activityLogs = await this.dataSource.query(
+    const activityLogs: unknown[] = await this.dataSource.query(
       `
-      SELECT 
+      SELECT
         al.*,
         json_build_object('id', u.id, 'name', u.name, 'email', u.email) as user
       FROM activity_logs al
@@ -163,8 +165,7 @@ export class TaskService extends TaskCreator implements TaskUpdater {
       [id],
     );
 
-    (task as any).activityLogs = activityLogs;
-    // this.logger.debug(`Task data after manual comment hydration: ${JSON.stringify(task, null, 2)}`);
+    Object.assign(task, { activityLogs });
 
     return task;
   }
@@ -200,7 +201,7 @@ export class TaskService extends TaskCreator implements TaskUpdater {
 
   async findByStatus(status: string): Promise<Task[]> {
     return await this.taskRepository.find({
-      where: { status: status as any },
+      where: { status: status as Status },
       relations: ['project', 'reviewer', 'users', 'occupations'],
     });
   }
@@ -213,21 +214,22 @@ export class TaskService extends TaskCreator implements TaskUpdater {
   }
 
   async assignUsers(taskId: number, userIds: number[]): Promise<Task> {
-    const task = await this.taskRepository.findOne({
+    const task = await this.loadTaskOr404(taskId);
+    task.users = userIds.map(
+      (id) => ({ id }) as unknown as (typeof task.users)[number],
+    );
+    await this.taskRepository.update(taskId, {
+      users: userIds.map((id) => ({ id })) as unknown as User[],
+    });
+    return await this.loadTaskOr404(taskId);
+  }
+
+  private async loadTaskOr404(taskId: number): Promise<Task> {
+    const t = await this.taskRepository.findOne({
       where: { id: taskId },
       relations: ['project', 'reviewer', 'users', 'occupations'],
     });
-    if (!task) {
-      throw new NotFoundException(`Task with ID ${taskId} not found`);
-    }
-    (task as any).users = userIds.map((id) => ({ id }));
-    if (typeof (this.taskRepository as any).update === 'function') {
-      await (this.taskRepository as any).update(taskId, { users: userIds });
-      return (await this.taskRepository.findOne({
-        where: { id: taskId },
-        relations: ['project', 'reviewer', 'users', 'occupations'],
-      })) as Task;
-    }
-    return await this.taskRepository.save(task);
+    if (!t) throw new NotFoundException(`Task with ID ${taskId} not found`);
+    return t;
   }
 }

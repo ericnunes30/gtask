@@ -17,14 +17,16 @@ export class NotificationFactory {
     });
   }
 
-  create(eventType: string, payload: any): StructuredNotification {
+  create(
+    eventType: string,
+    payload: Record<string, unknown>,
+  ): StructuredNotification {
     try {
       const strategy = this.strategies.get(eventType);
       if (!strategy) {
         throw new Error(`No strategy found for event type: ${eventType}`);
       }
 
-      // Validar payload antes de criar
       if (!strategy.validate(payload)) {
         throw new Error(`Invalid payload for event type: ${eventType}`);
       }
@@ -34,16 +36,15 @@ export class NotificationFactory {
       this.logger.debug(`Notification created for event: ${eventType}`);
 
       return notification;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to create notification for event: ${eventType}`,
-        error,
+        error instanceof Error ? error.stack : String(error),
       );
       throw error;
     }
   }
 
-  // Valida notificações antes da criação
   validateNotification(notification: Partial<StructuredNotification>): boolean {
     const requiredFields = ['userId', 'type', 'priority', 'data', 'metadata'];
 
@@ -54,10 +55,8 @@ export class NotificationFactory {
       }
     }
 
-    // Validação de dados estruturados para os novos formatos
     const data = notification.data;
 
-    // Verifica se é um dos novos formatos de dados
     if (
       this.isValidTaskCreatedData(data) ||
       this.isValidTaskStatusUpdatedData(data) ||
@@ -67,7 +66,6 @@ export class NotificationFactory {
       return true;
     }
 
-    // Verifica se é o formato antigo
     if (
       data &&
       typeof data === 'object' &&
@@ -81,51 +79,51 @@ export class NotificationFactory {
     return false;
   }
 
-  private isValidTaskCreatedData(data: any): boolean {
+  private isValidTaskCreatedData(data: unknown): boolean {
+    if (!data || typeof data !== 'object') return false;
+    const d = data as Record<string, unknown>;
     return (
-      data &&
-      typeof data === 'object' &&
-      typeof data.actorName === 'string' &&
-      typeof data.taskTitle === 'string' &&
-      (data.projectTitle === undefined || typeof data.projectTitle === 'string')
+      typeof d.actorName === 'string' &&
+      typeof d.taskTitle === 'string' &&
+      (d.projectTitle === undefined || typeof d.projectTitle === 'string')
     );
   }
 
-  private isValidTaskStatusUpdatedData(data: any): boolean {
+  private isValidTaskStatusUpdatedData(data: unknown): boolean {
+    if (!data || typeof data !== 'object') return false;
+    const d = data as Record<string, unknown>;
     return (
-      data &&
-      typeof data === 'object' &&
-      typeof data.actorName === 'string' &&
-      typeof data.taskTitle === 'string' &&
-      typeof data.oldStatus === 'string' &&
-      typeof data.newStatus === 'string'
+      typeof d.actorName === 'string' &&
+      typeof d.taskTitle === 'string' &&
+      typeof d.oldStatus === 'string' &&
+      typeof d.newStatus === 'string'
     );
   }
 
-  private isValidCommentCreatedData(data: any): boolean {
+  private isValidCommentCreatedData(data: unknown): boolean {
+    if (!data || typeof data !== 'object') return false;
+    const d = data as Record<string, unknown>;
     return (
-      data &&
-      typeof data === 'object' &&
-      typeof data.actorName === 'string' &&
-      typeof data.taskTitle === 'string' &&
-      typeof data.commentSnippet === 'string'
+      typeof d.actorName === 'string' &&
+      typeof d.taskTitle === 'string' &&
+      typeof d.commentSnippet === 'string'
     );
   }
 
-  private isValidTaskUpdatedData(data: any): boolean {
+  private isValidTaskUpdatedData(data: unknown): boolean {
+    if (!data || typeof data !== 'object') return false;
+    const d = data as Record<string, unknown>;
+    if (!Array.isArray(d.changedFields)) return false;
     return (
-      data &&
-      typeof data === 'object' &&
-      typeof data.actorName === 'string' &&
-      typeof data.taskTitle === 'string' &&
-      Array.isArray(data.changedFields) &&
-      data.changedFields.every(
-        (field: any) =>
-          field &&
+      typeof d.actorName === 'string' &&
+      typeof d.taskTitle === 'string' &&
+      d.changedFields.every(
+        (field: unknown) =>
+          !!field &&
           typeof field === 'object' &&
-          typeof field.field === 'string' &&
-          typeof field.oldValue === 'string' &&
-          typeof field.newValue === 'string',
+          typeof (field as Record<string, unknown>).field === 'string' &&
+          typeof (field as Record<string, unknown>).oldValue === 'string' &&
+          typeof (field as Record<string, unknown>).newValue === 'string',
       )
     );
   }
@@ -138,7 +136,6 @@ export class NotificationFactory {
     return this.strategies.has(eventType);
   }
 
-  // Valida se cada um dos eventos necessários tem strategy
   validateRequiredEvents(): boolean {
     const requiredEvents = [
       'task.created',

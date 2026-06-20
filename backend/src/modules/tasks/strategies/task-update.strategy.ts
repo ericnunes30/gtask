@@ -6,7 +6,7 @@ import { User } from '../../user/entities/user.entity';
 import { Occupation } from '../../occupation/entities/occupation.entity';
 
 export interface TaskUpdateStrategy {
-  canHandle(repository: any): boolean;
+  canHandle(repository: Repository<Task>): boolean;
   execute(
     id: number,
     dto: UpdateTaskDto,
@@ -16,7 +16,7 @@ export interface TaskUpdateStrategy {
 
 @Injectable()
 export class RepositoryUpdateStrategy implements TaskUpdateStrategy {
-  canHandle(repository: any): boolean {
+  canHandle(repository: Repository<Task>): boolean {
     return typeof repository.update === 'function';
   }
 
@@ -33,11 +33,18 @@ export class RepositoryUpdateStrategy implements TaskUpdateStrategy {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
-    await (repository as any).update(id, updateTaskDto);
-    return (await (repository as any).findOne({
+    await repository.update(
+      id,
+      updateTaskDto as Parameters<Repository<Task>['update']>[1],
+    );
+    const updated = await repository.findOne({
       where: { id },
       relations: ['users', 'occupations', 'project'],
-    })) as Task;
+    });
+    if (!updated) {
+      throw new NotFoundException(`Task with ID ${id} not found after update`);
+    }
+    return updated;
   }
 }
 

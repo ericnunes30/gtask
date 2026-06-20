@@ -23,8 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
   }
 
-  validate(payload: any) {
-    // Corrigido para retornar o payload com a propriedade `sub` que a aplicação espera
+  validate(payload: { sub: number; email: string; name: string }) {
     return {
       sub: payload.sub,
       email: payload.email,

@@ -205,9 +205,9 @@ export interface TimerEventPayload {
 // Interface para estratégias
 export interface NotificationStrategy {
   type: NotificationType;
-  create(payload: any): StructuredNotification;
-  validate(payload: any): boolean;
-  getPriority(payload: any): NotificationPriority;
+  create(payload: Record<string, unknown>): StructuredNotification;
+  validate(payload: Record<string, unknown>): boolean;
+  getPriority(payload: Record<string, unknown>): NotificationPriority;
 }
 
 // Interfaces para migração

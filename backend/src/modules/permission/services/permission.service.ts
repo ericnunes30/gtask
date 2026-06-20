@@ -52,8 +52,7 @@ export class PermissionService {
   ): number[] {
     // Se movido para revisão, notificar apenas o revisor (se diferente do autor)
     if (newStatus === 'em_revisao') {
-      const reviewerId =
-        (task as any)?.reviewer?.id ?? (task as any)?.task_reviewer_id ?? null;
+      const reviewerId = task.reviewer?.id ?? task.task_reviewer_id ?? null;
       if (reviewerId && reviewerId !== updatedBy) {
         return [reviewerId];
       }

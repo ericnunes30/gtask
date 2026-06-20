@@ -1,12 +1,12 @@
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { INestApplicationContext } from '@nestjs/common';
-import { Server, Socket } from 'socket.io';
+import { Server, Socket, ServerOptions } from 'socket.io';
 import { AuthService } from '../../auth/services/auth.service';
 
 // Adicionamos uma propriedade 'user' ao tipo do Socket do socket.io
 declare module 'socket.io' {
   interface Socket {
-    user?: any; // Você pode criar uma interface User mais robusta
+    user?: Express.User;
   }
 }
 
@@ -16,16 +16,16 @@ export class AuthenticatedSocketAdapter extends IoAdapter {
   constructor(private readonly app: INestApplicationContext) {
     super(app);
     // Obtemos a instância do AuthService a partir do contexto da aplicação
-    this.authService = this.app.get(AuthService);
+    this.authService = this.app.get<AuthService>(AuthService);
   }
 
-  createIOServer(port: number, options?: any): any {
+  createIOServer(port: number, options?: ServerOptions): Server {
     const server: Server = super.createIOServer(port, options);
 
     // Usamos um middleware do socket.io para autenticação
     server.use((socket: Socket, next) => {
-      const token = socket.handshake.auth.token;
-
+      const rawToken = socket.handshake.auth.token;
+      const token = typeof rawToken === 'string' ? rawToken : '';
       if (!token) {
         return next(new Error('Authentication error: No token provided'));
       }

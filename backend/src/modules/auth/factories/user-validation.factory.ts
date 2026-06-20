@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { UserService } from '../../user/services/user.service';
 import { PasswordVerificationFactory } from '../strategies/password/password-verification.factory';
+import { UserWithRoles } from './token-payload.factory';
 
 export interface UserValidationStrategy {
   canHandle(email: string, password: string): boolean;
-  validate(email: string, password: string): Promise<any>;
+  validate(email: string, password: string): Promise<UserWithRoles | null>;
 }
 
 @Injectable()
@@ -57,7 +58,10 @@ export class UserValidationFactory {
     ];
   }
 
-  async validateUser(email: string, password: string): Promise<any> {
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<UserWithRoles | null> {
     const strategy = this.strategies.find((s) => s.canHandle(email, password));
 
     if (!strategy) {

@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { RecurringTask } from '../entities/recurring-task.entity';
-import { CreateRecurringTaskDto } from '../dto/create-recurring-task.dto';
+import {
+  CreateRecurringTaskDto,
+  TaskTemplateDto,
+} from '../dto/create-recurring-task.dto';
 
 export interface RecurringTaskCreationStrategy {
   canHandle(dto: CreateRecurringTaskDto): boolean;
@@ -61,7 +64,7 @@ export class DefaultRecurringTaskCreationStrategy
     }
   }
 
-  private buildTemplateData(dto: CreateRecurringTaskDto): any {
+  private buildTemplateData(dto: CreateRecurringTaskDto): TaskTemplateDto {
     return {
       ...dto.templateData,
       occupation_ids: dto.templateData.occupation_ids,

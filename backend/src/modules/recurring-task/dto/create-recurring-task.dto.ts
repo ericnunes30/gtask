@@ -13,7 +13,7 @@ import { Type } from 'class-transformer';
 import { ScheduleType, TaskTemplate } from '../entities/recurring-task.entity';
 import { PriorityLevel } from '../../tasks/entities/enums';
 
-class TaskTemplateDto implements TaskTemplate {
+export class TaskTemplateDto implements TaskTemplate {
   @IsString()
   title: string;
 

@@ -9,7 +9,10 @@ import { UserService } from '../../user/services/user.service';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { SetupDto } from '../dto/setup.dto';
-import { TokenPayloadFactory } from '../factories/token-payload.factory';
+import {
+  TokenPayloadFactory,
+  UserWithRoles,
+} from '../factories/token-payload.factory';
 import { AuthResponseFactory } from '../factories/auth-response.factory';
 import { UserValidationFactory } from '../factories/user-validation.factory';
 
@@ -25,7 +28,10 @@ export class AuthService {
     private userValidationFactory: UserValidationFactory,
   ) {}
 
-  async validateUser(email: string, password: string): Promise<any> {
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<UserWithRoles | null> {
     return await this.userValidationFactory.validateUser(email, password);
   }
 
@@ -97,7 +103,7 @@ export class AuthService {
 
   async refreshToken(token: string) {
     try {
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify<{ sub: number }>(token);
       const user = await this.userService.findOne(payload.sub);
       if (!user) {
         throw new UnauthorizedException('Invalid user');
@@ -122,9 +128,13 @@ export class AuthService {
     return user;
   }
 
-  verifyToken(token: string) {
+  verifyToken(token: string): { sub: number; email: string; name: string } {
     try {
-      return this.jwtService.verify(token);
+      return this.jwtService.verify<{
+        sub: number;
+        email: string;
+        name: string;
+      }>(token);
     } catch {
       throw new UnauthorizedException('Invalid token');
     }

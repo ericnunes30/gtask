@@ -7,9 +7,19 @@ import {
   ScheduleType,
 } from '../recurring-task/entities/recurring-task.entity';
 import { Task } from '../tasks/entities/task.entity';
+import { User } from '../user/entities/user.entity';
 import { Status } from '../tasks/entities/enums';
 import { DateTime } from 'luxon';
 import * as cronParser from 'cron-parser';
+
+// `cron-parser` expoe `parseExpression` em runtime mas os tipos nao o declaram.
+// Usamos uma interface local minima que descreve o que usamos.
+type CronParserLike = {
+  parseExpression(
+    expression: string,
+    options?: { currentDate?: Date },
+  ): { next: () => { toDate: () => Date } };
+};
 import { LockService } from './services/lock.service';
 
 @Injectable()
@@ -101,7 +111,7 @@ export class TaskSchedulerService {
 
       // Associations (example for users, requires Task entity to have the relation)
       if (templateData.assignee_ids) {
-        newTask.users = templateData.assignee_ids.map((id) => ({ id }) as any);
+        newTask.users = templateData.assignee_ids.map((id) => ({ id }) as User);
       }
 
       await queryRunner.manager.save(Task, newTask);
@@ -144,12 +154,10 @@ export class TaskSchedulerService {
       recurringTask.frequency_cron
     ) {
       try {
-        const interval = (cronParser as any).parseExpression(
-          recurringTask.frequency_cron,
-          {
-            currentDate: currentBaseDate.toJSDate(),
-          },
-        );
+        const cp = cronParser as unknown as CronParserLike;
+        const interval = cp.parseExpression(recurringTask.frequency_cron, {
+          currentDate: currentBaseDate.toJSDate(),
+        });
         nextDueDate = DateTime.fromJSDate(interval.next().toDate());
       } catch {
         this.logger.error(

@@ -11,6 +11,7 @@ import {
 } from '../interfaces/whatsapp.types';
 import { MessageFormatterService } from '../factories/message-formatter.factory';
 import { User } from '../../user/entities/user.entity';
+import { StructuredNotificationEntity } from '../../notification/entities/notification.entity';
 
 @Injectable()
 export class WhatsAppService {
@@ -39,17 +40,23 @@ export class WhatsAppService {
 
   async sendNotification(
     user: User,
-    notification: any,
+    notification: StructuredNotificationEntity,
   ): Promise<WhatsAppResponse> {
+    const n = notification as unknown as {
+      type?: string;
+      priority?: string;
+      title?: string;
+      message?: string;
+    };
     try {
       // Log detalhado da notificação recebida
       this.logger.log(`=== WHATSAPP NOTIFICATION RECEIVED ===`);
       this.logger.log(`User ID: ${user.id}`);
       this.logger.log(`User Email: ${user.email}`);
-      this.logger.log(`Notification Type: ${notification.type}`);
-      this.logger.log(`Notification Priority: ${notification.priority}`);
-      this.logger.log(`Notification Title: ${notification.title}`);
-      this.logger.log(`Notification Message: ${notification.message}`);
+      this.logger.log(`Notification Type: ${n.type}`);
+      this.logger.log(`Notification Priority: ${n.priority}`);
+      this.logger.log(`Notification Title: ${n.title}`);
+      this.logger.log(`Notification Message: ${n.message}`);
       this.logger.log(
         `Full Notification: ${JSON.stringify(notification, null, 2)}`,
       );
@@ -137,12 +144,12 @@ export class WhatsAppService {
       // Verificar prioridade
       if (
         !this.shouldSendByPriority(
-          notification.priority,
+          String(n.priority),
           userWithWhatsApp.whatsappPriorityThreshold,
         )
       ) {
         this.logger.debug(
-          `Notification priority ${notification.priority} below threshold for user ${userWithWhatsApp.id}`,
+          `Notification priority ${String(n.priority)} below threshold for user ${userWithWhatsApp.id}`,
         );
         return {
           success: false,
@@ -208,7 +215,7 @@ export class WhatsAppService {
 
       // Registrar métricas
       this.logger.log(
-        `WhatsApp notification sent to user ${user.id}: ${notification.type}`,
+        `WhatsApp notification sent to user ${user.id}: ${n.type}`,
       );
 
       return result;
@@ -261,7 +268,7 @@ export class WhatsAppService {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post(url, message, {
+        this.httpService.post<{ id?: string | number }>(url, message, {
           headers: {
             apikey: this.config.apiKey,
             'Content-Type': 'application/json',
@@ -274,24 +281,28 @@ export class WhatsAppService {
 
       return {
         success: true,
-        messageId: response.data?.id,
+        messageId:
+          response.data?.id !== undefined
+            ? String(response.data.id)
+            : undefined,
         timestamp: new Date(),
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const resp = getAxiosErrorResponse(error);
       this.logger.error(
         `Failed to send WhatsApp message to ${phoneNumber}:`,
-        error.response?.data || error.message,
+        resp?.data ?? (error instanceof Error ? error.message : String(error)),
       );
 
       // Log detalhado do erro
       this.logger.error(`=== WHATSAPP ERROR DETAILS ===`);
-      this.logger.error(`Error Status: ${error.response?.status}`);
-      this.logger.error(`Error Status Text: ${error.response?.statusText}`);
+      this.logger.error(`Error Status: ${resp?.status ?? 'n/a'}`);
+      this.logger.error(`Error Status Text: ${resp?.statusText ?? 'n/a'}`);
       this.logger.error(
-        `Error Headers: ${JSON.stringify(error.response?.headers || {}, null, 2)}`,
+        `Error Headers: ${JSON.stringify(resp?.headers ?? {}, null, 2)}`,
       );
       this.logger.error(
-        `Error Data: ${JSON.stringify(error.response?.data || {}, null, 2)}`,
+        `Error Data: ${JSON.stringify(resp?.data ?? {}, null, 2)}`,
       );
       this.logger.error(
         `Error Message: ${error instanceof Error ? error.message : String(error)}`,
@@ -302,12 +313,16 @@ export class WhatsAppService {
       this.logger.error(`=== END ERROR DETAILS ===`);
 
       // Tentar novamente com retry
-      if (error.response?.status >= 500) {
+      if (resp && typeof resp.status === 'number' && resp.status >= 500) {
         return this.retryWithBackoff(phoneNumber, text, 1);
       }
 
+      const apiMessage = (resp?.data as { message?: string } | undefined)
+        ?.message;
+      const errorMessage =
+        apiMessage ?? (error instanceof Error ? error.message : String(error));
       throw new HttpException(
-        `Failed to send WhatsApp message: ${error.response?.data?.message || error.message}`,
+        `Failed to send WhatsApp message: ${errorMessage}`,
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -407,4 +422,34 @@ export class WhatsAppService {
     this.config = { ...this.config, ...config };
     this.logger.log('WhatsApp configuration updated');
   }
+}
+
+/**
+ * Extrai de forma segura o `response` de um erro estilo axios.
+ * Retorna `null` se o erro nao tiver essa estrutura.
+ */
+function getAxiosErrorResponse(error: unknown): {
+  status?: number;
+  statusText?: string;
+  headers?: Record<string, unknown>;
+  data?: unknown;
+} | null {
+  if (!error || typeof error !== 'object') return null;
+  const response = (error as { response?: unknown }).response;
+  if (!response || typeof response !== 'object') return null;
+  const r = response as {
+    status?: unknown;
+    statusText?: unknown;
+    headers?: unknown;
+    data?: unknown;
+  };
+  return {
+    status: typeof r.status === 'number' ? r.status : undefined,
+    statusText: typeof r.statusText === 'string' ? r.statusText : undefined,
+    headers:
+      r.headers && typeof r.headers === 'object'
+        ? (r.headers as Record<string, unknown>)
+        : undefined,
+    data: r.data,
+  };
 }

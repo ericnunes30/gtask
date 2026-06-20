@@ -9,21 +9,55 @@ import {
   TimerEventPayload,
   NotificationType,
   NotificationCategory,
+  NotificationMetadata,
+  RelatedEntity,
+  NotificationContext,
+  Performer,
 } from '../interfaces/notification.types';
+
+/**
+ * Tipo do payload usado pela interface NotificationStrategy.
+ * Estrategias concretas usam tipos mais especificos via cast interno.
+ */
+export type NotificationPayload = Record<string, unknown>;
+
+/**
+ * Tipo do `task` dentro dos payloads - aceita project opcional e demais campos.
+ */
+interface TaskLite {
+  id: number;
+  title: string;
+  status?: string;
+  priority?: string;
+  project?: { id: number; title: string };
+}
+
+interface TaskUpdatedChangeField {
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
+interface TaskUpdatedPayloadShape {
+  task: TaskLite;
+  updatedBy: number;
+  performer?: Performer;
+  changedFields: TaskUpdatedChangeField[];
+}
 
 export abstract class BaseNotificationStrategy implements NotificationStrategy {
   protected readonly logger = new Logger(this.constructor.name);
   abstract readonly type: NotificationType;
 
-  abstract create(payload: any): StructuredNotification;
-  abstract validate(payload: any): boolean;
-  abstract getPriority(payload: any): NotificationPriority;
+  abstract create(payload: NotificationPayload): StructuredNotification;
+  abstract validate(payload: NotificationPayload): boolean;
+  abstract getPriority(payload: NotificationPayload): NotificationPriority;
 
   protected createBaseNotification(
-    type: any,
+    type: NotificationType,
     priority: NotificationPriority,
-    data: any,
-    metadata: any,
+    data: StructuredNotification['data'],
+    metadata: NotificationMetadata,
     userId: number,
   ): StructuredNotification {
     return {
@@ -38,8 +72,11 @@ export abstract class BaseNotificationStrategy implements NotificationStrategy {
     };
   }
 
-  protected createTaskRelatedEntities(task: any, _performer?: any): any[] {
-    const entities: any[] = [
+  protected createTaskRelatedEntities(
+    task: TaskLite,
+    _performer?: unknown,
+  ): RelatedEntity[] {
+    const entities: RelatedEntity[] = [
       {
         type: 'task',
         id: task.id,
@@ -63,17 +100,18 @@ export abstract class BaseNotificationStrategy implements NotificationStrategy {
   }
 
   protected createNotificationContext(
-    performer: any,
+    performer: unknown,
     source: string,
-    additionalData?: Record<string, any>,
-  ): any {
+    additionalData?: Record<string, unknown>,
+  ): NotificationContext {
+    const p = performer as Performer | undefined;
     return {
-      performer: performer
+      performer: p
         ? {
-            id: performer.id,
-            name: performer.name,
-            email: performer.email,
-            avatar: performer.avatar,
+            id: p.id,
+            name: p.name,
+            email: p.email,
+            avatar: p.avatar,
           }
         : undefined,
       timestamp: new Date().toISOString(),
@@ -82,10 +120,10 @@ export abstract class BaseNotificationStrategy implements NotificationStrategy {
     };
   }
 
-  protected createTaskMetadata(tags: string[] = []): any {
+  protected createTaskMetadata(tags: string[] = []): NotificationMetadata {
     return {
       source: 'task_system',
-      category: 'task' as any,
+      category: NotificationCategory.TASK,
       tags: ['task', ...tags],
       version: '1.0',
     };
@@ -96,25 +134,26 @@ export abstract class BaseNotificationStrategy implements NotificationStrategy {
 export class TaskCreatedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.TASK_CREATED;
 
-  validate(payload: any): boolean {
+  validate(payload: NotificationPayload): boolean {
+    const p = payload as Partial<TaskCreatedPayload>;
     return (
-      payload &&
-      payload.task &&
-      payload.task.id &&
-      payload.task.title &&
-      payload.createdBy &&
-      typeof payload.createdBy === 'number'
+      !!p &&
+      !!p.task &&
+      !!p.task.id &&
+      !!p.task.title &&
+      !!p.createdBy &&
+      typeof p.createdBy === 'number'
     );
   }
 
-  create(payload: TaskCreatedPayload): StructuredNotification {
+  create(payload: NotificationPayload): StructuredNotification {
+    const p = payload as unknown as TaskCreatedPayload;
     if (!this.validate(payload)) {
       throw new Error('Invalid payload for TaskCreatedStrategy');
     }
 
-    const { task, createdBy, performer } = payload;
+    const { task, createdBy, performer } = p;
 
-    // Nova estrutura de dados proposta
     const data = {
       actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: task.title,
@@ -136,8 +175,8 @@ export class TaskCreatedStrategy extends BaseNotificationStrategy {
     );
   }
 
-  getPriority(payload: TaskCreatedPayload): NotificationPriority {
-    // Prioridade baseada na urgência da tarefa
+  getPriority(payload: NotificationPayload): NotificationPriority {
+    const p = payload as unknown as TaskCreatedPayload;
     const priorityMap: Record<string, NotificationPriority> = {
       urgente: NotificationPriority.URGENT,
       alta: NotificationPriority.HIGH,
@@ -145,7 +184,7 @@ export class TaskCreatedStrategy extends BaseNotificationStrategy {
       baixa: NotificationPriority.LOW,
     };
 
-    return priorityMap[payload.task.priority] || NotificationPriority.MEDIUM;
+    return priorityMap[p.task.priority] || NotificationPriority.MEDIUM;
   }
 }
 
@@ -153,31 +192,32 @@ export class TaskCreatedStrategy extends BaseNotificationStrategy {
 export class TaskStatusUpdatedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.TASK_STATUS_CHANGED;
 
-  validate(payload: any): boolean {
+  validate(payload: NotificationPayload): boolean {
+    const p = payload as Partial<TaskStatusUpdatedPayload>;
     return (
-      payload &&
-      payload.task &&
-      payload.task.id &&
-      payload.oldStatus &&
-      payload.newStatus &&
-      payload.updatedBy
+      !!p &&
+      !!p.task &&
+      !!p.task.id &&
+      !!p.oldStatus &&
+      !!p.newStatus &&
+      !!p.updatedBy
     );
   }
 
-  create(payload: TaskStatusUpdatedPayload): StructuredNotification {
+  create(payload: NotificationPayload): StructuredNotification {
+    const p = payload as unknown as TaskStatusUpdatedPayload;
     if (!this.validate(payload)) {
       throw new Error('Invalid payload for TaskStatusUpdatedStrategy');
     }
 
-    const { task, oldStatus, newStatus, updatedBy, performer } = payload;
+    const { task, oldStatus, newStatus, updatedBy, performer } = p;
 
-    // Nova estrutura de dados proposta
     const data = {
       actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: task.title,
       taskId: task.id,
-      oldStatus: oldStatus,
-      newStatus: newStatus,
+      oldStatus,
+      newStatus,
     };
 
     const metadata = this.createTaskMetadata(['status_updated']);
@@ -187,29 +227,23 @@ export class TaskStatusUpdatedStrategy extends BaseNotificationStrategy {
 
     return this.createBaseNotification(
       this.type,
-      this.getPriority({ oldStatus, newStatus }),
+      this.getPriority({ oldStatus, newStatus } as NotificationPayload),
       data,
       metadata,
       updatedBy,
     );
   }
 
-  getPriority(payload: {
-    oldStatus: string;
-    newStatus: string;
-  }): NotificationPriority {
-    // Prioridade alta para mudanças críticas de status
+  getPriority(payload: NotificationPayload): NotificationPriority {
+    const p = payload as { oldStatus: string; newStatus: string };
     const criticalStatuses = ['concluido', 'cancelado', 'em_revisao'];
     const mediumStatuses = ['em_andamento', 'aguardando_cliente'];
 
-    if (criticalStatuses.includes(payload.newStatus)) {
+    if (criticalStatuses.includes(p.newStatus)) {
       return NotificationPriority.HIGH;
     }
 
-    if (
-      mediumStatuses.includes(payload.newStatus) &&
-      payload.oldStatus === 'pendente'
-    ) {
+    if (mediumStatuses.includes(p.newStatus) && p.oldStatus === 'pendente') {
       return NotificationPriority.MEDIUM;
     }
 
@@ -221,25 +255,26 @@ export class TaskStatusUpdatedStrategy extends BaseNotificationStrategy {
 export class CommentCreatedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.COMMENT_CREATED;
 
-  validate(payload: any): boolean {
+  validate(payload: NotificationPayload): boolean {
+    const p = payload as Partial<CommentCreatedPayload>;
     return (
-      payload &&
-      payload.comment &&
-      payload.comment.id &&
-      payload.comment.content &&
-      payload.comment.task &&
-      payload.createdBy
+      !!p &&
+      !!p.comment &&
+      !!p.comment.id &&
+      !!p.comment.content &&
+      !!p.comment.task &&
+      !!p.createdBy
     );
   }
 
-  create(payload: CommentCreatedPayload): StructuredNotification {
+  create(payload: NotificationPayload): StructuredNotification {
+    const p = payload as unknown as CommentCreatedPayload;
     if (!this.validate(payload)) {
       throw new Error('Invalid payload for CommentCreatedStrategy');
     }
 
-    const { comment, createdBy, performer } = payload;
+    const { comment, createdBy, performer } = p;
 
-    // Nova estrutura de dados proposta
     const data = {
       actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: comment.task.title,
@@ -250,7 +285,7 @@ export class CommentCreatedStrategy extends BaseNotificationStrategy {
           : comment.content,
     };
 
-    const metadata = {
+    const metadata: NotificationMetadata = {
       source: 'comment_system',
       category: NotificationCategory.COMMENT,
       tags: ['comment', 'created', 'task'],
@@ -266,8 +301,7 @@ export class CommentCreatedStrategy extends BaseNotificationStrategy {
     );
   }
 
-  getPriority(_payload: CommentCreatedPayload): NotificationPriority {
-    // Comentários geralmente têm prioridade média
+  getPriority(_payload: NotificationPayload): NotificationPriority {
     return NotificationPriority.MEDIUM;
   }
 }
@@ -276,20 +310,22 @@ export class CommentCreatedStrategy extends BaseNotificationStrategy {
 export class TimerStartedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.TIMER_STARTED;
 
-  validate(payload: any): boolean {
-    return payload && payload.task && payload.task.id && payload.userId;
+  validate(payload: NotificationPayload): boolean {
+    const p = payload as Partial<TimerEventPayload>;
+    return !!p && !!p.task && !!p.task.id && !!p.userId;
   }
 
-  create(payload: TimerEventPayload): StructuredNotification {
+  create(payload: NotificationPayload): StructuredNotification {
+    const p = payload as unknown as TimerEventPayload;
     if (!this.validate(payload)) {
       throw new Error('Invalid payload for TimerStartedStrategy');
     }
 
-    const { task, userId, performer, duration } = payload;
+    const { task, userId, performer, duration } = p;
 
     const data = {
       entityType: 'timer',
-      entityId: task.id, // Usando task.id como entityId para timer
+      entityId: task.id,
       action: 'started',
       changes: {
         timer: {
@@ -319,7 +355,7 @@ export class TimerStartedStrategy extends BaseNotificationStrategy {
       }),
     };
 
-    const metadata = {
+    const metadata: NotificationMetadata = {
       source: 'timer_system',
       category: NotificationCategory.TIMER,
       tags: ['timer', 'started', 'task'],
@@ -335,7 +371,7 @@ export class TimerStartedStrategy extends BaseNotificationStrategy {
     );
   }
 
-  getPriority(_payload: TimerEventPayload): NotificationPriority {
+  getPriority(_payload: NotificationPayload): NotificationPriority {
     return NotificationPriority.LOW;
   }
 }
@@ -344,20 +380,22 @@ export class TimerStartedStrategy extends BaseNotificationStrategy {
 export class TimerPausedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.TIMER_PAUSED;
 
-  validate(payload: any): boolean {
-    return payload && payload.task && payload.task.id && payload.userId;
+  validate(payload: NotificationPayload): boolean {
+    const p = payload as Partial<TimerEventPayload>;
+    return !!p && !!p.task && !!p.task.id && !!p.userId;
   }
 
-  create(payload: TimerEventPayload): StructuredNotification {
+  create(payload: NotificationPayload): StructuredNotification {
+    const p = payload as unknown as TimerEventPayload;
     if (!this.validate(payload)) {
       throw new Error('Invalid payload for TimerPausedStrategy');
     }
 
-    const { task, userId, performer, duration } = payload;
+    const { task, userId, performer, duration } = p;
 
     const data = {
       entityType: 'timer',
-      entityId: task.id, // Usando task.id como entityId para timer
+      entityId: task.id,
       action: 'paused',
       changes: {
         timer: {
@@ -390,7 +428,7 @@ export class TimerPausedStrategy extends BaseNotificationStrategy {
       }),
     };
 
-    const metadata = {
+    const metadata: NotificationMetadata = {
       source: 'timer_system',
       category: NotificationCategory.TIMER,
       tags: ['timer', 'paused', 'task'],
@@ -406,7 +444,7 @@ export class TimerPausedStrategy extends BaseNotificationStrategy {
     );
   }
 
-  getPriority(_payload: TimerEventPayload): NotificationPriority {
+  getPriority(_payload: NotificationPayload): NotificationPriority {
     return NotificationPriority.LOW;
   }
 }
@@ -415,38 +453,39 @@ export class TimerPausedStrategy extends BaseNotificationStrategy {
 export class TaskUpdatedStrategy extends BaseNotificationStrategy {
   readonly type = NotificationType.TASK_UPDATED;
 
-  validate(payload: any): boolean {
+  validate(payload: NotificationPayload): boolean {
+    const p = payload as Partial<TaskUpdatedPayloadShape>;
     return (
-      payload &&
-      payload.task &&
-      payload.task.id &&
-      payload.task.title &&
-      payload.updatedBy &&
-      typeof payload.updatedBy === 'number' &&
-      Array.isArray(payload.changedFields)
+      !!p &&
+      !!p.task &&
+      !!p.task.id &&
+      !!p.task.title &&
+      !!p.updatedBy &&
+      typeof p.updatedBy === 'number' &&
+      Array.isArray(p.changedFields)
     );
   }
 
-  create(payload: any): StructuredNotification {
+  create(payload: NotificationPayload): StructuredNotification {
+    const p = payload as unknown as TaskUpdatedPayloadShape;
     if (!this.validate(payload)) {
       throw new Error('Invalid payload for TaskUpdatedStrategy');
     }
 
-    const { task, updatedBy, performer, changedFields } = payload;
+    const { task, updatedBy, performer, changedFields } = p;
 
-    // Nova estrutura de dados proposta
     const data = {
       actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: task.title,
       taskId: task.id,
-      changedFields: changedFields.map((field: any) => ({
+      changedFields: changedFields.map((field) => ({
         field: field.field,
         oldValue: field.oldValue,
         newValue: field.newValue,
       })),
     };
 
-    const metadata = {
+    const metadata: NotificationMetadata = {
       source: 'task_system',
       category: NotificationCategory.TASK,
       tags: ['task', 'updated'],
@@ -455,15 +494,14 @@ export class TaskUpdatedStrategy extends BaseNotificationStrategy {
 
     return this.createBaseNotification(
       this.type,
-      NotificationPriority.MEDIUM, // Prioridade padrão para atualizações
+      NotificationPriority.MEDIUM,
       data,
       metadata,
       updatedBy,
     );
   }
 
-  getPriority(_payload: any): NotificationPriority {
-    // Prioridade pode ser ajustada com base nos campos alterados
+  getPriority(_payload: NotificationPayload): NotificationPriority {
     return NotificationPriority.MEDIUM;
   }
 }

@@ -57,13 +57,16 @@ export class TaskUpdateNotifierDecorator extends TaskUpdater {
   private getChangedFields(
     updateTaskDto: UpdateTaskDto,
     currentTask: Task,
-  ): Record<string, { oldValue: any; newValue: any }> {
-    const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
+  ): Record<string, { oldValue: unknown; newValue: unknown }> {
+    const changedFields: Record<
+      string,
+      { oldValue: unknown; newValue: unknown }
+    > = {};
 
     for (const [key, newValue] of Object.entries(updateTaskDto)) {
       if (key === 'users' || key === 'occupations') continue; // Skip relations
 
-      const oldValue = (currentTask as any)[key];
+      const oldValue = (currentTask as unknown as Record<string, unknown>)[key];
       if (oldValue !== newValue) {
         changedFields[key] = { oldValue, newValue };
       }

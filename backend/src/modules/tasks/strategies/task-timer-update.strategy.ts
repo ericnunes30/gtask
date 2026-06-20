@@ -3,7 +3,7 @@ import { Repository } from 'typeorm';
 import { Task } from '../entities/task.entity';
 
 export interface TaskTimerUpdateStrategy {
-  canHandle(repository: any): boolean;
+  canHandle(repository: Repository<Task>): boolean;
   execute(
     id: number,
     timerValue: number,
@@ -13,7 +13,7 @@ export interface TaskTimerUpdateStrategy {
 
 @Injectable()
 export class RepositoryTimerUpdateStrategy implements TaskTimerUpdateStrategy {
-  canHandle(repository: any): boolean {
+  canHandle(repository: Repository<Task>): boolean {
     return typeof repository.update === 'function';
   }
 
@@ -22,9 +22,7 @@ export class RepositoryTimerUpdateStrategy implements TaskTimerUpdateStrategy {
     timerValue: number,
     repository: Repository<Task>,
   ): Promise<Task> {
-    const repoAny = repository as any;
-
-    const existenceCheck = await repoAny.findOne({
+    const existenceCheck = await repository.findOne({
       where: { id },
       relations: ['users'],
     });
@@ -33,12 +31,16 @@ export class RepositoryTimerUpdateStrategy implements TaskTimerUpdateStrategy {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
-    await repoAny.update(id, { timer: timerValue });
+    await repository.update(id, { timer: timerValue });
 
-    return (await repoAny.findOne({
+    const updated = await repository.findOne({
       where: { id },
       relations: ['project', 'reviewer', 'users', 'occupations'],
-    })) as Task;
+    });
+    if (!updated) {
+      throw new NotFoundException(`Task with ID ${id} not found after update`);
+    }
+    return updated;
   }
 }
 

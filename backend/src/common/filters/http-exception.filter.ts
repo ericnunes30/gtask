@@ -56,10 +56,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
             ip: request.ip,
           });
           // If authentication attaches user to request, record the id (no PII)
-          const anyReq: any = request as any;
-          if (anyReq.user && (anyReq.user.id || anyReq.user.userId)) {
+          const reqWithUser = request as Request & { user?: Express.User };
+          if (
+            reqWithUser.user &&
+            (reqWithUser.user.sub || reqWithUser.user.email)
+          ) {
             Sentry.setUser({
-              id: String(anyReq.user.id || anyReq.user.userId),
+              id: String(reqWithUser.user.sub ?? reqWithUser.user.email),
             });
           }
           const err =
@@ -71,7 +74,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
           Sentry.captureException(err);
         });
       }
-    } catch (sentryErr) {
+    } catch (sentryErr: unknown) {
       // Avoid throwing from error handler
       console.error('Sentry capture failed:', sentryErr);
     }

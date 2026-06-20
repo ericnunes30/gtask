@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { StructuredNotificationEntity } from '../entities/notification.entity';
 import {
   StructuredNotification,
@@ -59,17 +59,18 @@ export class NotificationService {
       );
 
       return savedEntity.toDomain();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `NOTIFICATION CREATION FAILED: User ${notification.userId}, Type ${notification.type}, Error: ${error.message}`,
+        `NOTIFICATION CREATION FAILED: User ${notification.userId}, Type ${notification.type}, Error: ${errMessage}`,
       );
 
       this.logger.error(
         `Failed to create notification for user ${notification.userId}:`,
-        error,
+        error instanceof Error ? error.stack : String(error),
       );
       this.debugLogger.logError(
-        error,
+        error instanceof Error ? error : new Error(errMessage),
         `Notification creation failed for user ${notification.userId}`,
       );
       throw error;
@@ -133,7 +134,10 @@ export class NotificationService {
     return result;
   }
 
-  private applyFilters(queryBuilder: any, options: NotificationQueryOptions) {
+  private applyFilters(
+    queryBuilder: SelectQueryBuilder<StructuredNotificationEntity>,
+    options: NotificationQueryOptions,
+  ) {
     const { unreadOnly, types, priorities, categories, startDate, endDate } =
       options;
 
@@ -255,19 +259,27 @@ export class NotificationService {
         .getRawMany(),
     ]);
 
+    interface CountRow {
+      type?: string;
+      priority?: string;
+      count: string | number;
+    }
+    const byTypeRows = byType as CountRow[];
+    const byPriorityRows = byPriority as CountRow[];
+
     return {
       total,
       unread,
-      byType: byType.reduce(
+      byType: byTypeRows.reduce(
         (acc, item) => {
-          acc[item.type] = parseInt(item.count);
+          acc[item.type ?? ''] = parseInt(String(item.count));
           return acc;
         },
         {} as Record<string, number>,
       ),
-      byPriority: byPriority.reduce(
+      byPriority: byPriorityRows.reduce(
         (acc, item) => {
-          acc[item.priority] = parseInt(item.count);
+          acc[item.priority ?? ''] = parseInt(String(item.count));
           return acc;
         },
         {} as Record<string, number>,
@@ -309,7 +321,7 @@ export class NotificationService {
       };
 
       return await this.findByUser(userId, searchOptions);
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to search notifications for user ${userId}:`,
         error,

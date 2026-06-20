@@ -122,7 +122,7 @@ export class EventsGateway
 
   private verifyEventHandlers(): void {
     // Verify that event handlers are properly registered
-    const handlerMethods = [
+    const handlerMethods: Array<keyof EventsGateway> = [
       'handleTaskCreatedEvent',
       'handleTaskStatusUpdatedEvent',
       'handleCommentCreatedEvent',
@@ -133,7 +133,7 @@ export class EventsGateway
     ];
 
     for (const methodName of handlerMethods) {
-      if (typeof (this as any)[methodName] !== 'function') {
+      if (typeof this[methodName] !== 'function') {
         this.logger.warn(`⚠️  Event handler method ${methodName} not found`);
       } else {
         this.logger.log(`✅ Event handler ${methodName} is registered`);
@@ -178,8 +178,13 @@ export class EventsGateway
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  handleConnection(client: Socket, ..._args: any[]) {
-    const userId = (client as Socket & { user?: any }).user?.sub;
+  /** Converte um valor `unknown` em `number | undefined` para passar a APIs tipadas. */
+  private toUserId(value: unknown): number | undefined {
+    return typeof value === 'number' ? value : undefined;
+  }
+
+  handleConnection(client: Socket, ..._args: unknown[]) {
+    const userId = (client as Socket & { user?: Express.User }).user?.sub;
 
     if (!userId) {
       this.logger.warn(`Unauthorized WS connection: ${client.id}`);
@@ -213,7 +218,7 @@ export class EventsGateway
 
   @SubscribeMessage('timer.start')
   async handleTimerStart(client: Socket, payload: { taskId: number }) {
-    const userId = (client as Socket & { user?: any }).user?.sub;
+    const userId = (client as Socket & { user?: Express.User }).user?.sub;
     if (!userId) {
       this.logger.warn(`Unauthorized timer.start from ${client.id}`);
       client.emit('error', {
@@ -228,9 +233,9 @@ export class EventsGateway
     );
     try {
       await this.timerService.start(payload.taskId, userId);
-    } catch (err: any) {
+    } catch (err: unknown) {
       this.logger.error(
-        `Failed to start timer for task ${payload.taskId}: ${err?.message}`,
+        `Failed to start timer for task ${payload.taskId}: ${err instanceof Error ? err.message : String(err)}`,
       );
       client.emit('error', {
         code: 'TIMER_START_FAILED',
@@ -241,7 +246,7 @@ export class EventsGateway
 
   @SubscribeMessage('timer.pause')
   async handleTimerPause(client: Socket, payload: { taskId: number }) {
-    const userId = (client as Socket & { user?: any }).user?.sub;
+    const userId = (client as Socket & { user?: Express.User }).user?.sub;
     if (!userId) {
       this.logger.warn(`Unauthorized timer.pause from ${client.id}`);
       client.emit('error', {
@@ -256,9 +261,9 @@ export class EventsGateway
     );
     try {
       await this.timerService.pause(payload.taskId, userId);
-    } catch (err: any) {
+    } catch (err: unknown) {
       this.logger.error(
-        `Failed to pause timer for task ${payload.taskId}: ${err?.message}`,
+        `Failed to pause timer for task ${payload.taskId}: ${err instanceof Error ? err.message : String(err)}`,
       );
       client.emit('error', {
         code: 'TIMER_PAUSE_FAILED',
@@ -292,10 +297,10 @@ export class EventsGateway
 
   // --- Fim dos Handlers de Eventos do Timer ---
 
-  private async handleEvent(
+  private async handleEvent<T extends Record<string, unknown>>(
     eventName: string,
-    payload: any,
-    getUsersToNotify: (payload: any) => number[],
+    payload: T,
+    getUsersToNotify: (payload: T) => number[],
   ) {
     this.logger.log(
       `🚀 Event ${eventName} received, creating persistent notifications...`,
@@ -306,7 +311,7 @@ export class EventsGateway
     this.debugLogger.logNotificationEvent(
       eventName,
       payload,
-      payload.createdBy || payload.updatedBy,
+      this.toUserId(payload.createdBy ?? payload.updatedBy),
     );
 
     if (!this.notificationFactory.hasStrategy(eventName)) {
@@ -331,10 +336,11 @@ export class EventsGateway
     }
 
     // Try to enrich payload with performer (actor) details
-    let enrichedPayload = payload;
+    let enrichedPayload: T & {
+      performer?: { id: number; name: string; email: string };
+    } = payload;
     try {
-      const actorId =
-        payload?.createdBy || payload?.updatedBy || payload?.userId;
+      const actorId = payload.createdBy || payload.updatedBy || payload.userId;
       if (actorId) {
         const actor = await this.userService.findOne(Number(actorId));
         enrichedPayload = {
@@ -346,9 +352,9 @@ export class EventsGateway
           },
         };
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       this.logger.warn(
-        `Could not enrich payload with performer: ${e?.message || e}`,
+        `Could not enrich payload with performer: ${e instanceof Error ? e.message : String(e)}`,
       );
     }
 
@@ -357,7 +363,7 @@ export class EventsGateway
         this.logger.log(`📝 Creating notification for user ${userId}...`);
         const notification = this.notificationFactory.create(
           eventName,
-          enrichedPayload,
+          enrichedPayload as Record<string, unknown>,
         );
         notification.userId = userId;
 
