@@ -110,25 +110,25 @@ function transformDate(
 export class CreateProjectDto {
   @IsString()
   @MaxLength(255)
-  title: string;
+  title!: string;
 
   @IsOptional()
   @IsString()
   description?: string | null;
 
   @IsBoolean()
-  status: boolean;
+  status!: boolean;
 
   @IsEnum(PriorityLevel)
-  priority: PriorityLevel;
+  priority!: PriorityLevel;
 
   @Transform(({ value }) => transformDate(value))
   @IsFlexibleDateString()
-  start_date: Date;
+  start_date!: Date;
 
   @Transform(({ value }) => transformDate(value))
   @IsFlexibleDateString()
-  end_date: Date;
+  end_date!: Date;
 
   @IsOptional()
   @IsArray()

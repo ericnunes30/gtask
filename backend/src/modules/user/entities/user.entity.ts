@@ -18,25 +18,25 @@ import { StructuredNotificationEntity } from '../../notification/entities/notifi
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  name: string;
+  name!: string;
 
   @Column({ unique: true })
-  email: string;
+  email!: string;
 
   @Column({ select: false })
   password?: string;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @Column({ default: true, type: 'boolean', name: 'is_active' })
-  is_active: boolean;
+  is_active!: boolean;
 
   @Column({ nullable: true, type: 'varchar' })
   whatsapp?: string;
@@ -46,14 +46,14 @@ export class User {
     default: false,
     type: 'boolean',
   })
-  whatsappNotificationsEnabled: boolean;
+  whatsappNotificationsEnabled!: boolean;
 
   @Column({
     name: 'whatsapp_priority_threshold',
     default: 'MEDIUM',
     type: 'varchar',
   })
-  whatsappPriorityThreshold: string;
+  whatsappPriorityThreshold!: string;
 
   @Column({
     name: 'whatsapp_quiet_hours_start',
@@ -66,7 +66,7 @@ export class User {
   whatsappQuietHoursEnd?: string;
 
   @ManyToMany(() => Occupation, (occupation) => occupation.users)
-  occupations: Occupation[];
+  occupations!: Occupation[];
 
   @ManyToMany(() => Role, (role) => role.users)
   @JoinTable({
@@ -74,20 +74,20 @@ export class User {
     joinColumn: { name: 'user_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
   })
-  roles: Role[];
+  roles!: Role[];
 
   @ManyToMany(() => Task, (task) => task.users)
-  tasks: Task[];
+  tasks!: Task[];
 
   @ManyToMany(() => Project, (project) => project.users)
-  projects: Project[];
+  projects!: Project[];
 
   @OneToMany(() => Comment, (comment) => comment.user)
-  comments: Comment[];
+  comments!: Comment[];
 
   @OneToMany(
     () => StructuredNotificationEntity,
     (notification) => notification.user,
   )
-  structuredNotifications: StructuredNotificationEntity[];
+  structuredNotifications!: StructuredNotificationEntity[];
 }

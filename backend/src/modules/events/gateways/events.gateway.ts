@@ -35,7 +35,7 @@ export class EventsGateway
   private readonly logger = new Logger(EventsGateway.name);
 
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   constructor(
     private readonly notificationService: NotificationService,

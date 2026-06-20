@@ -14,16 +14,16 @@ import { Task } from '../../tasks/entities/task.entity';
 @Entity('occupations')
 export class Occupation {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ type: 'varchar' })
-  name: string;
+  name!: string;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @ManyToMany(() => User, (user) => user.occupations)
   @JoinTable({
@@ -31,7 +31,7 @@ export class Occupation {
     joinColumn: { name: 'occupation_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
   })
-  users: User[];
+  users!: User[];
 
   @ManyToMany(() => Project, (project) => project.occupations)
   @JoinTable({
@@ -39,7 +39,7 @@ export class Occupation {
     joinColumn: { name: 'occupation_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'project_id', referencedColumnName: 'id' },
   })
-  projects: Project[];
+  projects!: Project[];
 
   @ManyToMany(() => Task, (task) => task.occupations)
   @JoinTable({
@@ -47,5 +47,5 @@ export class Occupation {
     joinColumn: { name: 'occupation_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'task_id', referencedColumnName: 'id' },
   })
-  tasks: Task[];
+  tasks!: Task[];
 }

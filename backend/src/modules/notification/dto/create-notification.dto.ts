@@ -23,10 +23,10 @@ import {
 // DTOs para os novos formatos de dados
 export class TaskCreatedDataDto implements TaskCreatedData {
   @IsString()
-  actorName: string;
+  actorName!: string;
 
   @IsString()
-  taskTitle: string;
+  taskTitle!: string;
 
   @IsOptional()
   @IsString()
@@ -35,40 +35,40 @@ export class TaskCreatedDataDto implements TaskCreatedData {
 
 export class TaskStatusUpdatedDataDto implements TaskStatusUpdatedData {
   @IsString()
-  actorName: string;
+  actorName!: string;
 
   @IsString()
-  taskTitle: string;
+  taskTitle!: string;
 
   @IsString()
-  oldStatus: string;
+  oldStatus!: string;
 
   @IsString()
-  newStatus: string;
+  newStatus!: string;
 }
 
 export class CommentCreatedDataDto implements CommentCreatedData {
   @IsString()
-  actorName: string;
+  actorName!: string;
 
   @IsString()
-  taskTitle: string;
+  taskTitle!: string;
 
   @IsString()
-  commentSnippet: string;
+  commentSnippet!: string;
 }
 
 export class TaskUpdatedDataDto implements TaskUpdatedData {
   @IsString()
-  actorName: string;
+  actorName!: string;
 
   @IsString()
-  taskTitle: string;
+  taskTitle!: string;
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ChangedFieldDto)
-  changedFields: Array<{
+  changedFields!: Array<{
     field: string;
     oldValue: string;
     newValue: string;
@@ -77,13 +77,13 @@ export class TaskUpdatedDataDto implements TaskUpdatedData {
 
 class ChangedFieldDto {
   @IsString()
-  field: string;
+  field!: string;
 
   @IsString()
-  oldValue: string;
+  oldValue!: string;
 
   @IsString()
-  newValue: string;
+  newValue!: string;
 }
 
 // Tipo para o campo data que pode ser a estrutura antiga ou as novas estruturas
@@ -119,19 +119,19 @@ type NotificationDataDto =
 
 export class CreateNotificationDto {
   @IsNumber()
-  userId: number;
+  userId!: number;
 
   @IsEnum(NotificationType)
-  type: NotificationType;
+  type!: NotificationType;
 
   @IsEnum(NotificationPriority)
-  priority: NotificationPriority;
+  priority!: NotificationPriority;
 
   @IsObject()
-  data: NotificationDataDto;
+  data!: NotificationDataDto;
 
   @IsObject()
-  metadata: {
+  metadata!: {
     source: string;
     category: NotificationCategory;
     tags: string[];

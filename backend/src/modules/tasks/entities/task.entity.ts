@@ -22,79 +22,79 @@ import { ActivityLog } from '../../activity-log/entities/activity-log.entity';
 @Entity('tasks')
 export class Task {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ nullable: true, type: 'integer' })
-  order: number | null;
+  order!: number | null;
 
   @Column({ type: 'varchar', length: 255 })
-  title: string;
+  title!: string;
 
   @Column({ nullable: true, type: 'text' })
-  description: string | null;
+  description!: string | null;
 
   @Column({
     type: 'enum',
     enum: PriorityLevel,
   })
-  priority: PriorityLevel;
+  priority!: PriorityLevel;
 
   @Column({
     type: 'enum',
     enum: Status,
   })
-  status: Status;
+  status!: Status;
 
   @Column({ type: 'timestamp', nullable: true })
-  start_date: Date | null;
+  start_date!: Date | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  due_date: Date | null;
+  due_date!: Date | null;
 
   @Column({ type: 'integer', default: 0 })
-  timer: number;
+  timer!: number;
 
   @Column({ name: 'project_id', type: 'integer' })
-  project_id: number;
+  project_id!: number;
 
   @Column({ name: 'recurring_task_id', nullable: true, type: 'integer' })
-  recurring_task_id: number | null;
+  recurring_task_id!: number | null;
 
   @Column({ name: 'task_reviewer_id', nullable: true, type: 'integer' })
-  task_reviewer_id: number | null;
+  task_reviewer_id!: number | null;
 
   @Column({ nullable: true, type: 'varchar', length: 500 })
-  video_url: string | null;
+  video_url!: string | null;
 
   @Column({
     type: 'jsonb',
     nullable: true,
   })
-  useful_links: Array<{ title: string; url: string }> | null;
+  useful_links!: Array<{ title: string; url: string }> | null;
 
   @Column({ nullable: true, type: 'text' })
-  observations: string | null;
+  observations!: string | null;
 
   @Column({ default: false, type: 'boolean' })
-  has_detailed_fields: boolean;
+  has_detailed_fields!: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @ManyToOne(() => Project, { eager: true })
   @JoinColumn({ name: 'project_id' })
-  project: Project;
+  project!: Project;
 
   @ManyToOne(() => RecurringTask)
   @JoinColumn({ name: 'recurring_task_id' })
-  recurringTask: RecurringTask;
+  recurringTask!: RecurringTask;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'task_reviewer_id' })
-  reviewer: User;
+  reviewer!: User;
 
   @ManyToMany(() => User)
   @JoinTable({
@@ -102,16 +102,16 @@ export class Task {
     joinColumn: { name: 'task_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
   })
-  users: User[];
+  users!: User[];
 
   @ManyToMany(() => Occupation, (occupation) => occupation.tasks)
-  occupations: Occupation[];
+  occupations!: Occupation[];
 
   @OneToMany(() => Comment, (comment) => comment.task)
-  comments: Comment[];
+  comments!: Comment[];
 
   @OneToMany(() => ActivityLog, (activityLog) => activityLog.task)
-  activityLogs: ActivityLog[];
+  activityLogs!: ActivityLog[];
 
   // Serialização personalizada para garantir que o campo timer seja incluído
   toJSON() {

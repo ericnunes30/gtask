@@ -13,7 +13,7 @@ export class TimerService {
     number,
     { interval: NodeJS.Timeout; seconds: number }
   >();
-  private server: Server;
+  private server!: Server;
 
   constructor(
     private readonly taskService: TaskService,

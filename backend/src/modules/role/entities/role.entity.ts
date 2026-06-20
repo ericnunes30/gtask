@@ -11,20 +11,20 @@ import { User } from '../../user/entities/user.entity';
 @Entity('roles')
 export class Role {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ type: 'varchar' })
-  name: string;
+  name!: string;
 
   @Column({ nullable: true, type: 'text' })
-  description: string | null;
+  description!: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @ManyToMany(() => User, 'roles')
-  users: User[];
+  users!: User[];
 }

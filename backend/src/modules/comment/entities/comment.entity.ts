@@ -19,46 +19,46 @@ import { CommentLike } from './comment-like.entity';
 @Entity('comments')
 export class Comment {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column('text')
-  content: string;
+  content!: string;
 
   @Column({ name: 'task_id' })
-  task_id: number;
+  task_id!: number;
 
   @Column({ name: 'user_id' })
-  userId: number;
+  userId!: number;
 
   @Column({ name: 'parent_id', nullable: true })
-  parentId: number | null;
+  parentId!: number | null;
 
   @Column({ name: 'likes_count', default: 0 })
-  likesCount: number;
+  likesCount!: number;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
-  updated_at: Date;
+  updated_at!: Date;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user!: User;
 
   @ManyToOne(() => Task)
   @JoinColumn({ name: 'task_id' })
-  task: Task;
+  task!: Task;
 
   @ManyToOne(() => Comment, { nullable: true })
   @JoinColumn({ name: 'parent_id' })
-  parentComment: Comment;
+  parentComment!: Comment;
 
   @OneToMany(() => Comment, (comment) => comment.parentComment)
-  replies: Comment[];
+  replies!: Comment[];
 
   @OneToMany(() => CommentLike, (commentLike) => commentLike.comment)
-  likes: CommentLike[];
+  likes!: CommentLike[];
 
   @ManyToMany(() => User)
   @JoinTable({
@@ -66,7 +66,7 @@ export class Comment {
     joinColumn: { name: 'comment_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
   })
-  mentionedUsers: User[];
+  mentionedUsers!: User[];
 
   @BeforeInsert()
   setCreationDate() {

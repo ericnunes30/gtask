@@ -16,24 +16,24 @@ import { User } from '../../user/entities/user.entity';
 @Unique(['commentId', 'userId'])
 export class CommentLike {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ name: 'comment_id' })
-  commentId: number;
+  commentId!: number;
 
   @Column({ name: 'user_id' })
-  userId: number;
+  userId!: number;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @ManyToOne(() => Comment)
   @JoinColumn({ name: 'comment_id' })
-  comment: Comment;
+  comment!: Comment;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user!: User;
 
   @AfterInsert()
   async incrementCommentLikes() {

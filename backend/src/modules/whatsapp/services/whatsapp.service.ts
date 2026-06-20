@@ -17,7 +17,7 @@ import { StructuredNotificationEntity } from '../../notification/entities/notifi
 export class WhatsAppService {
   private readonly logger = new Logger(WhatsAppService.name);
   private readonly rateLimitMap = new Map<string, Date>();
-  private config: WhatsAppConfig;
+  private config!: WhatsAppConfig;
 
   constructor(
     private readonly httpService: HttpService,

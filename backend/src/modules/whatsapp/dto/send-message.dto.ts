@@ -10,11 +10,11 @@ import {
 export class SendMessageDto {
   @IsString()
   @IsNotEmpty()
-  number: string;
+  number!: string;
 
   @IsString()
   @IsNotEmpty()
-  text: string;
+  text!: string;
 
   @IsOptional()
   @IsNumber()

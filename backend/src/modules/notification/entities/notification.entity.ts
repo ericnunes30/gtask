@@ -24,32 +24,32 @@ import type {
 @Index(['priority']) // Índice para consultas por prioridade
 export class StructuredNotificationEntity {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ type: 'enum', enum: NotificationType })
-  type: NotificationType;
+  type!: NotificationType;
 
   @Column({ type: 'enum', enum: NotificationPriority })
-  priority: NotificationPriority;
+  priority!: NotificationPriority;
 
   @Column({ type: 'jsonb' })
-  data: NotificationData;
+  data!: NotificationData;
 
   @Column({ type: 'jsonb' })
-  metadata: NotificationMetadata;
+  metadata!: NotificationMetadata;
 
   @ManyToOne(() => User, (user) => user.structuredNotifications)
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user!: User;
 
   @Column({ name: 'user_id' })
-  userId: number;
+  userId!: number;
 
   @Column({ name: 'is_read', default: false })
-  isRead: boolean;
+  isRead!: boolean;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Column({
     name: 'expires_at',
