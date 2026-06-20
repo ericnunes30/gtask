@@ -57,9 +57,12 @@ export class DbMigrateStatusCommand extends CommandRunner {
       } finally {
         await queryRunner.release();
       }
-    } catch (error) {
-      this.logger.error('❌ Failed to get migration status:', error.message);
-      this.logger.debug('Error details:', error.stack);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('❌ Failed to get migration status:', errorMessage);
+      this.logger.debug('Error details:', errorStack);
       throw error;
     }
   }

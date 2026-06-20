@@ -28,10 +28,10 @@ export class RoleService {
       });
       this.logger.log(`Found ${roles.length} roles`);
       return roles;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Error finding all roles: ${error.message}`,
-        error.stack,
+        `Error finding all roles: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : String(error),
       );
       throw error;
     }

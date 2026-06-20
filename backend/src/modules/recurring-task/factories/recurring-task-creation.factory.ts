@@ -52,8 +52,11 @@ export class DefaultRecurringTaskCreationStrategy
         'Entidade TypeORM criada com sucesso via repository.create().',
       );
       return recurringTaskEntity;
-    } catch (error) {
-      this.logger.error('Erro ao executar repository.create()', error.stack);
+    } catch (error: unknown) {
+      this.logger.error(
+        'Erro ao executar repository.create()',
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }

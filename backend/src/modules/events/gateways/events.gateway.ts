@@ -98,7 +98,7 @@ export class EventsGateway
       this.verifyEventHandlers();
 
       this.logger.log('✅ All startup verification checks passed');
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('❌ Startup verification failed:', error);
       throw error;
     }
@@ -151,7 +151,7 @@ export class EventsGateway
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await operation();
-      } catch (error) {
+      } catch (error: unknown) {
         lastError = error as Error;
         this.logger.warn(
           `⚠️  ${operationName} failed (attempt ${attempt}/${maxRetries}):`,
@@ -397,16 +397,18 @@ export class EventsGateway
           },
           userId,
         );
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(
-          `GATEWAY ERROR: Failed to create notification for user ${userId}, Event: ${eventName}, Error: ${error.message}`,
+          `GATEWAY ERROR: Failed to create notification for user ${userId}, Event: ${eventName}, Error: ${error instanceof Error ? error.message : String(error)}`,
         );
 
         this.logger.error(
           `❌ Failed to create or send structured notification for user ${userId}:`,
           error,
         );
-        this.logger.error(`❌ Error details: ${error.message}`);
+        this.logger.error(
+          `❌ Error details: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
   }

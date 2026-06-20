@@ -212,14 +212,14 @@ export class WhatsAppService {
       );
 
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to send WhatsApp notification to user ${user.id}:`,
         error,
       );
       return {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         timestamp: new Date(),
       };
     }
@@ -293,8 +293,12 @@ export class WhatsAppService {
       this.logger.error(
         `Error Data: ${JSON.stringify(error.response?.data || {}, null, 2)}`,
       );
-      this.logger.error(`Error Message: ${error.message}`);
-      this.logger.error(`Error Stack: ${error.stack}`);
+      this.logger.error(
+        `Error Message: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      this.logger.error(
+        `Error Stack: ${error instanceof Error ? error.stack : String(error)}`,
+      );
       this.logger.error(`=== END ERROR DETAILS ===`);
 
       // Tentar novamente com retry

@@ -42,8 +42,11 @@ export class CommentService extends CommentCreator {
       );
       // Re-fetch the comment to include all relations and DB-generated values
       return this.findOne(savedComment.id);
-    } catch (error) {
-      this.logger.error(`Service: Failed to save comment.`, error.stack);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Service: Failed to save comment.`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }

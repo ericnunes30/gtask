@@ -64,8 +64,11 @@ export class RecurringTaskService {
       const enhancedTask = await this.occupationEnhancer.enhance(savedTask);
       this.logger.log('Tarefa "melhorada" com sucesso.');
       return enhancedTask;
-    } catch (error) {
-      this.logger.error('Erro capturado no RecurringTaskService', error.stack);
+    } catch (error: unknown) {
+      this.logger.error(
+        'Erro capturado no RecurringTaskService',
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error; // Re-lança o erro para não quebrar o fluxo de exceção do NestJS
     }
   }

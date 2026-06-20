@@ -57,10 +57,10 @@ export class CommentCreationDecorator extends CommentCreator {
       );
 
       return comment;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Decorator: Erro durante criação do comentário ou emissão do evento.`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
       throw error;
     }

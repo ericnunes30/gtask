@@ -38,10 +38,10 @@ export class ActivityLogListener {
     try {
       await this.activityLogRepository.save(log);
       this.logger.log(`Activity log saved for new task #${task.id}`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to save activity log for new task #${task.id}`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }
@@ -68,10 +68,10 @@ export class ActivityLogListener {
       this.logger.log(
         `Activity log for new comment on task #${comment.task_id} saved`,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to save activity log for new comment on task #${comment.task_id}`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }
@@ -102,10 +102,10 @@ export class ActivityLogListener {
         this.logger.log(
           `Activity log saved for task #${task.id} field '${field}' update`,
         );
-      } catch (error) {
+      } catch (error: unknown) {
         this.logger.error(
           `Failed to save activity log for task #${task.id} field '${field}' update`,
-          error.stack,
+          error instanceof Error ? error.stack : String(error),
         );
       }
     }
@@ -135,10 +135,10 @@ export class ActivityLogListener {
     try {
       await this.activityLogRepository.save(log);
       this.logger.log(`Activity log saved for task #${task.id} status update`);
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to save activity log for task #${task.id} status update`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }
@@ -168,10 +168,10 @@ export class ActivityLogListener {
       this.logger.log(
         `Activity log saved for task #${task.id} assignees ${action}`,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         `Failed to save activity log for task #${task.id} assignees ${action}`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }

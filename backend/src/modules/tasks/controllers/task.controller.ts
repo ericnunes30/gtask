@@ -87,9 +87,9 @@ export class TaskController {
       );
       this.logger.log(`[PATCH /tasks/:id] Task ID ${id} updated successfully.`);
       return updatedTask;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
-        `[PATCH /tasks/:id] Error updating task ID ${id}: ${error.message}`,
+        `[PATCH /tasks/:id] Error updating task ID ${id}: ${error instanceof Error ? error.message : String(error)}`,
       );
       throw error; // Re-throw the error so NestJS can handle it
     }

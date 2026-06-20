@@ -31,10 +31,10 @@ export class OccupationService {
       });
       this.logger.log(`Found ${occupations.length} occupations`);
       return occupations;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Error finding all occupations: ${error.message}`,
-        error.stack,
+        `Error finding all occupations: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : String(error),
       );
       throw error;
     }

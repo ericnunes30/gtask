@@ -41,10 +41,10 @@ export class TaskSchedulerService {
 
     try {
       await this.processDueRecurringTasks();
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(
         'Unexpected error during recurring task processing.',
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     } finally {
       this.logger.log('Recurring tasks check finished. Releasing lock.');
@@ -116,11 +116,11 @@ export class TaskSchedulerService {
       this.logger.log(
         `Task #${newTask.id} created successfully from recurring task #${recurringTask.id}.`,
       );
-    } catch (error) {
+    } catch (error: unknown) {
       await queryRunner.rollbackTransaction();
       this.logger.error(
         `Failed to process recurring task #${recurringTask.id}`,
-        error.stack,
+        error instanceof Error ? error.stack : String(error),
       );
     } finally {
       await queryRunner.release();
