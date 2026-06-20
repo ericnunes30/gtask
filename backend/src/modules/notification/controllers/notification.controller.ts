@@ -40,7 +40,6 @@ export class NotificationController {
   // @ApiResponse({ status: 200, description: 'Lista de notificações com paginação' })
   // @ApiResponse({ status: 401, description: 'Não autorizado' })
   async getUserNotifications(
-    @Request() req,
     @Query() options: NotificationQueryDto,
     @Headers('authorization') authorization: string,
   ): Promise<NotificationPagination> {

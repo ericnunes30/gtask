@@ -7,13 +7,14 @@ import {
   Param,
   Body,
   UseGuards,
-  Request as NestRequest,
+  Request,
   Logger,
 } from '@nestjs/common';
 import { RecurringTaskService } from '../services/recurring-task.service';
 import { CreateRecurringTaskDto } from '../dto/create-recurring-task.dto';
 import { UpdateRecurringTaskDto } from '../dto/update-recurring-task.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 @Controller('recurring-tasks')
 @UseGuards(JwtAuthGuard)
@@ -33,7 +34,7 @@ export class RecurringTaskController {
   @Post()
   async create(
     @Body() createRecurringTaskDto: CreateRecurringTaskDto,
-    @NestRequest() req,
+    @CurrentUser() currentUser: Express.User,
   ) {
     Logger.log(
       `Received createRecurringTaskDto: ${JSON.stringify(createRecurringTaskDto)}`,
@@ -41,7 +42,7 @@ export class RecurringTaskController {
     );
     return this.recurringTaskService.create(
       createRecurringTaskDto,
-      req.user.sub,
+      currentUser.sub,
     );
   }
 

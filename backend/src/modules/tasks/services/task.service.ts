@@ -10,6 +10,21 @@ import { TaskStrategyFactory } from '../strategies/task-strategy.factory';
 import { TaskCreationFactory } from '../factories/task-creation.factory';
 import { TaskCreator } from './task-creator.abstract';
 import { TaskUpdater } from './task-updater.abstract';
+/**
+ * Representa um comentario retornado pela query raw SQL em findOne.
+ * Inclui campos extras (user, likes_count) e o array replies adicionado em tempo de execucao.
+ */
+interface CommentNode {
+  id: number;
+  parent_id: number | null;
+  user_id: number;
+  content: string;
+  created_at: Date;
+  updated_at: Date;
+  user: { id: number; name: string; email: string } | null;
+  likes_count: number;
+  replies: CommentNode[];
+}
 
 @Injectable()
 export class TaskService extends TaskCreator implements TaskUpdater {
@@ -116,9 +131,9 @@ export class TaskService extends TaskCreator implements TaskUpdater {
     );
 
     // Estrutura os comentários em formato aninhado
-    const commentsMap = new Map();
-    const topLevelComments: any[] = [];
-    comments.forEach((comment) => {
+    const commentsMap = new Map<number, CommentNode>();
+    const topLevelComments: CommentNode[] = [];
+    comments.forEach((comment: CommentNode) => {
       comment.replies = [];
       commentsMap.set(comment.id, comment);
       if (comment.parent_id) {

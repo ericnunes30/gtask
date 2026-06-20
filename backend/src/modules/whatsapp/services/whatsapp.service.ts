@@ -343,7 +343,7 @@ export class WhatsAppService {
     notificationPriority: string,
     userThreshold: string,
   ): boolean {
-    const priorityOrder = {
+    const priorityOrder: Record<string, number> = {
       [NotificationPriority.LOW]: 1,
       [NotificationPriority.MEDIUM]: 2,
       [NotificationPriority.HIGH]: 3,

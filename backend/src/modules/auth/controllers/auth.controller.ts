@@ -14,6 +14,7 @@ import { SetupDto } from '../dto/setup.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 
 import { SetupGuard } from '../../../common/guards/setup.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -47,16 +48,16 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('profile')
-  getProfile(@Request() req) {
-    return req.user;
+  getProfile(@CurrentUser() currentUser: Express.User) {
+    return currentUser;
   }
 
   @UseGuards(AuthGuard('jwt'))
   @Post('verify')
-  verifyToken(@Request() req) {
+  verifyToken(@CurrentUser() currentUser: Express.User) {
     return {
       valid: true,
-      user: req.user,
+      user: currentUser,
     };
   }
 }

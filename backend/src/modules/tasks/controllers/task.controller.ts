@@ -18,6 +18,7 @@ import { TaskCreator } from '../services/task-creator.abstract';
 import { TaskUpdater } from '../services/task-updater.abstract';
 import { TaskService } from '../services/task.service';
 import { AuthGuard } from '@nestjs/passport';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 @Controller('tasks')
 export class TaskController {
@@ -30,9 +31,12 @@ export class TaskController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'))
-  create(@Body() createTaskDto: CreateTaskDto, @Request() req) {
+  create(
+    @Body() createTaskDto: CreateTaskDto,
+    @CurrentUser() currentUser: Express.User,
+  ) {
     // Passamos o ID do usuário autenticado para a camada de criação
-    return this.taskCreator.create(createTaskDto, req.user.sub);
+    return this.taskCreator.create(createTaskDto, currentUser.sub);
   }
 
   @Get()
@@ -59,9 +63,9 @@ export class TaskController {
   update(
     @Param('id') id: string,
     @Body() updateTaskDto: UpdateTaskDto,
-    @Request() req,
+    @CurrentUser() currentUser: Express.User,
   ) {
-    return this.taskUpdater.update(+id, updateTaskDto, req.user.sub);
+    return this.taskUpdater.update(+id, updateTaskDto, currentUser.sub);
   }
 
   @Patch(':id')
@@ -69,7 +73,7 @@ export class TaskController {
   async patch(
     @Param('id') id: string,
     @Body() updateTaskDto: UpdateTaskDto,
-    @Request() req,
+    @CurrentUser() currentUser: Express.User,
   ) {
     this.logger.log(`[PATCH /tasks/:id] Received request for task ID: ${id}`);
     this.logger.log(
@@ -79,7 +83,7 @@ export class TaskController {
       const updatedTask = await this.taskUpdater.update(
         +id,
         updateTaskDto,
-        req.user.sub,
+        currentUser.sub,
       );
       this.logger.log(`[PATCH /tasks/:id] Task ID ${id} updated successfully.`);
       return updatedTask;

@@ -346,7 +346,7 @@ export class EventsGateway
           },
         };
       }
-    } catch (e) {
+    } catch (e: any) {
       this.logger.warn(
         `Could not enrich payload with performer: ${e?.message || e}`,
       );

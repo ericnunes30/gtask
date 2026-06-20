@@ -59,7 +59,7 @@ export class NotificationService {
       );
 
       return savedEntity.toDomain();
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         `NOTIFICATION CREATION FAILED: User ${notification.userId}, Type ${notification.type}, Error: ${error.message}`,
       );
@@ -309,7 +309,7 @@ export class NotificationService {
       };
 
       return await this.findByUser(userId, searchOptions);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         `Failed to search notifications for user ${userId}:`,
         error,
