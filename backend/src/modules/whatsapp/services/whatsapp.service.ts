@@ -395,11 +395,11 @@ export class WhatsAppService {
     return true;
   }
 
-  async getConfig(): Promise<WhatsAppConfig> {
+  getConfig(): WhatsAppConfig {
     return this.config;
   }
 
-  async updateConfig(config: Partial<WhatsAppConfig>): Promise<void> {
+  updateConfig(config: Partial<WhatsAppConfig>): void {
     this.config = { ...this.config, ...config };
     this.logger.log('WhatsApp configuration updated');
   }

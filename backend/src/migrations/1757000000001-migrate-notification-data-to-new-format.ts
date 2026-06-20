@@ -45,7 +45,7 @@ export class MigrateNotificationDataToNewFormat1757000000001
       }
 
       // Converter com base no tipo de notificação
-      switch (type) {
+      switch (type as NotificationType) {
         case NotificationType.TASK_CREATED:
           return this.convertTaskCreatedData(oldData);
         case NotificationType.TASK_STATUS_CHANGED:

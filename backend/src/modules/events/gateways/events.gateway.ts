@@ -80,22 +80,22 @@ export class EventsGateway
     this.logger.log('WebSocket server initialized');
   }
 
-  async onModuleInit() {
+  onModuleInit(): void {
     this.logger.log(
       '🚀 EventsGateway initializing - performing startup verification...',
     );
-    await this.performStartupVerification();
+    this.performStartupVerification();
     this.isInitialized = true;
     this.logger.log('✅ EventsGateway initialization completed successfully');
   }
 
-  private async performStartupVerification(): Promise<void> {
+  private performStartupVerification(): void {
     try {
       // Verify all required services are available
-      await this.verifyServicesAvailability();
+      this.verifyServicesAvailability();
 
       // Verify event handlers are registered
-      await this.verifyEventHandlers();
+      this.verifyEventHandlers();
 
       this.logger.log('✅ All startup verification checks passed');
     } catch (error) {
@@ -104,7 +104,7 @@ export class EventsGateway
     }
   }
 
-  private async verifyServicesAvailability(): Promise<void> {
+  private verifyServicesAvailability(): void {
     const services = [
       { name: 'NotificationService', service: this.notificationService },
       { name: 'NotificationFactory', service: this.notificationFactory },
@@ -120,7 +120,7 @@ export class EventsGateway
     }
   }
 
-  private async verifyEventHandlers(): Promise<void> {
+  private verifyEventHandlers(): void {
     // Verify that event handlers are properly registered
     const handlerMethods = [
       'handleTaskCreatedEvent',
@@ -190,7 +190,7 @@ export class EventsGateway
 
     this.logger.log(`Client connected: ${client.id} (user ${userId})`);
     this.debugLogger.logWebSocketEvent('connection', client.id, { userId });
-    client.join(`user_${userId}`);
+    void client.join(`user_${userId}`);
   }
 
   handleDisconnect(client: Socket) {
@@ -200,19 +200,19 @@ export class EventsGateway
   @SubscribeMessage('join-task-room')
   handleJoinTaskRoom(client: Socket, taskId: string) {
     this.logger.log(`Client ${client.id} joining task room: ${taskId}`);
-    client.join(`task_${taskId}`);
+    void client.join(`task_${taskId}`);
   }
 
   @SubscribeMessage('leave-task-room')
   handleLeaveTaskRoom(client: Socket, taskId: string) {
     this.logger.log(`Client ${client.id} leaving task room: ${taskId}`);
-    client.leave(`task_${taskId}`);
+    void client.leave(`task_${taskId}`);
   }
 
   // --- Handlers de Eventos do Timer ---
 
   @SubscribeMessage('timer.start')
-  handleTimerStart(client: Socket, payload: { taskId: number }) {
+  async handleTimerStart(client: Socket, payload: { taskId: number }) {
     const userId = (client as Socket & { user?: any }).user?.sub;
     if (!userId) {
       this.logger.warn(`Unauthorized timer.start from ${client.id}`);
@@ -227,7 +227,7 @@ export class EventsGateway
       `Timer start requested for task ${payload.taskId} by user ${userId}`,
     );
     try {
-      this.timerService.start(payload.taskId, userId);
+      await this.timerService.start(payload.taskId, userId);
     } catch (err: any) {
       this.logger.error(
         `Failed to start timer for task ${payload.taskId}: ${err?.message}`,
@@ -240,7 +240,7 @@ export class EventsGateway
   }
 
   @SubscribeMessage('timer.pause')
-  handleTimerPause(client: Socket, payload: { taskId: number }) {
+  async handleTimerPause(client: Socket, payload: { taskId: number }) {
     const userId = (client as Socket & { user?: any }).user?.sub;
     if (!userId) {
       this.logger.warn(`Unauthorized timer.pause from ${client.id}`);
@@ -255,7 +255,7 @@ export class EventsGateway
       `Timer pause requested for task ${payload.taskId} by user ${userId}`,
     );
     try {
-      this.timerService.pause(payload.taskId, userId);
+      await this.timerService.pause(payload.taskId, userId);
     } catch (err: any) {
       this.logger.error(
         `Failed to pause timer for task ${payload.taskId}: ${err?.message}`,

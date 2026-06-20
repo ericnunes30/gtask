@@ -23,7 +23,7 @@ export class AuthenticatedSocketAdapter extends IoAdapter {
     const server: Server = super.createIOServer(port, options);
 
     // Usamos um middleware do socket.io para autenticação
-    server.use(async (socket: Socket, next) => {
+    server.use((socket: Socket, next) => {
       const token = socket.handshake.auth.token;
 
       if (!token) {
@@ -31,7 +31,7 @@ export class AuthenticatedSocketAdapter extends IoAdapter {
       }
 
       try {
-        const userPayload = await this.authService.verifyToken(token);
+        const userPayload = this.authService.verifyToken(token);
         // Anexamos o payload do usuário ao objeto do socket para uso posterior
         socket.user = userPayload;
         next();

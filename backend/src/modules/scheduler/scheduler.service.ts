@@ -9,7 +9,7 @@ import {
 import { Task } from '../tasks/entities/task.entity';
 import { Status } from '../tasks/entities/enums';
 import { DateTime } from 'luxon';
-import cronParser = require('cron-parser');
+import * as cronParser from 'cron-parser';
 import { LockService } from './services/lock.service';
 
 @Injectable()

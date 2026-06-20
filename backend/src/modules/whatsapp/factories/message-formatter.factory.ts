@@ -81,9 +81,15 @@ export class MessageFormatterService {
     }
 
     // Adicionar prioridade visual
-    if (notification.priority === NotificationPriority.HIGH) {
+    if (
+      (notification.priority as NotificationPriority) ===
+      NotificationPriority.HIGH
+    ) {
       message = `🔴 ${message}`;
-    } else if (notification.priority === NotificationPriority.URGENT) {
+    } else if (
+      (notification.priority as NotificationPriority) ===
+      NotificationPriority.URGENT
+    ) {
       message = `🚨 ${message}`;
     }
 

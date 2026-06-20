@@ -22,7 +22,9 @@ export class ActiveProjectFindAllStrategy implements TaskFindAllStrategy {
       .where('project.status = :status', { status: true })
       .andWhere('project.status IS NOT NULL');
 
-    this.logger.log('Query SQL: ' + query.getQueryAndParameters());
+    this.logger.log(
+      'Query SQL: ' + JSON.stringify(query.getQueryAndParameters()),
+    );
     const result = await query.getMany();
     this.logger.log(`Found ${result.length} tasks`);
     return result;

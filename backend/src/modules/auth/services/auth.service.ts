@@ -122,7 +122,7 @@ export class AuthService {
     return user;
   }
 
-  async verifyToken(token: string) {
+  verifyToken(token: string) {
     try {
       return this.jwtService.verify(token);
     } catch {

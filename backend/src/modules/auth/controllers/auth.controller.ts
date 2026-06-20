@@ -53,7 +53,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post('verify')
-  async verifyToken(@Request() req) {
+  verifyToken(@Request() req) {
     return {
       valid: true,
       user: req.user,

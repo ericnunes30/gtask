@@ -39,11 +39,13 @@ export default tseslint.config(
       ],
     },
   },
-  // Scripts CLI e migrations: console.log e permitido (saida de terminal / one-off)
+  // Scripts CLI e migrations: console.log e permitido (saida de terminal / one-off).
+  // Migrations vazias (up/down sem await) sao padrao -> require-await desligado.
   {
     files: ['src/commands/**', 'src/migrations/**'],
     rules: {
       'no-console': 'off',
+      '@typescript-eslint/require-await': 'off',
     },
   },
 );

@@ -61,4 +61,4 @@ async function bootstrap() {
     `Application running on: http://localhost:${port}/${process.env.API_PREFIX || 'api/v1'}`,
   );
 }
-bootstrap();
+void bootstrap();

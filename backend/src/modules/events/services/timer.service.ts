@@ -48,7 +48,7 @@ export class TimerService {
         this.logger.log(
           `Pausing timer for task ${otherTaskId} because user ${userId} started a new one.`,
         );
-        this.pause(otherTaskId);
+        await this.pause(otherTaskId);
       }
     }
 

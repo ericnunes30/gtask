@@ -11,4 +11,4 @@ async function bootstrap() {
   // por exemplo, fechar conexões de banco de dados se necessário
 }
 
-bootstrap();
+void bootstrap();
