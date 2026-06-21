@@ -10,16 +10,16 @@ import {
   Patch,
   Logger,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
 import { TaskCreator } from '../services/task-creator.abstract';
 import { TaskUpdater } from '../services/task-updater.abstract';
 import { TaskService } from '../services/task.service';
-import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
+@UseGuards(JwtAuthGuard)
 @Controller('tasks')
 export class TaskController {
   private readonly logger = new Logger(TaskController.name);
@@ -30,7 +30,6 @@ export class TaskController {
   ) {}
 
   @Post()
-  @UseGuards(AuthGuard('jwt'))
   create(
     @Body() createTaskDto: CreateTaskDto,
     @CurrentUser() currentUser: Express.User,
@@ -59,7 +58,6 @@ export class TaskController {
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard('jwt'))
   update(
     @Param('id') id: string,
     @Body() updateTaskDto: UpdateTaskDto,
@@ -69,7 +67,6 @@ export class TaskController {
   }
 
   @Patch(':id')
-  @UseGuards(AuthGuard('jwt'))
   async patch(
     @Param('id') id: string,
     @Body() updateTaskDto: UpdateTaskDto,

@@ -7,11 +7,14 @@ import {
   Put,
   Delete,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { OccupationService } from '../services/occupation.service';
 import { CreateOccupationDto } from '../dto/create-occupation.dto';
 import { UpdateOccupationDto } from '../dto/update-occupation.dto';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('occupations')
 export class OccupationController {
   constructor(private readonly occupationService: OccupationService) {}

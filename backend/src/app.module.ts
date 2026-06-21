@@ -46,6 +46,7 @@ import { PermissionModule } from './modules/permission/permission.module';
         database: configService.get('DB_DATABASE'),
         autoLoadEntities: true,
         synchronize: false,
+        migrationsRun: true,
         migrations: ['dist/migrations/*.js'],
       }),
       inject: [ConfigService],
