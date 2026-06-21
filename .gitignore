@@ -23,6 +23,8 @@ gha-creds-*.json
 outputsrun-*
 
 *.md
+!.docs/*.md
+!.github/**/*.md
 
 .mcp.json
 
