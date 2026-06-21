@@ -148,7 +148,7 @@ export default [
   },
   // Respeita excecao do projeto: console permitido em CLI commands e migrations
   {
-    files: ['src/commands/**', 'src/migrations/**'],
+    files: ['src/commands/**', 'src/database/migrations/**'],
     rules: { 'no-console': 'off' },
   },
   // Modulo whatsapp: integracao futura (ver .docs/modules-status.md).
@@ -512,15 +512,20 @@ const nivel2: Criterion[] = [
     run: () => {
       try {
         const app = readFileSync(path.join(SRC_DIR, 'app.module.ts'), 'utf8');
-        const syncFalse = /synchronize\s*:\s*false/.test(app);
-        const migRunTrue = /migrationsRun\s*:\s*true/.test(app);
+        const dbConfig = readFileSync(
+          path.join(SRC_DIR, 'database', 'database.config.ts'),
+          'utf8',
+        );
+        const source = app + dbConfig;
+        const syncFalse = /synchronize\s*:\s*false/.test(source);
+        const migRunTrue = /migrationsRun\s*:\s*true/.test(source);
         return {
           pass: syncFalse && migRunTrue,
           measured: true,
           detail: `synchronize:${syncFalse ? 'false ✓' : 'nao/false ✗'} | migrationsRun:${migRunTrue ? 'true ✓' : 'nao/true ✗'}`,
         };
       } catch (e: any) {
-        return { pass: false, measured: true, detail: `falha ao ler app.module: ${e.message}` };
+        return { pass: false, measured: true, detail: `falha ao ler config: ${e.message}` };
       }
     },
   },

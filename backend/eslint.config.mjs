@@ -43,7 +43,7 @@ export default tseslint.config(
   // Migrations vazias (up/down sem await) sao padrao -> require-await desligado.
   // Migrations manipulam dados legados em formato nao tipado -> no-explicit-any off.
   {
-    files: ['src/commands/**', 'src/migrations/**'],
+    files: ['src/commands/**', 'src/database/migrations/**'],
     rules: {
       'no-console': 'off',
       '@typescript-eslint/require-await': 'off',
