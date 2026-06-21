@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { databaseConfig } from './database.config';
 import { CommonModule } from './common/common.module';
 import { CommentModule } from './modules/comment/comment.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -37,19 +38,12 @@ import { PermissionModule } from './modules/permission/permission.module';
     EventEmitterModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('DB_HOST', 'localhost'),
-        port: configService.get('DB_PORT', 5432),
-        username: configService.get('DB_USER'),
-        password: configService.get('DB_PASSWORD'),
-        database: configService.get('DB_DATABASE'),
+      useFactory: () => ({
+        ...databaseConfig,
         autoLoadEntities: true,
-        synchronize: false,
         migrationsRun: true,
         migrations: ['dist/migrations/*.js'],
       }),
-      inject: [ConfigService],
     }),
     // Carregar módulos de eventos e handlers ANTES dos módulos que emitem eventos
     PermissionModule,
