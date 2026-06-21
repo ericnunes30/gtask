@@ -27,9 +27,17 @@ export enum NotificationCategory {
   PROJECT = 'project',
 }
 
+/**
+ * Tipo estruturado que representa valores arbitrarios serializaveis.
+ * Usado em campos `metadata`/`additionalData`/`changes` que aceitam
+ * estrutura arbitraria. Mais permissivo que `JsonValue` puro para evitar
+ * problemas de profundidade de tipos em codigo que apenas loga/transforma.
+ */
+export type JsonObject = Record<string, unknown>;
+
 export interface ChangeValue {
-  oldValue: any;
-  newValue: any;
+  oldValue: unknown;
+  newValue: unknown;
   timestamp?: string;
   changedBy?: string;
 }
@@ -38,7 +46,7 @@ export interface RelatedEntity {
   type: string;
   id: number;
   name?: string;
-  metadata?: Record<string, any>;
+  metadata?: JsonObject;
   avatar?: string;
 }
 
@@ -53,7 +61,7 @@ export interface NotificationContext {
   performer?: Performer;
   timestamp: string;
   source: string;
-  additionalData?: Record<string, any>;
+  additionalData?: JsonObject;
 }
 
 // Interfaces para dados específicos de cada tipo de notificação
@@ -231,7 +239,7 @@ export interface MigrationResult {
 export interface MigrationError {
   notificationId: number;
   error: string;
-  details: Record<string, any>;
+  details: JsonObject;
 }
 
 export interface BatchResult {

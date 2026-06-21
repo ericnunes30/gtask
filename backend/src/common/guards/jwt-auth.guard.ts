@@ -27,7 +27,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   ): TUser {
     if (err || !user) {
       const infoMessage =
-        info instanceof Error ? info.message : String(info ?? 'Unauthorized');
+        info instanceof Error
+          ? info.message
+          : typeof info === 'string'
+            ? info
+            : 'Unauthorized';
       const errStack = err instanceof Error ? err.stack : undefined;
       this.logger.error(`Authentication Error: ${infoMessage}`, errStack);
       throw err instanceof Error ? err : new UnauthorizedException(infoMessage);

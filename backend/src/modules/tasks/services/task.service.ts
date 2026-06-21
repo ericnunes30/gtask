@@ -219,8 +219,8 @@ export class TaskService extends TaskCreator implements TaskUpdater {
       (id) => ({ id }) as unknown as (typeof task.users)[number],
     );
     await this.taskRepository.update(taskId, {
-      users: userIds.map((id) => ({ id })) as unknown as User[],
-    });
+      users: userIds.map((id) => ({ id })),
+    } as unknown as Parameters<Repository<Task>['update']>[1]);
     return await this.loadTaskOr404(taskId);
   }
 

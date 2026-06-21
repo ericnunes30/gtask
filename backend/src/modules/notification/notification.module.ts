@@ -16,8 +16,9 @@ import {
   TimerPausedStrategy,
   TaskUpdatedStrategy,
 } from './factories/strategies';
+import type { NotificationStrategy } from './interfaces/notification.types';
 
-const strategies = [
+const strategies: Array<new () => NotificationStrategy> = [
   TaskCreatedStrategy,
   TaskStatusUpdatedStrategy,
   CommentCreatedStrategy,
@@ -46,7 +47,7 @@ const strategies = [
     ...strategies,
     {
       provide: 'NOTIFICATION_STRATEGY',
-      useFactory: (...strategies) => strategies,
+      useFactory: (...strategies: NotificationStrategy[]) => strategies,
       inject: strategies,
     },
   ],

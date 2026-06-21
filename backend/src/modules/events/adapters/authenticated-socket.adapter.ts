@@ -16,15 +16,16 @@ export class AuthenticatedSocketAdapter extends IoAdapter {
   constructor(private readonly app: INestApplicationContext) {
     super(app);
     // Obtemos a instância do AuthService a partir do contexto da aplicação
-    this.authService = this.app.get<AuthService>(AuthService);
+    this.authService = this.app.get<AuthService, AuthService>(AuthService);
   }
 
   createIOServer(port: number, options?: ServerOptions): Server {
-    const server: Server = super.createIOServer(port, options);
+    const server = super.createIOServer(port, options) as Server;
 
     // Usamos um middleware do socket.io para autenticação
     server.use((socket: Socket, next) => {
-      const rawToken = socket.handshake.auth.token;
+      const auth = socket.handshake.auth as { token?: unknown };
+      const rawToken: unknown = auth.token;
       const token = typeof rawToken === 'string' ? rawToken : '';
       if (!token) {
         return next(new Error('Authentication error: No token provided'));

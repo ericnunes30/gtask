@@ -12,6 +12,7 @@ import { User } from '../../user/entities/user.entity';
 import { Project } from '../../project/entities/project.entity';
 import { Task } from '../../tasks/entities/task.entity';
 import { PriorityLevel } from '../../tasks/entities/enums';
+import type { Occupation } from '../../occupation/entities/occupation.entity';
 
 export enum ScheduleType {
   INTERVAL = 'interval',
@@ -27,6 +28,7 @@ export interface TaskTemplate {
   task_reviewer_id?: number;
   start_date?: string;
   due_date?: string;
+  occupations?: Occupation[];
 }
 
 @Entity('recurring_tasks')

@@ -22,7 +22,7 @@ export class TransformInterceptor<T>
     next: CallHandler,
   ): Observable<Response<T>> {
     return next.handle().pipe(
-      map((data) => ({
+      map((data: T) => ({
         data,
         success: true,
         message: 'Operation completed successfully',

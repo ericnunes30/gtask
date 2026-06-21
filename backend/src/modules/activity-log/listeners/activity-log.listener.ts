@@ -80,7 +80,7 @@ export class ActivityLogListener {
   async handleTaskUpdatedEvent(payload: {
     task: Task;
     updatedBy: number;
-    changedFields: Record<string, { oldValue: any; newValue: any }>;
+    changedFields: Record<string, { oldValue: unknown; newValue: unknown }>;
   }) {
     this.logger.log(
       `ActivityLogListener: Handling task.updated event for task #${payload.task.id}`,

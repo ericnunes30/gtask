@@ -20,7 +20,7 @@ export class OccupationEnhancer implements RecurringTaskEnhancer {
       const occupations = await this.occupationRepository.findByIds(
         task.templateData.occupation_ids,
       );
-      (task.templateData as any).occupations = occupations;
+      task.templateData.occupations = occupations;
     }
     return task;
   }

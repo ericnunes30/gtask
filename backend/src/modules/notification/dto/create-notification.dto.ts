@@ -18,6 +18,7 @@ import {
   TaskStatusUpdatedData,
   CommentCreatedData,
   TaskUpdatedData,
+  JsonObject,
 } from '../interfaces/notification.types';
 
 // DTOs para os novos formatos de dados
@@ -92,12 +93,12 @@ type NotificationDataDto =
       entityType: string;
       entityId: number;
       action: string;
-      changes?: Record<string, any>;
+      changes?: JsonObject;
       relatedEntities?: Array<{
         type: string;
         id: number;
         name?: string;
-        metadata?: Record<string, any>;
+        metadata?: JsonObject;
         avatar?: string;
       }>;
       context?: {
@@ -109,7 +110,7 @@ type NotificationDataDto =
         };
         timestamp: string;
         source: string;
-        additionalData?: Record<string, any>;
+        additionalData?: JsonObject;
       };
     }
   | TaskCreatedDataDto

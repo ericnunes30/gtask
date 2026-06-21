@@ -3,6 +3,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
+/** Linha retornada pela query `SELECT * FROM migrations`. */
+interface ExecutedMigrationRow {
+  name?: unknown;
+  timestamp?: unknown;
+}
+
 @Injectable()
 @Command({
   name: 'db:migrate:status',
@@ -26,17 +32,26 @@ export class DbMigrateStatusCommand extends CommandRunner {
 
       try {
         // Get executed migrations
-        const executedMigrations = await queryRunner.query(
+        const executedMigrations = (await queryRunner.query(
           `SELECT * FROM migrations ORDER BY "timestamp" DESC`,
-        );
+        )) as ExecutedMigrationRow[];
 
         this.logger.log(
           `\n✅ Executed migrations (${executedMigrations.length}):`,
         );
         if (executedMigrations.length > 0) {
-          executedMigrations.forEach((migration: any) => {
+          executedMigrations.forEach((migration) => {
+            const name =
+              typeof migration.name === 'string' ? migration.name : 'unknown';
+            const rawTimestamp = migration.timestamp;
+            let timestamp: string | number = Date.now();
+            if (typeof rawTimestamp === 'string') {
+              timestamp = rawTimestamp;
+            } else if (typeof rawTimestamp === 'number') {
+              timestamp = rawTimestamp;
+            }
             this.logger.log(
-              `  ✓ ${migration.name} - ${new Date(migration.timestamp).toISOString()}`,
+              `  ✓ ${name} - ${new Date(timestamp).toISOString()}`,
             );
           });
         } else {

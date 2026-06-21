@@ -22,7 +22,7 @@ import { PriorityLevel } from '../../tasks/entities/enums';
 export class IsFlexibleDateStringConstraint
   implements ValidatorConstraintInterface
 {
-  validate(value: any): boolean {
+  validate(value: unknown): boolean {
     if (!value) {
       return false;
     }
@@ -75,36 +75,33 @@ export function IsFlexibleDateString(validationOptions?: ValidationOptions) {
 }
 
 /**
- * Transforma uma string de data no formato YYYY-MM-DD para ISO 8601
+ * Transforma uma string de data no formato YYYY-MM-DD para ISO 8601.
+ * Aceita `unknown` (entrada de class-transformer) e retorna o tipo adequado
+ * ou `null/undefined` quando o input e vazio.
  */
-function transformDate(
-  value: string | Date | null | undefined,
-): string | Date | null | undefined {
-  // Se for null ou undefined, retorna como está
+function transformDate(value: unknown): string | Date | null | undefined {
   if (value === null || value === undefined) {
     return value;
   }
 
-  // Se já for um objeto Date, converte para ISO string
+  // Se ja for Date, converte para ISO string
   if (value instanceof Date) {
     return value.toISOString();
   }
 
-  // Se for string no formato YYYY-MM-DD, converte para ISO 8601
+  // Se for string
   if (typeof value === 'string') {
-    // Verifica se está no formato YYYY-MM-DD
-    const simpleDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (simpleDateRegex.test(value)) {
-      // Cria um Date e converte para ISO 8601 (define como meia-noite UTC)
-      const date = new Date(value + 'T00:00:00.000Z');
-      return date.toISOString();
+    // YYYY-MM-DD -> ISO 8601
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return new Date(value + 'T00:00:00.000Z').toISOString();
     }
-
-    // Se já estiver em formato ISO, retorna como está
-    return value;
+    // Ja em formato ISO ou outro formato parseavel
+    return new Date(value);
   }
 
-  return value;
+  // Outros tipos (number, boolean, object): tenta converter para Date,
+  // caso contrario retorna string vazia
+  return '';
 }
 
 export class CreateProjectDto {
@@ -122,11 +119,11 @@ export class CreateProjectDto {
   @IsEnum(PriorityLevel)
   priority!: PriorityLevel;
 
-  @Transform(({ value }) => transformDate(value))
+  @Transform(({ value }: { value: unknown }) => transformDate(value))
   @IsFlexibleDateString()
   start_date!: Date;
 
-  @Transform(({ value }) => transformDate(value))
+  @Transform(({ value }: { value: unknown }) => transformDate(value))
   @IsFlexibleDateString()
   end_date!: Date;
 

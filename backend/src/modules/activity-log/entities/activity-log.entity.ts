@@ -10,7 +10,7 @@ import { User } from '../../user/entities/user.entity';
 import { Task } from '../../tasks/entities/task.entity';
 
 type ActivityLogDetails = {
-  [key: string]: any;
+  [key: string]: string | number | boolean | null;
 };
 
 @Entity('activity_logs')

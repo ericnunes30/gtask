@@ -19,7 +19,10 @@ export class StandardUserValidationStrategy implements UserValidationStrategy {
     return true; // fallback strategy
   }
 
-  async validate(email: string, password: string): Promise<any> {
+  async validate(
+    email: string,
+    password: string,
+  ): Promise<UserWithRoles | null> {
     const user = await this.userService.findByEmail(email);
     if (
       user &&
@@ -27,7 +30,7 @@ export class StandardUserValidationStrategy implements UserValidationStrategy {
       (await this.verifyPassword(password, user.password))
     ) {
       const { password: _password, ...result } = user;
-      return result;
+      return result as unknown as UserWithRoles;
     }
     return null;
   }

@@ -16,7 +16,11 @@ export class DebugLoggerService {
     }
   }
 
-  logNotificationEvent(event: string, payload: any, userId?: number) {
+  logNotificationEvent(
+    event: string,
+    payload: Record<string, unknown>,
+    userId?: number,
+  ) {
     const timestamp = new Date().toISOString();
     const logMessage = `[${timestamp}] Event: ${event}, Payload: ${JSON.stringify(payload)}, User: ${userId}\n`;
 
@@ -24,9 +28,13 @@ export class DebugLoggerService {
     fs.appendFileSync(this.logFilePath, logMessage);
   }
 
-  logWebSocketEvent(event: string, clientId: string, data?: any) {
+  logWebSocketEvent(
+    event: string,
+    clientId: string,
+    data?: Record<string, unknown>,
+  ) {
     const timestamp = new Date().toISOString();
-    const logMessage = `[${timestamp}] WebSocket: ${event}, Client: ${clientId}, Data: ${JSON.stringify(data || {})}\n`;
+    const logMessage = `[${timestamp}] WebSocket: ${event}, Client: ${clientId}, Data: ${JSON.stringify(data ?? {})}\n`;
 
     this.logger.log(logMessage.trim());
     fs.appendFileSync(this.logFilePath, logMessage);

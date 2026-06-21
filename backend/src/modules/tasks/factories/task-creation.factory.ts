@@ -27,7 +27,7 @@ export class DefaultTaskCreationStrategy implements TaskCreationStrategy {
 
   private applyDefaultTimer(task: Task, dto: CreateTaskDto): void {
     if (task.timer == null) {
-      (task as any).timer = dto.timer ?? 0;
+      task.timer = dto.timer ?? 0;
     }
   }
 }

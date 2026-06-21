@@ -493,7 +493,7 @@ export class EventsGateway
   async handleTaskUpdatedEvent(payload: {
     task: Task;
     updatedBy: number;
-    changedFields: Record<string, { oldValue: any; newValue: any }>;
+    changedFields: Record<string, { oldValue: unknown; newValue: unknown }>;
   }) {
     this.logger.log(
       `📝 Task updated event received: ${payload.task.title} - Fields changed: ${Object.keys(payload.changedFields).join(', ')}`,
