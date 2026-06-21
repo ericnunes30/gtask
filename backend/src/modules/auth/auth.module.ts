@@ -22,7 +22,7 @@ import { CommonModule } from '../../common/common.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
         signOptions: { expiresIn: '15m' },
       }),
@@ -31,13 +31,13 @@ import { CommonModule } from '../../common/common.module';
   ],
   controllers: [AuthController],
   providers: [
-    AuthService, 
-    JwtStrategy, 
-    LocalStrategy, 
+    AuthService,
+    JwtStrategy,
+    LocalStrategy,
     PasswordVerificationFactory,
     TokenPayloadFactory,
     AuthResponseFactory,
-    UserValidationFactory
+    UserValidationFactory,
   ],
   exports: [AuthService],
 })

@@ -17,6 +17,7 @@ import { CreateCommentDto } from '../dto/create-comment.dto';
 import { UpdateCommentDto } from '../dto/update-comment.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CommentCreator } from '../services/comment-creator.abstract';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 @Controller('comments')
 export class CommentController {
@@ -29,10 +30,17 @@ export class CommentController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Body() createCommentDto: CreateCommentDto, @Request() req) {
-    this.logger.log(`[POST /comments] Received request from User #${req.user.sub}`);
-    this.logger.log(`[POST /comments] DTO: ${JSON.stringify(createCommentDto)}`);
-    return this.commentCreator.create(createCommentDto, req.user.sub);
+  create(
+    @Body() createCommentDto: CreateCommentDto,
+    @CurrentUser() currentUser: Express.User,
+  ) {
+    this.logger.log(
+      `[POST /comments] Received request from User #${currentUser.sub}`,
+    );
+    this.logger.log(
+      `[POST /comments] DTO: ${JSON.stringify(createCommentDto)}`,
+    );
+    return this.commentCreator.create(createCommentDto, currentUser.sub);
   }
 
   @Get()
@@ -61,15 +69,21 @@ export class CommentController {
     return this.commentService.remove(id);
   }
 
-@Post(':id/like')
+  @Post(':id/like')
   @UseGuards(JwtAuthGuard)
-  likeComment(@Param('id', ParseIntPipe) id: number, @Request() req) {
-    return this.commentService.likeComment(id, req.user.sub);
+  likeComment(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: Express.User,
+  ) {
+    return this.commentService.likeComment(id, currentUser.sub);
   }
 
   @Delete(':id/like')
   @UseGuards(JwtAuthGuard)
-  unlikeComment(@Param('id', ParseIntPipe) id: number, @Request() req) {
-    return this.commentService.unlikeComment(id, req.user.sub);
+  unlikeComment(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: Express.User,
+  ) {
+    return this.commentService.unlikeComment(id, currentUser.sub);
   }
 }

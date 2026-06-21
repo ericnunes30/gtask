@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class RemovePhoneNumberFromUsers1757936000002 implements MigrationInterface {
+export class RemovePhoneNumberFromUsers1757936000002
+  implements MigrationInterface
+{
   name = 'RemovePhoneNumberFromUsers1757936000002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -15,8 +17,8 @@ export class RemovePhoneNumberFromUsers1757936000002 implements MigrationInterfa
       new TableColumn({
         name: 'phone_number',
         type: 'varchar',
-        isNullable: true
-      })
+        isNullable: true,
+      }),
     );
   }
 }

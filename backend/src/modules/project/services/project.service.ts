@@ -23,7 +23,7 @@ export class ProjectService {
 
   async create(createProjectDto: CreateProjectDto): Promise<Project> {
     const { users, teams, ...projectData } = createProjectDto;
-    
+
     // Criar o projeto com os dados básicos
     const project = this.projectRepository.create(projectData);
     const savedProject = await this.projectRepository.save(project);
@@ -31,7 +31,7 @@ export class ProjectService {
     // Associar usuários se fornecidos
     if (users && users.length > 0) {
       const usersEntities = await this.userRepository.find({
-        where: { id: In(users) }
+        where: { id: In(users) },
       });
       savedProject.users = usersEntities;
     }
@@ -39,7 +39,7 @@ export class ProjectService {
     // Associar equipes (ocupações) se fornecidas
     if (teams && teams.length > 0) {
       const occupationsEntities = await this.occupationRepository.find({
-        where: { id: In(teams) }
+        where: { id: In(teams) },
       });
       savedProject.occupations = occupationsEntities;
     }
@@ -50,35 +50,56 @@ export class ProjectService {
 
   async findAll(): Promise<Project[]> {
     return await this.projectRepository.find({
-      relations: ['tasks', 'tasks.users', 'tasks.occupations', 'users', 'occupations'],
+      relations: [
+        'tasks',
+        'tasks.users',
+        'tasks.occupations',
+        'users',
+        'occupations',
+      ],
     });
   }
 
   async findOne(id: number): Promise<Project> {
     const project = await this.projectRepository.findOne({
       where: { id },
-      relations: ['tasks', 'tasks.users', 'tasks.occupations', 'users', 'occupations'],
+      relations: [
+        'tasks',
+        'tasks.users',
+        'tasks.occupations',
+        'users',
+        'occupations',
+      ],
     });
-    
+
     if (!project) {
       throw new NotFoundException(`Projeto com ID ${id} não encontrado`);
     }
-    
+
     return project;
   }
 
-  async update(id: number, updateProjectDto: UpdateProjectDto): Promise<Project> {
+  async update(
+    id: number,
+    updateProjectDto: UpdateProjectDto,
+  ): Promise<Project> {
     const { users, teams, ...projectData } = updateProjectDto;
-    
+
     const project = await this.projectRepository.findOne({
       where: { id },
-      relations: ['tasks', 'tasks.users', 'tasks.occupations', 'users', 'occupations'],
+      relations: [
+        'tasks',
+        'tasks.users',
+        'tasks.occupations',
+        'users',
+        'occupations',
+      ],
     });
-    
+
     if (!project) {
       throw new NotFoundException(`Projeto com ID ${id} não encontrado`);
     }
-    
+
     // Atualizar dados básicos
     Object.assign(project, projectData);
 
@@ -86,7 +107,7 @@ export class ProjectService {
     if (users !== undefined) {
       if (users.length > 0) {
         const usersEntities = await this.userRepository.find({
-          where: { id: In(users) }
+          where: { id: In(users) },
         });
         project.users = usersEntities;
       } else {
@@ -98,7 +119,7 @@ export class ProjectService {
     if (teams !== undefined) {
       if (teams.length > 0) {
         const occupationsEntities = await this.occupationRepository.find({
-          where: { id: In(teams) }
+          where: { id: In(teams) },
         });
         project.occupations = occupationsEntities;
       } else {
@@ -126,11 +147,11 @@ export class ProjectService {
       where: { id },
       relations: ['tasks', 'tasks.users', 'tasks.occupations'],
     });
-    
+
     if (!project) {
       throw new NotFoundException(`Projeto com ID ${id} não encontrado`);
     }
-    
+
     return project.tasks;
   }
 }

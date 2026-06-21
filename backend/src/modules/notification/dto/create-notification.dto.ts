@@ -1,4 +1,14 @@
-import { IsEnum, IsNumber, IsOptional, IsBoolean, IsObject, IsDateString, IsString, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  IsObject,
+  IsDateString,
+  IsString,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import {
   NotificationType,
@@ -7,16 +17,17 @@ import {
   TaskCreatedData,
   TaskStatusUpdatedData,
   CommentCreatedData,
-  TaskUpdatedData
+  TaskUpdatedData,
+  JsonObject,
 } from '../interfaces/notification.types';
 
 // DTOs para os novos formatos de dados
 export class TaskCreatedDataDto implements TaskCreatedData {
   @IsString()
-  actorName: string;
+  actorName!: string;
 
   @IsString()
-  taskTitle: string;
+  taskTitle!: string;
 
   @IsOptional()
   @IsString()
@@ -25,40 +36,40 @@ export class TaskCreatedDataDto implements TaskCreatedData {
 
 export class TaskStatusUpdatedDataDto implements TaskStatusUpdatedData {
   @IsString()
-  actorName: string;
+  actorName!: string;
 
   @IsString()
-  taskTitle: string;
+  taskTitle!: string;
 
   @IsString()
-  oldStatus: string;
+  oldStatus!: string;
 
   @IsString()
-  newStatus: string;
+  newStatus!: string;
 }
 
 export class CommentCreatedDataDto implements CommentCreatedData {
   @IsString()
-  actorName: string;
+  actorName!: string;
 
   @IsString()
-  taskTitle: string;
+  taskTitle!: string;
 
   @IsString()
-  commentSnippet: string;
+  commentSnippet!: string;
 }
 
 export class TaskUpdatedDataDto implements TaskUpdatedData {
   @IsString()
-  actorName: string;
+  actorName!: string;
 
   @IsString()
-  taskTitle: string;
+  taskTitle!: string;
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ChangedFieldDto)
-  changedFields: Array<{
+  changedFields!: Array<{
     field: string;
     oldValue: string;
     newValue: string;
@@ -67,27 +78,27 @@ export class TaskUpdatedDataDto implements TaskUpdatedData {
 
 class ChangedFieldDto {
   @IsString()
-  field: string;
+  field!: string;
 
   @IsString()
-  oldValue: string;
+  oldValue!: string;
 
   @IsString()
-  newValue: string;
+  newValue!: string;
 }
 
 // Tipo para o campo data que pode ser a estrutura antiga ou as novas estruturas
-type NotificationDataDto = 
+type NotificationDataDto =
   | {
       entityType: string;
       entityId: number;
       action: string;
-      changes?: Record<string, any>;
+      changes?: JsonObject;
       relatedEntities?: Array<{
         type: string;
         id: number;
         name?: string;
-        metadata?: Record<string, any>;
+        metadata?: JsonObject;
         avatar?: string;
       }>;
       context?: {
@@ -99,7 +110,7 @@ type NotificationDataDto =
         };
         timestamp: string;
         source: string;
-        additionalData?: Record<string, any>;
+        additionalData?: JsonObject;
       };
     }
   | TaskCreatedDataDto
@@ -109,19 +120,19 @@ type NotificationDataDto =
 
 export class CreateNotificationDto {
   @IsNumber()
-  userId: number;
+  userId!: number;
 
   @IsEnum(NotificationType)
-  type: NotificationType;
+  type!: NotificationType;
 
   @IsEnum(NotificationPriority)
-  priority: NotificationPriority;
+  priority!: NotificationPriority;
 
   @IsObject()
-  data: NotificationDataDto;
+  data!: NotificationDataDto;
 
   @IsObject()
-  metadata: {
+  metadata!: {
     source: string;
     category: NotificationCategory;
     tags: string[];

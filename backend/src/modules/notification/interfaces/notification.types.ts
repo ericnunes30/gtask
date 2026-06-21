@@ -8,14 +8,14 @@ export enum NotificationType {
   TIMER_PAUSED = 'timer.paused',
   TIMER_COMPLETED = 'timer.completed',
   USER_MENTIONED = 'user.mentioned',
-  PROJECT_UPDATED = 'project.updated'
+  PROJECT_UPDATED = 'project.updated',
 }
 
 export enum NotificationPriority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  URGENT = 'urgent'
+  URGENT = 'urgent',
 }
 
 export enum NotificationCategory {
@@ -24,12 +24,20 @@ export enum NotificationCategory {
   TIMER = 'timer',
   SYSTEM = 'system',
   USER = 'user',
-  PROJECT = 'project'
+  PROJECT = 'project',
 }
 
+/**
+ * Tipo estruturado que representa valores arbitrarios serializaveis.
+ * Usado em campos `metadata`/`additionalData`/`changes` que aceitam
+ * estrutura arbitraria. Mais permissivo que `JsonValue` puro para evitar
+ * problemas de profundidade de tipos em codigo que apenas loga/transforma.
+ */
+export type JsonObject = Record<string, unknown>;
+
 export interface ChangeValue {
-  oldValue: any;
-  newValue: any;
+  oldValue: unknown;
+  newValue: unknown;
   timestamp?: string;
   changedBy?: string;
 }
@@ -38,7 +46,7 @@ export interface RelatedEntity {
   type: string;
   id: number;
   name?: string;
-  metadata?: Record<string, any>;
+  metadata?: JsonObject;
   avatar?: string;
 }
 
@@ -53,7 +61,7 @@ export interface NotificationContext {
   performer?: Performer;
   timestamp: string;
   source: string;
-  additionalData?: Record<string, any>;
+  additionalData?: JsonObject;
 }
 
 // Interfaces para dados específicos de cada tipo de notificação
@@ -87,7 +95,7 @@ export interface TaskUpdatedData {
 }
 
 // Tipo para o campo data que pode ser a estrutura antiga ou as novas estruturas
-export type NotificationData = 
+export type NotificationData =
   | {
       entityType: string;
       entityId: number;
@@ -154,8 +162,7 @@ export interface TaskCreatedPayload {
     project?: {
       id: number;
       title: string;
-  
-  };
+    };
   };
   createdBy: number;
   performer?: Performer;
@@ -206,9 +213,9 @@ export interface TimerEventPayload {
 // Interface para estratégias
 export interface NotificationStrategy {
   type: NotificationType;
-  create(payload: any): StructuredNotification;
-  validate(payload: any): boolean;
-  getPriority(payload: any): NotificationPriority;
+  create(payload: Record<string, unknown>): StructuredNotification;
+  validate(payload: Record<string, unknown>): boolean;
+  getPriority(payload: Record<string, unknown>): NotificationPriority;
 }
 
 // Interfaces para migração
@@ -232,7 +239,7 @@ export interface MigrationResult {
 export interface MigrationError {
   notificationId: number;
   error: string;
-  details: Record<string, any>;
+  details: JsonObject;
 }
 
 export interface BatchResult {

@@ -26,14 +26,18 @@ import { PermissionService } from '../../permission/services/permission.service'
 })
 @Injectable()
 export class EventsGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleInit
+  implements
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnGatewayInit,
+    OnModuleInit
 {
   private readonly logger = new Logger(EventsGateway.name);
 
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
-constructor(
+  constructor(
     private readonly notificationService: NotificationService,
     private readonly notificationFactory: NotificationFactory,
     private readonly timerService: TimerService,
@@ -43,16 +47,27 @@ constructor(
     private readonly permissionService: PermissionService,
   ) {
     // Bridge timer events to WS rooms (complements @OnEvent handlers)
-    this.eventEmitter.on('timer.started', (payload: { taskId: number; userId: number }) => {
-      this.logger.log(`Bridging timer.started for task ${payload.taskId}`);
-      this.server?.to(`task_${payload.taskId}`).emit('timer.started', payload);
-    });
-    this.eventEmitter.on('timer.paused', (payload: { taskId: number; seconds: number; userId?: number }) => {
-      this.server?.to(`task_${payload.taskId}`).emit('timer.paused', payload);
-    });
-    this.eventEmitter.on('timer.tick', (payload: { taskId: number; seconds: number }) => {
-      this.server?.to(`task_${payload.taskId}`).emit('timer.tick', payload);
-    });
+    this.eventEmitter.on(
+      'timer.started',
+      (payload: { taskId: number; userId: number }) => {
+        this.logger.log(`Bridging timer.started for task ${payload.taskId}`);
+        this.server
+          ?.to(`task_${payload.taskId}`)
+          .emit('timer.started', payload);
+      },
+    );
+    this.eventEmitter.on(
+      'timer.paused',
+      (payload: { taskId: number; seconds: number; userId?: number }) => {
+        this.server?.to(`task_${payload.taskId}`).emit('timer.paused', payload);
+      },
+    );
+    this.eventEmitter.on(
+      'timer.tick',
+      (payload: { taskId: number; seconds: number }) => {
+        this.server?.to(`task_${payload.taskId}`).emit('timer.tick', payload);
+      },
+    );
   }
 
   // Resilience improvements for Phase 3
@@ -60,34 +75,36 @@ constructor(
   private readonly retryDelay = 1000; // 1 second
   private isInitialized = false;
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     // Server is ready
     this.logger.log('WebSocket server initialized');
   }
 
-  async onModuleInit() {
-    this.logger.log('🚀 EventsGateway initializing - performing startup verification...');
-    await this.performStartupVerification();
+  onModuleInit(): void {
+    this.logger.log(
+      '🚀 EventsGateway initializing - performing startup verification...',
+    );
+    this.performStartupVerification();
     this.isInitialized = true;
     this.logger.log('✅ EventsGateway initialization completed successfully');
   }
 
-  private async performStartupVerification(): Promise<void> {
+  private performStartupVerification(): void {
     try {
       // Verify all required services are available
-      await this.verifyServicesAvailability();
-      
+      this.verifyServicesAvailability();
+
       // Verify event handlers are registered
-      await this.verifyEventHandlers();
-      
+      this.verifyEventHandlers();
+
       this.logger.log('✅ All startup verification checks passed');
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('❌ Startup verification failed:', error);
       throw error;
     }
   }
 
-  private async verifyServicesAvailability(): Promise<void> {
+  private verifyServicesAvailability(): void {
     const services = [
       { name: 'NotificationService', service: this.notificationService },
       { name: 'NotificationFactory', service: this.notificationFactory },
@@ -103,20 +120,20 @@ constructor(
     }
   }
 
-  private async verifyEventHandlers(): Promise<void> {
+  private verifyEventHandlers(): void {
     // Verify that event handlers are properly registered
-    const handlerMethods = [
+    const handlerMethods: Array<keyof EventsGateway> = [
       'handleTaskCreatedEvent',
-      'handleTaskStatusUpdatedEvent', 
+      'handleTaskStatusUpdatedEvent',
       'handleCommentCreatedEvent',
       'handleTaskUpdatedEvent',
       'handleTimerStartedEvent',
       'handleTimerPausedEvent',
-      'handleTimerTickEvent'
+      'handleTimerTickEvent',
     ];
 
     for (const methodName of handlerMethods) {
-      if (typeof (this as any)[methodName] !== 'function') {
+      if (typeof this[methodName] !== 'function') {
         this.logger.warn(`⚠️  Event handler method ${methodName} not found`);
       } else {
         this.logger.log(`✅ Event handler ${methodName} is registered`);
@@ -127,34 +144,47 @@ constructor(
   private async executeWithRetry<T>(
     operation: () => Promise<T>,
     operationName: string,
-    maxRetries: number = this.maxRetries
+    maxRetries: number = this.maxRetries,
   ): Promise<T> {
     let lastError: Error | undefined;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await operation();
-      } catch (error) {
+      } catch (error: unknown) {
         lastError = error as Error;
-        this.logger.warn(`⚠️  ${operationName} failed (attempt ${attempt}/${maxRetries}):`, error);
-        
+        this.logger.warn(
+          `⚠️  ${operationName} failed (attempt ${attempt}/${maxRetries}):`,
+          error,
+        );
+
         if (attempt < maxRetries) {
           await this.delay(this.retryDelay * attempt);
         }
       }
     }
-    
-    const finalError = lastError || new Error(`${operationName} failed after ${maxRetries} attempts`);
-    this.logger.error(`❌ ${operationName} failed after ${maxRetries} attempts:`, finalError);
+
+    const finalError =
+      lastError ||
+      new Error(`${operationName} failed after ${maxRetries} attempts`);
+    this.logger.error(
+      `❌ ${operationName} failed after ${maxRetries} attempts:`,
+      finalError,
+    );
     throw finalError;
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  handleConnection(client: Socket, ...args: any[]) {
-    const userId = (client as Socket & { user?: any }).user?.sub;
+  /** Converte um valor `unknown` em `number | undefined` para passar a APIs tipadas. */
+  private toUserId(value: unknown): number | undefined {
+    return typeof value === 'number' ? value : undefined;
+  }
+
+  handleConnection(client: Socket, ..._args: unknown[]) {
+    const userId = (client as Socket & { user?: Express.User }).user?.sub;
 
     if (!userId) {
       this.logger.warn(`Unauthorized WS connection: ${client.id}`);
@@ -165,13 +195,7 @@ constructor(
 
     this.logger.log(`Client connected: ${client.id} (user ${userId})`);
     this.debugLogger.logWebSocketEvent('connection', client.id, { userId });
-    client.join(`user_${userId}`);
-    return;
-    // TODO: Implementar autenticação WebSocket
-    this.logger.log(`Client connected: ${client.id}`);
-    this.debugLogger.logWebSocketEvent('connection', client.id);
-    // Por enquanto, não desconectar clientes não autenticados
-    // client.disconnect();
+    void client.join(`user_${userId}`);
   }
 
   handleDisconnect(client: Socket) {
@@ -181,61 +205,71 @@ constructor(
   @SubscribeMessage('join-task-room')
   handleJoinTaskRoom(client: Socket, taskId: string) {
     this.logger.log(`Client ${client.id} joining task room: ${taskId}`);
-    client.join(`task_${taskId}`);
+    void client.join(`task_${taskId}`);
   }
 
   @SubscribeMessage('leave-task-room')
   handleLeaveTaskRoom(client: Socket, taskId: string) {
     this.logger.log(`Client ${client.id} leaving task room: ${taskId}`);
-    client.leave(`task_${taskId}`);
+    void client.leave(`task_${taskId}`);
   }
 
   // --- Handlers de Eventos do Timer ---
 
   @SubscribeMessage('timer.start')
-  handleTimerStart(client: Socket, payload: { taskId: number }) {
-    const userId = (client as Socket & { user?: any }).user?.sub;
+  async handleTimerStart(client: Socket, payload: { taskId: number }) {
+    const userId = (client as Socket & { user?: Express.User }).user?.sub;
     if (!userId) {
       this.logger.warn(`Unauthorized timer.start from ${client.id}`);
-      client.emit('error', { code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      client.emit('error', {
+        code: 'UNAUTHORIZED',
+        message: 'Not authenticated',
+      });
       client.disconnect();
       return;
     }
-    this.logger.log(`Timer start requested for task ${payload.taskId} by user ${userId}`);
+    this.logger.log(
+      `Timer start requested for task ${payload.taskId} by user ${userId}`,
+    );
     try {
-      this.timerService.start(payload.taskId, userId);
-    } catch (err: any) {
-      this.logger.error(`Failed to start timer for task ${payload.taskId}: ${err?.message}`);
-      client.emit('error', { code: 'TIMER_START_FAILED', message: 'Unable to start timer' });
+      await this.timerService.start(payload.taskId, userId);
+    } catch (err: unknown) {
+      this.logger.error(
+        `Failed to start timer for task ${payload.taskId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      client.emit('error', {
+        code: 'TIMER_START_FAILED',
+        message: 'Unable to start timer',
+      });
     }
-    return;
-    // TODO: Implementar autenticação WebSocket
-    this.logger.log(`Timer start requested for task ${payload.taskId}`);
-    // const user = client.user;
-    // this.timerService.start(payload.taskId, user.sub);
   }
 
   @SubscribeMessage('timer.pause')
-  handleTimerPause(client: Socket, payload: { taskId: number }) {
-    const userId = (client as Socket & { user?: any }).user?.sub;
+  async handleTimerPause(client: Socket, payload: { taskId: number }) {
+    const userId = (client as Socket & { user?: Express.User }).user?.sub;
     if (!userId) {
       this.logger.warn(`Unauthorized timer.pause from ${client.id}`);
-      client.emit('error', { code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      client.emit('error', {
+        code: 'UNAUTHORIZED',
+        message: 'Not authenticated',
+      });
       client.disconnect();
       return;
     }
-    this.logger.log(`Timer pause requested for task ${payload.taskId} by user ${userId}`);
+    this.logger.log(
+      `Timer pause requested for task ${payload.taskId} by user ${userId}`,
+    );
     try {
-      this.timerService.pause(payload.taskId, userId);
-    } catch (err: any) {
-      this.logger.error(`Failed to pause timer for task ${payload.taskId}: ${err?.message}`);
-      client.emit('error', { code: 'TIMER_PAUSE_FAILED', message: 'Unable to pause timer' });
+      await this.timerService.pause(payload.taskId, userId);
+    } catch (err: unknown) {
+      this.logger.error(
+        `Failed to pause timer for task ${payload.taskId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      client.emit('error', {
+        code: 'TIMER_PAUSE_FAILED',
+        message: 'Unable to pause timer',
+      });
     }
-    return;
-    // TODO: Implementar autenticação WebSocket
-    this.logger.log(`Timer pause requested for task ${payload.taskId}`);
-    // const user = client.user;
-    // this.timerService.pause(payload.taskId, user.sub);
   }
 
   @OnEvent('timer.started')
@@ -245,7 +279,11 @@ constructor(
   }
 
   @OnEvent('timer.paused')
-  handleTimerPausedEvent(payload: { taskId: number; userId: number; seconds: number }) {
+  handleTimerPausedEvent(payload: {
+    taskId: number;
+    userId: number;
+    seconds: number;
+  }) {
     this.logger.log(`Broadcasting timer.paused for task ${payload.taskId}`);
     this.server.to(`task_${payload.taskId}`).emit('timer.paused', payload);
   }
@@ -259,18 +297,30 @@ constructor(
 
   // --- Fim dos Handlers de Eventos do Timer ---
 
-  private async handleEvent(
+  private async handleEvent<T extends Record<string, unknown>>(
     eventName: string,
-    payload: any,
-    getUsersToNotify: (payload: any) => number[],
+    payload: T,
+    getUsersToNotify: (payload: T) => number[],
   ) {
-    this.logger.log(`🚀 Event ${eventName} received, creating persistent notifications...`);
-    this.logger.log(`🚀 Debug: Event payload = ${JSON.stringify(payload, null, 2)}`);
-    this.debugLogger.logNotificationEvent(eventName, payload, payload.createdBy || payload.updatedBy);
+    this.logger.log(
+      `🚀 Event ${eventName} received, creating persistent notifications...`,
+    );
+    this.logger.log(
+      `🚀 Debug: Event payload = ${JSON.stringify(payload, null, 2)}`,
+    );
+    this.debugLogger.logNotificationEvent(
+      eventName,
+      payload,
+      this.toUserId(payload.createdBy ?? payload.updatedBy),
+    );
 
     if (!this.notificationFactory.hasStrategy(eventName)) {
-      this.logger.warn(`⚠️ No notification strategy found for event: ${eventName}`);
-      this.logger.log(`🚀 Available strategies: ${this.notificationFactory.getRegisteredEvents().join(', ')}`);
+      this.logger.warn(
+        `⚠️ No notification strategy found for event: ${eventName}`,
+      );
+      this.logger.log(
+        `🚀 Available strategies: ${this.notificationFactory.getRegisteredEvents().join(', ')}`,
+      );
       return;
     }
 
@@ -286,9 +336,11 @@ constructor(
     }
 
     // Try to enrich payload with performer (actor) details
-    let enrichedPayload = payload;
+    let enrichedPayload: T & {
+      performer?: { id: number; name: string; email: string };
+    } = payload;
     try {
-      const actorId = payload?.createdBy || payload?.updatedBy || payload?.userId;
+      const actorId = payload.createdBy || payload.updatedBy || payload.userId;
       if (actorId) {
         const actor = await this.userService.findOne(Number(actorId));
         enrichedPayload = {
@@ -300,104 +352,158 @@ constructor(
           },
         };
       }
-    } catch (e) {
-      this.logger.warn(`Could not enrich payload with performer: ${(e as any)?.message || e}`);
+    } catch (e: unknown) {
+      this.logger.warn(
+        `Could not enrich payload with performer: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
 
     for (const userId of uniqueUserIds) {
       try {
         this.logger.log(`📝 Creating notification for user ${userId}...`);
-        const notification = this.notificationFactory.create(eventName, enrichedPayload);
-        notification.userId = userId; 
-        
-        this.logger.log(`🚀 Notification payload: ${JSON.stringify(notification, null, 2)}`);
-        
-        this.logger.log(`GATEWAY: Creating notification for user ${userId}, Event: ${eventName}`);
-        
-        const savedNotification = await this.notificationService.create(notification);
-        this.logger.log(`✅ Notification created successfully for user ${userId} with ID ${savedNotification.id}`);
-        
-        this.logger.log(`GATEWAY: Notification created successfully - ID: ${savedNotification.id}, User: ${userId}, Event: ${eventName}`);
-        
-        this.server.to(`user_${userId}`).emit('new_structured_notification', savedNotification);
+        const notification = this.notificationFactory.create(
+          eventName,
+          enrichedPayload as Record<string, unknown>,
+        );
+        notification.userId = userId;
+
+        this.logger.log(
+          `🚀 Notification payload: ${JSON.stringify(notification, null, 2)}`,
+        );
+
+        this.logger.log(
+          `GATEWAY: Creating notification for user ${userId}, Event: ${eventName}`,
+        );
+
+        const savedNotification =
+          await this.notificationService.create(notification);
+        this.logger.log(
+          `✅ Notification created successfully for user ${userId} with ID ${savedNotification.id}`,
+        );
+
+        this.logger.log(
+          `GATEWAY: Notification created successfully - ID: ${savedNotification.id}, User: ${userId}, Event: ${eventName}`,
+        );
+
+        this.server
+          .to(`user_${userId}`)
+          .emit('new_structured_notification', savedNotification);
         this.logger.log(`🚀 WebSocket notification sent to user_${userId}`);
-        
-        this.logger.log(`GATEWAY: WebSocket notification sent to user_${userId}`);
-        
-        this.debugLogger.logNotificationEvent('structured_notification_sent', {
+
+        this.logger.log(
+          `GATEWAY: WebSocket notification sent to user_${userId}`,
+        );
+
+        this.debugLogger.logNotificationEvent(
+          'structured_notification_sent',
+          {
+            userId,
+            type: eventName,
+            notificationId: savedNotification.id,
+          },
           userId,
-          type: eventName,
-          notificationId: savedNotification.id,
-        }, userId);
-      } catch (error) {
-        this.logger.error(`GATEWAY ERROR: Failed to create notification for user ${userId}, Event: ${eventName}, Error: ${error.message}`);
-        
-        this.logger.error(`❌ Failed to create or send structured notification for user ${userId}:`, error);
-        this.logger.error(`❌ Error details: ${error.message}`);
+        );
+      } catch (error: unknown) {
+        this.logger.error(
+          `GATEWAY ERROR: Failed to create notification for user ${userId}, Event: ${eventName}, Error: ${error instanceof Error ? error.message : String(error)}`,
+        );
+
+        this.logger.error(
+          `❌ Failed to create or send structured notification for user ${userId}:`,
+          error,
+        );
+        this.logger.error(
+          `❌ Error details: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
   }
 
-@OnEvent('task.created')
+  @OnEvent('task.created')
   async handleTaskCreatedEvent(payload: { task: Task; createdBy: number }) {
     this.logger.log(`🆕 Task created event received: ${payload.task.title}`);
     await this.handleEvent('task.created', payload, (p) => {
       const { task, createdBy } = p;
-      return this.permissionService.getTaskCreatedNotificationRecipients(task, createdBy);
+      return this.permissionService.getTaskCreatedNotificationRecipients(
+        task,
+        createdBy,
+      );
     });
   }
 
-@OnEvent('task.status.changed')
+  @OnEvent('task.status.changed')
   async handleTaskStatusUpdatedEvent(payload: {
     task: Task;
     updatedBy: number;
     oldStatus: string;
     newStatus: string;
   }) {
-    this.logger.log(`🔄 Task status changed event received: ${payload.oldStatus} → ${payload.newStatus}`);
+    this.logger.log(
+      `🔄 Task status changed event received: ${payload.oldStatus} → ${payload.newStatus}`,
+    );
     await this.handleEvent('task.status.changed', payload, (p) => {
       const { task, updatedBy, newStatus } = p;
-      return this.permissionService.getTaskStatusUpdatedNotificationRecipients(task, updatedBy, newStatus);
+      return this.permissionService.getTaskStatusUpdatedNotificationRecipients(
+        task,
+        updatedBy,
+        newStatus,
+      );
     });
   }
 
-@OnEvent('comment.created')
-  async handleCommentCreatedEvent(payload: { comment: Comment; createdBy: number }) {
-    this.logger.log(`💬 Comment created event received: ${payload.comment.content.substring(0, 50)}...`);
+  @OnEvent('comment.created')
+  async handleCommentCreatedEvent(payload: {
+    comment: Comment;
+    createdBy: number;
+  }) {
+    this.logger.log(
+      `💬 Comment created event received: ${payload.comment.content.substring(0, 50)}...`,
+    );
     this.logger.log(`💬 Debug: Gateway initialized = ${this.isInitialized}`);
-    this.logger.log(`💬 Debug: Has notification strategy = ${this.notificationFactory.hasStrategy('comment.created')}`);
-    this.logger.log(`💬 Debug: Comment data = ${JSON.stringify({
-      id: payload.comment.id,
-      task_id: payload.comment.task_id,
-      content: payload.comment.content,
-      createdBy: payload.createdBy
-    })}`);
-    
+    this.logger.log(
+      `💬 Debug: Has notification strategy = ${this.notificationFactory.hasStrategy('comment.created')}`,
+    );
+    this.logger.log(
+      `💬 Debug: Comment data = ${JSON.stringify({
+        id: payload.comment.id,
+        task_id: payload.comment.task_id,
+        content: payload.comment.content,
+        createdBy: payload.createdBy,
+      })}`,
+    );
+
     if (!this.isInitialized) {
-      this.logger.warn('⚠️  EventsGateway not fully initialized, skipping comment.created event');
+      this.logger.warn(
+        '⚠️  EventsGateway not fully initialized, skipping comment.created event',
+      );
       return;
     }
-    
+
     this.logger.log(`💬 Starting notification creation process...`);
     await this.handleEvent('comment.created', payload, (p) => {
-        const { comment, createdBy } = p;
-        return this.permissionService.getCommentCreatedNotificationRecipients(comment, createdBy);
+      const { comment, createdBy } = p;
+      return this.permissionService.getCommentCreatedNotificationRecipients(
+        comment,
+        createdBy,
+      );
     });
   }
 
-@OnEvent('task.updated')
+  @OnEvent('task.updated')
   async handleTaskUpdatedEvent(payload: {
     task: Task;
     updatedBy: number;
-    changedFields: Record<string, { oldValue: any; newValue: any }>;
+    changedFields: Record<string, { oldValue: unknown; newValue: unknown }>;
   }) {
-    this.logger.log(`📝 Task updated event received: ${payload.task.title} - Fields changed: ${Object.keys(payload.changedFields).join(', ')}`);
+    this.logger.log(
+      `📝 Task updated event received: ${payload.task.title} - Fields changed: ${Object.keys(payload.changedFields).join(', ')}`,
+    );
     await this.handleEvent('task.updated', payload, (p) => {
-        const { task, updatedBy } = p;
-        return this.permissionService.getTaskUpdatedNotificationRecipients(task, updatedBy);
+      const { task, updatedBy } = p;
+      return this.permissionService.getTaskUpdatedNotificationRecipients(
+        task,
+        updatedBy,
+      );
     });
   }
 }
-
-
-

@@ -1,13 +1,25 @@
-
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, LessThanOrEqual } from 'typeorm';
-import { RecurringTask, ScheduleType } from '../recurring-task/entities/recurring-task.entity';
+import {
+  RecurringTask,
+  ScheduleType,
+} from '../recurring-task/entities/recurring-task.entity';
 import { Task } from '../tasks/entities/task.entity';
+import { User } from '../user/entities/user.entity';
 import { Status } from '../tasks/entities/enums';
 import { DateTime } from 'luxon';
-import cronParser = require('cron-parser');
+import * as cronParser from 'cron-parser';
+
+// `cron-parser` expoe `parseExpression` em runtime mas os tipos nao o declaram.
+// Usamos uma interface local minima que descreve o que usamos.
+type CronParserLike = {
+  parseExpression(
+    expression: string,
+    options?: { currentDate?: Date },
+  ): { next: () => { toDate: () => Date } };
+};
 import { LockService } from './services/lock.service';
 
 @Injectable()
@@ -29,7 +41,9 @@ export class TaskSchedulerService {
     const hasLock = await this.lockService.acquire(lockKey);
 
     if (!hasLock) {
-      this.logger.log('Skipping recurring task processing, already locked by another instance.');
+      this.logger.log(
+        'Skipping recurring task processing, already locked by another instance.',
+      );
       return;
     }
 
@@ -37,8 +51,11 @@ export class TaskSchedulerService {
 
     try {
       await this.processDueRecurringTasks();
-    } catch (error) {
-      this.logger.error('Unexpected error during recurring task processing.', error.stack);
+    } catch (error: unknown) {
+      this.logger.error(
+        'Unexpected error during recurring task processing.',
+        error instanceof Error ? error.stack : String(error),
+      );
     } finally {
       this.logger.log('Recurring tasks check finished. Releasing lock.');
       await this.lockService.release(lockKey);
@@ -83,30 +100,38 @@ export class TaskSchedulerService {
         recurring_task_id: recurringTask.id,
         task_reviewer_id: templateData.task_reviewer_id,
         status: Status.ToDo,
-        start_date: templateData.start_date ? new Date(templateData.start_date) : recurringTask.next_due_date,
-        due_date: templateData.due_date ? new Date(templateData.due_date) : recurringTask.next_due_date,
+        start_date: templateData.start_date
+          ? new Date(templateData.start_date)
+          : recurringTask.next_due_date,
+        due_date: templateData.due_date
+          ? new Date(templateData.due_date)
+          : recurringTask.next_due_date,
         // Map other template fields if necessary
       });
-      
+
       // Associations (example for users, requires Task entity to have the relation)
       if (templateData.assignee_ids) {
-        newTask.users = templateData.assignee_ids.map(id => ({ id } as any));
+        newTask.users = templateData.assignee_ids.map((id) => ({ id }) as User);
       }
-      
+
       await queryRunner.manager.save(Task, newTask);
 
       // 2. Calculate the next due date
       const nextDueDate = this.calculateNextDueDate(recurringTask);
       recurringTask.next_due_date = nextDueDate.toJSDate();
-      
+
       await queryRunner.manager.save(RecurringTask, recurringTask);
 
       await queryRunner.commitTransaction();
-      this.logger.log(`Task #${newTask.id} created successfully from recurring task #${recurringTask.id}.`);
-
-    } catch (error) {
+      this.logger.log(
+        `Task #${newTask.id} created successfully from recurring task #${recurringTask.id}.`,
+      );
+    } catch (error: unknown) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`Failed to process recurring task #${recurringTask.id}`, error.stack);
+      this.logger.error(
+        `Failed to process recurring task #${recurringTask.id}`,
+        error instanceof Error ? error.stack : String(error),
+      );
     } finally {
       await queryRunner.release();
     }
@@ -116,32 +141,43 @@ export class TaskSchedulerService {
     const currentBaseDate = DateTime.fromJSDate(recurringTask.next_due_date);
     let nextDueDate: DateTime;
 
-    if (recurringTask.schedule_type === ScheduleType.INTERVAL && recurringTask.frequency_interval) {
+    if (
+      recurringTask.schedule_type === ScheduleType.INTERVAL &&
+      recurringTask.frequency_interval
+    ) {
       const [valueStr, unit] = recurringTask.frequency_interval.split(' ');
       const value = parseInt(valueStr, 10);
       const duration = { [unit]: value }; // ex: { days: 7 }
       nextDueDate = currentBaseDate.plus(duration);
-    } else if (recurringTask.schedule_type === ScheduleType.CRON && recurringTask.frequency_cron) {
+    } else if (
+      recurringTask.schedule_type === ScheduleType.CRON &&
+      recurringTask.frequency_cron
+    ) {
       try {
-        const interval = (cronParser as any).parseExpression(recurringTask.frequency_cron, {
+        const cp = cronParser as unknown as CronParserLike;
+        const interval = cp.parseExpression(recurringTask.frequency_cron, {
           currentDate: currentBaseDate.toJSDate(),
         });
         nextDueDate = DateTime.fromJSDate(interval.next().toDate());
-      } catch (e) {
-        this.logger.error(`Invalid CRON expression for task #${recurringTask.id}: ${recurringTask.frequency_cron}. Using 7-day fallback.`);
+      } catch {
+        this.logger.error(
+          `Invalid CRON expression for task #${recurringTask.id}: ${recurringTask.frequency_cron}. Using 7-day fallback.`,
+        );
         nextDueDate = currentBaseDate.plus({ days: 7 });
       }
     } else {
-      this.logger.warn(`Invalid schedule type for task #${recurringTask.id}. Using 7-day fallback.`);
+      this.logger.warn(
+        `Invalid schedule type for task #${recurringTask.id}. Using 7-day fallback.`,
+      );
       nextDueDate = currentBaseDate.plus({ days: 7 });
     }
 
     // Ensures the next date is in the future relative to now, to avoid infinite loops if the interval is too short
     if (nextDueDate <= DateTime.now()) {
-        return this.calculateNextDueDate({
-            ...recurringTask,
-            next_due_date: nextDueDate.toJSDate(),
-        });
+      return this.calculateNextDueDate({
+        ...recurringTask,
+        next_due_date: nextDueDate.toJSDate(),
+      });
     }
 
     return nextDueDate;

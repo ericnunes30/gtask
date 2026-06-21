@@ -7,7 +7,10 @@ import { Repository } from 'typeorm';
 @Injectable()
 export class TimerService {
   private readonly logger = new Logger(TimerService.name);
-  private activeTimers = new Map<number, { interval: NodeJS.Timeout; seconds: number }>();
+  private activeTimers = new Map<
+    number,
+    { interval: NodeJS.Timeout; seconds: number }
+  >();
 
   constructor(
     @InjectRepository(Task)
@@ -21,23 +24,33 @@ export class TimerService {
       return;
     }
 
-    const task = await this.taskRepository.findOne({ where: { id: taskId }, relations: ['users'] });
+    const task = await this.taskRepository.findOne({
+      where: { id: taskId },
+      relations: ['users'],
+    });
     if (!task) {
       this.logger.error(`Task with ID ${taskId} not found.`);
       return;
     }
 
     // Para qualquer outro timer que o mesmo usuário tenha ativo, pause-o.
-    for (const [otherTaskId, timerData] of this.activeTimers.entries()) {
-        const otherTask = await this.taskRepository.findOne({ where: { id: otherTaskId }, relations: ['users'] });
-        if (otherTask && otherTask.users.some(user => user.id === userId)) {
-            this.logger.log(`Pausing timer for task ${otherTaskId} because user ${userId} started a new one.`);
-            await this.pause(otherTaskId, userId);
-        }
+    for (const [otherTaskId, _timerData] of this.activeTimers.entries()) {
+      const otherTask = await this.taskRepository.findOne({
+        where: { id: otherTaskId },
+        relations: ['users'],
+      });
+      if (otherTask && otherTask.users.some((user) => user.id === userId)) {
+        this.logger.log(
+          `Pausing timer for task ${otherTaskId} because user ${userId} started a new one.`,
+        );
+        await this.pause(otherTaskId, userId);
+      }
     }
 
     const initialSeconds = task.timer || 0;
-    this.logger.log(`Starting timer for task ${taskId} for user ${userId} at ${initialSeconds} seconds.`);
+    this.logger.log(
+      `Starting timer for task ${taskId} for user ${userId} at ${initialSeconds} seconds.`,
+    );
 
     const interval = setInterval(() => {
       const timerData = this.activeTimers.get(taskId);
@@ -52,24 +65,28 @@ export class TimerService {
 
     this.activeTimers.set(taskId, { interval, seconds: initialSeconds });
 
-    this.eventEmitter.emit('timer.started', { 
-      taskId: taskId, 
-      userId: userId, 
+    this.eventEmitter.emit('timer.started', {
+      taskId: taskId,
+      userId: userId,
     });
   }
 
   async pause(taskId: number, userId: number) {
     const timerData = this.activeTimers.get(taskId);
     if (!timerData) {
-      this.logger.log(`Timer for task ${taskId} is not running. Ignoring pause request.`);
+      this.logger.log(
+        `Timer for task ${taskId} is not running. Ignoring pause request.`,
+      );
       return;
     }
 
     clearInterval(timerData.interval);
     this.activeTimers.delete(taskId);
 
-    this.logger.log(`Paused timer for task ${taskId} at ${timerData.seconds} seconds. Saving to DB.`);
-    
+    this.logger.log(
+      `Paused timer for task ${taskId} at ${timerData.seconds} seconds. Saving to DB.`,
+    );
+
     await this.taskRepository.update(taskId, { timer: timerData.seconds });
 
     this.eventEmitter.emit('timer.paused', {

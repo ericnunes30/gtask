@@ -16,6 +16,8 @@ export class SeedDefaultRoles1757936000006 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DELETE FROM roles WHERE name IN ('ADMIN', 'USER');`);
+    await queryRunner.query(
+      `DELETE FROM roles WHERE name IN ('ADMIN', 'USER');`,
+    );
   }
 }

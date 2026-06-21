@@ -16,27 +16,52 @@ export class CommentCreationDecorator extends CommentCreator {
     super();
   }
 
-  async create(createCommentDto: CreateCommentDto, userId: number): Promise<Comment> {
-    this.logger.log(`Decorator: Iniciando criação de comentário para user #${userId}`);
-    this.logger.log(`Decorator: CommentCreator type: ${this.commentCreator.constructor.name}`);
-    this.logger.log(`Decorator: EventEmitter2 disponível: ${!!this.eventEmitter}`);
-    this.logger.log(`Decorator: Dados recebidos: ${JSON.stringify(createCommentDto)}`);
-    
+  async create(
+    createCommentDto: CreateCommentDto,
+    userId: number,
+  ): Promise<Comment> {
+    this.logger.log(
+      `Decorator: Iniciando criação de comentário para user #${userId}`,
+    );
+    this.logger.log(
+      `Decorator: CommentCreator type: ${this.commentCreator.constructor.name}`,
+    );
+    this.logger.log(
+      `Decorator: EventEmitter2 disponível: ${!!this.eventEmitter}`,
+    );
+    this.logger.log(
+      `Decorator: Dados recebidos: ${JSON.stringify(createCommentDto)}`,
+    );
+
     try {
       this.logger.log(`Decorator: Chamando CommentService.create original...`);
-      const comment = await this.commentCreator.create(createCommentDto, userId);
-      this.logger.log(`Decorator: Comentário #${comment.id} criado com sucesso.`);
-      this.logger.log(`Decorator: Preparando para emitir evento 'comment.created'...`);
-      
+      const comment = await this.commentCreator.create(
+        createCommentDto,
+        userId,
+      );
+      this.logger.log(
+        `Decorator: Comentário #${comment.id} criado com sucesso.`,
+      );
+      this.logger.log(
+        `Decorator: Preparando para emitir evento 'comment.created'...`,
+      );
+
       const eventData = { comment, createdBy: userId };
-      this.logger.log(`Decorator: Dados do evento: ${JSON.stringify(eventData)}`);
-      
+      this.logger.log(
+        `Decorator: Dados do evento: ${JSON.stringify(eventData)}`,
+      );
+
       this.eventEmitter.emit('comment.created', eventData);
-      this.logger.log(`Decorator: Evento 'comment.created' emitido com sucesso.`);
-      
+      this.logger.log(
+        `Decorator: Evento 'comment.created' emitido com sucesso.`,
+      );
+
       return comment;
-    } catch (error) {
-      this.logger.error(`Decorator: Erro durante criação do comentário ou emissão do evento.`, error.stack);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Decorator: Erro durante criação do comentário ou emissão do evento.`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }

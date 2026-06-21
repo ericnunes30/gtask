@@ -1,11 +1,11 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { StructuredNotificationEntity } from '../entities/notification.entity';
-import { 
-  StructuredNotification, 
+import {
+  StructuredNotification,
   NotificationQueryOptions,
-  NotificationPagination
+  NotificationPagination,
 } from '../interfaces/notification.types';
 import { NotificationFactory } from '../factories/notification.factory';
 import { DebugLoggerService } from './debug-logger.service';
@@ -21,41 +21,68 @@ export class NotificationService {
     private readonly debugLogger: DebugLoggerService,
   ) {}
 
-  async create(notification: Omit<StructuredNotification, 'id'>): Promise<StructuredNotification> {
+  async create(
+    notification: Omit<StructuredNotification, 'id'>,
+  ): Promise<StructuredNotification> {
     try {
       // Validar notificação antes de criar
       if (!this.notificationFactory.validateNotification(notification)) {
         throw new Error('Invalid notification data');
       }
 
-      this.logger.log(`CREATING NOTIFICATION: User ${notification.userId}, Type ${notification.type}, Priority ${notification.priority}`);
+      this.logger.log(
+        `CREATING NOTIFICATION: User ${notification.userId}, Type ${notification.type}, Priority ${notification.priority}`,
+      );
 
       // Converter para entidade e salvar
-      const entity = StructuredNotificationEntity.fromDomain(notification as StructuredNotification);
+      const entity = StructuredNotificationEntity.fromDomain(
+        notification as StructuredNotification,
+      );
       const savedEntity = await this.repository.save(entity);
-      
-      this.logger.log(`NOTIFICATION CREATED SUCCESSFULLY: ID ${savedEntity.id}, User ${notification.userId}, Type ${notification.type}`);
-      
-      this.logger.log(`Notification created successfully for user ${notification.userId} with ID ${savedEntity.id}`);
-      this.debugLogger.logNotificationEvent('notification_created', {
-        id: savedEntity.id,
-        userId: notification.userId,
-        type: notification.type,
-        priority: notification.priority
-      }, notification.userId);
-      
+
+      this.logger.log(
+        `NOTIFICATION CREATED SUCCESSFULLY: ID ${savedEntity.id}, User ${notification.userId}, Type ${notification.type}`,
+      );
+
+      this.logger.log(
+        `Notification created successfully for user ${notification.userId} with ID ${savedEntity.id}`,
+      );
+      this.debugLogger.logNotificationEvent(
+        'notification_created',
+        {
+          id: savedEntity.id,
+          userId: notification.userId,
+          type: notification.type,
+          priority: notification.priority,
+        },
+        notification.userId,
+      );
+
       return savedEntity.toDomain();
-    } catch (error) {
-      this.logger.error(`NOTIFICATION CREATION FAILED: User ${notification.userId}, Type ${notification.type}, Error: ${error.message}`);
-      
-      this.logger.error(`Failed to create notification for user ${notification.userId}:`, error);
-      this.debugLogger.logError(error, `Notification creation failed for user ${notification.userId}`);
+    } catch (error: unknown) {
+      const errMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `NOTIFICATION CREATION FAILED: User ${notification.userId}, Type ${notification.type}, Error: ${errMessage}`,
+      );
+
+      this.logger.error(
+        `Failed to create notification for user ${notification.userId}:`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      this.debugLogger.logError(
+        error instanceof Error ? error : new Error(errMessage),
+        `Notification creation failed for user ${notification.userId}`,
+      );
       throw error;
     }
   }
 
-  async findById(id: number, userId?: number): Promise<StructuredNotification | null> {
-    const query = this.repository.createQueryBuilder('notification')
+  async findById(
+    id: number,
+    userId?: number,
+  ): Promise<StructuredNotification | null> {
+    const query = this.repository
+      .createQueryBuilder('notification')
       .where('notification.id = :id', { id });
 
     if (userId) {
@@ -70,7 +97,11 @@ export class NotificationService {
     userId: number,
     options: NotificationQueryOptions = {},
   ): Promise<NotificationPagination> {
-    this.debugLogger.logNotificationEvent('notifications_query_start', { options }, userId);
+    this.debugLogger.logNotificationEvent(
+      'notifications_query_start',
+      { options },
+      userId,
+    );
     const { limit = 20, offset = 0 } = options;
 
     const queryBuilder = this.repository.createQueryBuilder('notification');
@@ -95,19 +126,20 @@ export class NotificationService {
       hasNext: offset + limit < total,
       hasPrevious: offset > 0,
     };
-    this.debugLogger.logNotificationEvent('notifications_query_end', { total: result.total, page: result.page, pageSize: result.pageSize }, userId);
+    this.debugLogger.logNotificationEvent(
+      'notifications_query_end',
+      { total: result.total, page: result.page, pageSize: result.pageSize },
+      userId,
+    );
     return result;
   }
 
-  private applyFilters(queryBuilder: any, options: NotificationQueryOptions) {
-    const {
-      unreadOnly,
-      types,
-      priorities,
-      categories,
-      startDate,
-      endDate,
-    } = options;
+  private applyFilters(
+    queryBuilder: SelectQueryBuilder<StructuredNotificationEntity>,
+    options: NotificationQueryOptions,
+  ) {
+    const { unreadOnly, types, priorities, categories, startDate, endDate } =
+      options;
 
     if (unreadOnly) {
       queryBuilder.andWhere('notification.isRead = false');
@@ -144,28 +176,40 @@ export class NotificationService {
   async markAsRead(id: number, userId: number): Promise<void> {
     await this.repository.update(
       { id, userId },
-      { 
+      {
         isRead: true,
-        readAt: new Date()
-      }
+        readAt: new Date(),
+      },
     );
-    this.debugLogger.logNotificationEvent('notification_marked_as_read', { id }, userId);
+    this.debugLogger.logNotificationEvent(
+      'notification_marked_as_read',
+      { id },
+      userId,
+    );
   }
 
   async markAllAsRead(userId: number): Promise<void> {
     await this.repository.update(
       { userId, isRead: false },
-      { 
+      {
         isRead: true,
-        readAt: new Date()
-      }
+        readAt: new Date(),
+      },
     );
-    this.debugLogger.logNotificationEvent('notifications_marked_all_read', {}, userId);
+    this.debugLogger.logNotificationEvent(
+      'notifications_marked_all_read',
+      {},
+      userId,
+    );
   }
 
   async delete(id: number, userId: number): Promise<void> {
     await this.repository.delete({ id, userId });
-    this.debugLogger.logNotificationEvent('notification_deleted', { id }, userId);
+    this.debugLogger.logNotificationEvent(
+      'notification_deleted',
+      { id },
+      userId,
+    );
   }
 
   async deleteExpired(): Promise<void> {
@@ -174,15 +218,19 @@ export class NotificationService {
       .delete()
       .where('expiresAt < :now', { now: new Date() })
       .execute();
-    this.debugLogger.logNotificationEvent('notifications_deleted_expired', {}, 0);
+    this.debugLogger.logNotificationEvent(
+      'notifications_deleted_expired',
+      {},
+      0,
+    );
   }
 
   async getUnreadCount(userId: number): Promise<number> {
     return this.repository.count({
       where: {
         userId,
-        isRead: false
-      }
+        isRead: false,
+      },
     });
   }
 
@@ -208,20 +256,34 @@ export class NotificationService {
         .addSelect('COUNT(*)', 'count')
         .where('notification.userId = :userId', { userId })
         .groupBy('notification.priority')
-        .getRawMany()
+        .getRawMany(),
     ]);
+
+    interface CountRow {
+      type?: string;
+      priority?: string;
+      count: string | number;
+    }
+    const byTypeRows = byType as CountRow[];
+    const byPriorityRows = byPriority as CountRow[];
 
     return {
       total,
       unread,
-      byType: byType.reduce((acc, item) => {
-        acc[item.type] = parseInt(item.count);
-        return acc;
-      }, {} as Record<string, number>),
-      byPriority: byPriority.reduce((acc, item) => {
-        acc[item.priority] = parseInt(item.count);
-        return acc;
-      }, {} as Record<string, number>)
+      byType: byTypeRows.reduce(
+        (acc, item) => {
+          acc[item.type ?? ''] = parseInt(String(item.count));
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
+      byPriority: byPriorityRows.reduce(
+        (acc, item) => {
+          acc[item.priority ?? ''] = parseInt(String(item.count));
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
     };
   }
 
@@ -237,15 +299,19 @@ export class NotificationService {
       .execute();
 
     const deleted = result.affected || 0;
-    this.debugLogger.logNotificationEvent('notifications_cleanup_old', { daysToKeep, deleted }, 0);
+    this.debugLogger.logNotificationEvent(
+      'notifications_cleanup_old',
+      { daysToKeep, deleted },
+      0,
+    );
     return deleted;
   }
 
-  // Método para buscar notificações com filtros avançados
+  // Busca notificações com filtros avançados
   async searchNotifications(
     userId: number,
     searchTerm: string,
-    options: NotificationQueryOptions = {}
+    options: NotificationQueryOptions = {},
   ): Promise<NotificationPagination> {
     try {
       // Busca em texto nos metadados e dados
@@ -255,8 +321,11 @@ export class NotificationService {
       };
 
       return await this.findByUser(userId, searchOptions);
-    } catch (error) {
-      this.logger.error(`Failed to search notifications for user ${userId}:`, error);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to search notifications for user ${userId}:`,
+        error,
+      );
       throw error;
     }
   }

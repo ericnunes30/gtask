@@ -16,18 +16,18 @@ export class DefaultTaskCreationStrategy implements TaskCreationStrategy {
 
   create(dto: CreateTaskDto, repository: Repository<Task>): Task {
     // Separar campos de relações dos campos normais
-    const { users, occupations, ...taskData } = dto;
-    
+    const { users: _users, occupations: _occupations, ...taskData } = dto;
+
     const task = repository.create(taskData);
     this.applyDefaultTimer(task, dto);
-    
+
     // Note: users and occupations relations will be handled after saving in the service
     return task;
   }
 
   private applyDefaultTimer(task: Task, dto: CreateTaskDto): void {
     if (task.timer == null) {
-      (task as any).timer = dto.timer ?? 0;
+      task.timer = dto.timer ?? 0;
     }
   }
 }
@@ -44,12 +44,12 @@ export class TaskCreationFactory {
   }
 
   createTask(dto: CreateTaskDto, repository: Repository<Task>): Task {
-    const strategy = this.strategies.find(s => s.canHandle(dto));
-    
+    const strategy = this.strategies.find((s) => s.canHandle(dto));
+
     if (!strategy) {
       throw new Error(`No creation strategy found for task: ${dto.title}`);
     }
-    
+
     return strategy.create(dto, repository);
   }
 }

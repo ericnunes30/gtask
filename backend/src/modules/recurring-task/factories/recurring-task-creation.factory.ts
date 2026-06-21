@@ -1,22 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { RecurringTask } from '../entities/recurring-task.entity';
-import { CreateRecurringTaskDto } from '../dto/create-recurring-task.dto';
+import {
+  CreateRecurringTaskDto,
+  TaskTemplateDto,
+} from '../dto/create-recurring-task.dto';
 
 export interface RecurringTaskCreationStrategy {
   canHandle(dto: CreateRecurringTaskDto): boolean;
-  create(dto: CreateRecurringTaskDto, repository: Repository<RecurringTask>, userId: number): RecurringTask;
+  create(
+    dto: CreateRecurringTaskDto,
+    repository: Repository<RecurringTask>,
+    userId: number,
+  ): RecurringTask;
 }
 
 @Injectable()
-export class DefaultRecurringTaskCreationStrategy implements RecurringTaskCreationStrategy {
-  private readonly logger = new Logger(DefaultRecurringTaskCreationStrategy.name);
+export class DefaultRecurringTaskCreationStrategy
+  implements RecurringTaskCreationStrategy
+{
+  private readonly logger = new Logger(
+    DefaultRecurringTaskCreationStrategy.name,
+  );
 
   canHandle(): boolean {
     return true; // fallback strategy
   }
 
-  create(dto: CreateRecurringTaskDto, repository: Repository<RecurringTask>, userId: number): RecurringTask {
+  create(
+    dto: CreateRecurringTaskDto,
+    repository: Repository<RecurringTask>,
+    userId: number,
+  ): RecurringTask {
     this.logger.log('Iniciando estratégia de criação padrão.');
     const entityToCreate = {
       name: dto.name,
@@ -30,19 +45,26 @@ export class DefaultRecurringTaskCreationStrategy implements RecurringTaskCreati
       projectId: dto.projectId,
     };
 
-    this.logger.log(`Dados prontos para criar a entidade: ${JSON.stringify(entityToCreate)}`);
-    
+    this.logger.log(
+      `Dados prontos para criar a entidade: ${JSON.stringify(entityToCreate)}`,
+    );
+
     try {
       const recurringTaskEntity = repository.create(entityToCreate);
-      this.logger.log('Entidade TypeORM criada com sucesso via repository.create().');
+      this.logger.log(
+        'Entidade TypeORM criada com sucesso via repository.create().',
+      );
       return recurringTaskEntity;
-    } catch (error) {
-      this.logger.error('Erro ao executar repository.create()', error.stack);
+    } catch (error: unknown) {
+      this.logger.error(
+        'Erro ao executar repository.create()',
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }
 
-  private buildTemplateData(dto: CreateRecurringTaskDto): any {
+  private buildTemplateData(dto: CreateRecurringTaskDto): TaskTemplateDto {
     return {
       ...dto.templateData,
       occupation_ids: dto.templateData.occupation_ids,
@@ -69,13 +91,19 @@ export class RecurringTaskCreationFactory {
     ];
   }
 
-  createRecurringTask(dto: CreateRecurringTaskDto, repository: Repository<RecurringTask>, userId: number): RecurringTask {
-    const strategy = this.strategies.find(s => s.canHandle(dto));
-    
+  createRecurringTask(
+    dto: CreateRecurringTaskDto,
+    repository: Repository<RecurringTask>,
+    userId: number,
+  ): RecurringTask {
+    const strategy = this.strategies.find((s) => s.canHandle(dto));
+
     if (!strategy) {
-      throw new Error(`No creation strategy found for recurring task: ${dto.name}`);
+      throw new Error(
+        `No creation strategy found for recurring task: ${dto.name}`,
+      );
     }
-    
+
     return strategy.create(dto, repository, userId);
   }
 }

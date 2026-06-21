@@ -28,7 +28,26 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn'
+      '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
+  // Scripts CLI e migrations: console.log e permitido (saida de terminal / one-off).
+  // Migrations vazias (up/down sem await) sao padrao -> require-await desligado.
+  // Migrations manipulam dados legados em formato nao tipado -> no-explicit-any off.
+  {
+    files: ['src/commands/**', 'src/migrations/**'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 );

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, InternalServerErrorException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  InternalServerErrorException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, In, DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -8,7 +13,6 @@ import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { Role } from '../../role/entities/role.entity';
 import { Occupation } from '../../occupation/entities/occupation.entity';
-import { Task } from '../../tasks/entities/task.entity';
 import { SetupDto } from '../../auth/dto/setup.dto';
 
 @Injectable()
@@ -23,36 +27,38 @@ export class UserService {
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
-async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto): Promise<User> {
     const { occupationIds, ...userData } = createUserDto;
     const hashedPassword = await bcrypt.hash(userData.password, 10); // 10 is the salt rounds
-    
+
     // Criar o usuário com timestamps definidos
-    const user = this.userRepository.create({ 
-      ...userData, 
+    const user = this.userRepository.create({
+      ...userData,
       password: hashedPassword,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
-    
+
     // Salvar o usuário primeiro
     const savedUser = await this.userRepository.save(user);
-    
+
     // Se occupationIds foi fornecido, atribuir as occupations ao usuário
     if (occupationIds && occupationIds.length > 0) {
       const occupations = await this.occupationRepository.find({
-        where: { id: In(occupationIds) }
+        where: { id: In(occupationIds) },
       });
-      
+
       if (occupations.length !== occupationIds.length) {
-        throw new NotFoundException('Uma ou mais occupations não foram encontradas');
+        throw new NotFoundException(
+          'Uma ou mais occupations não foram encontradas',
+        );
       }
-      
+
       // Atribuir as occupations ao usuário
       savedUser.occupations = occupations;
       await this.userRepository.save(savedUser);
     }
-    
+
     return savedUser;
   }
 
@@ -89,13 +95,13 @@ async create(createUserDto: CreateUserDto): Promise<User> {
 
       if (!adminRole) {
         throw new InternalServerErrorException(
-          'ADMIN role not found. Ensure api-security-hardening migration has run.'
+          'ADMIN role not found. Ensure api-security-hardening migration has run.',
         );
       }
 
       await queryRunner.query(
         `INSERT INTO users_roles (user_id, role_id) VALUES ($1, $2)`,
-        [savedUser.id, adminRole.id]
+        [savedUser.id, adminRole.id],
       );
 
       const userWithRoles = await queryRunner.manager.findOne(User, {
@@ -116,24 +122,29 @@ async create(createUserDto: CreateUserDto): Promise<User> {
 
   async findAll(): Promise<User[]> {
     return await this.userRepository.find({
-      select: ['id', 'name', 'email', 'createdAt', 'updatedAt', 'is_active', 'whatsapp'],
+      select: [
+        'id',
+        'name',
+        'email',
+        'createdAt',
+        'updatedAt',
+        'is_active',
+        'whatsapp',
+      ],
       relations: ['roles', 'occupations'],
     });
   }
 
   async findOne(id: number): Promise<User> {
-    console.log(`[UserService] findOne called for ID: ${id}`);
     const user = await this.userRepository.findOne({
       where: { id },
       relations: ['roles', 'occupations'], // Temporarily removed 'projects', 'tasks'
     });
-    
-    console.log(`[UserService] findOne result for ID ${id}:`, user);
 
     if (!user) {
       throw new NotFoundException(`Usuário com ID ${id} não encontrado`);
     }
-    
+
     return user;
   }
 
@@ -141,10 +152,19 @@ async create(createUserDto: CreateUserDto): Promise<User> {
     const user = await this.userRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.roles', 'roles') // Load the roles relationship
-      .select(['user.id', 'user.name', 'user.email', 'user.password', 'user.createdAt', 'user.updatedAt', 'roles.id', 'roles.name']) // Select role properties
+      .select([
+        'user.id',
+        'user.name',
+        'user.email',
+        'user.password',
+        'user.createdAt',
+        'user.updatedAt',
+        'roles.id',
+        'roles.name',
+      ]) // Select role properties
       .where('user.email = :email', { email })
       .getOne();
-    
+
     return user; // Retorna null se não encontrar, não lança exceção
   }
 
@@ -159,7 +179,10 @@ async create(createUserDto: CreateUserDto): Promise<User> {
     const savedUser = await this.userRepository.save(user);
 
     const logMessage = `[${new Date().toISOString()}] User ${savedUser.id} updated. ${updateUserDto.password ? 'Password changed.' : ''}\n`;
-    fs.appendFileSync('G:/novosApps/manager-group/backend/server.log', logMessage);
+    fs.appendFileSync(
+      'G:/novosApps/manager-group/backend/server.log',
+      logMessage,
+    );
 
     return savedUser;
   }
@@ -174,48 +197,53 @@ async create(createUserDto: CreateUserDto): Promise<User> {
       where: { id: userId },
       relations: ['roles'],
     });
-    
+
     if (!user) {
       throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
     }
 
     // Buscar roles válidos pelos IDs fornecidos
     const roles = await this.roleRepository.find({
-      where: { id: In(roleIds) }
+      where: { id: In(roleIds) },
     });
-    
+
     if (roles.length !== roleIds.length) {
       throw new NotFoundException('Uma ou mais roles não foram encontradas');
     }
 
     // Atribuir as roles ao usuário
     user.roles = roles;
-    
+
     return await this.userRepository.save(user);
   }
 
-  async assignOccupations(userId: number, occupationIds: number[]): Promise<User> {
+  async assignOccupations(
+    userId: number,
+    occupationIds: number[],
+  ): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['occupations'],
     });
-    
+
     if (!user) {
       throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
     }
 
     // Buscar occupations válidos pelos IDs fornecidos
     const occupations = await this.occupationRepository.find({
-      where: { id: In(occupationIds) }
+      where: { id: In(occupationIds) },
     });
-    
+
     if (occupations.length !== occupationIds.length) {
-      throw new NotFoundException('Uma ou mais ocupações não foram encontradas');
+      throw new NotFoundException(
+        'Uma ou mais ocupações não foram encontradas',
+      );
     }
 
     // Atribuir as occupations ao usuário
     user.occupations = occupations;
-    
+
     return await this.userRepository.save(user);
   }
 }

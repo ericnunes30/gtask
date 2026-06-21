@@ -1,9 +1,16 @@
-import { IsOptional, IsEnum, IsArray, IsDateString, IsNumber, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  IsArray,
+  IsDateString,
+  IsNumber,
+  IsBoolean,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { 
-  NotificationType, 
-  NotificationPriority, 
-  NotificationCategory 
+import {
+  NotificationType,
+  NotificationPriority,
+  NotificationCategory,
 } from '../interfaces/notification.types';
 
 export class NotificationQueryDto {

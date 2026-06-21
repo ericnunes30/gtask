@@ -1,8 +1,31 @@
 import { Injectable } from '@nestjs/common';
 
+/**
+ * Subconjunto de User usado pelas estrategias de resposta de autenticacao.
+ * Aceita tanto a entity User completa quanto payloads parciais.
+ */
+export interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+  roles?: { name: string }[] | string[];
+}
+
+export interface AuthResponse {
+  access_token: string;
+  refresh_token?: string | null;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    roles?: { name: string }[] | string[];
+  };
+  expires_in?: number;
+}
+
 export interface AuthResponseStrategy {
   canHandle(context?: string): boolean;
-  createResponse(accessToken: string, user: any): any;
+  createResponse(accessToken: string, user: AuthUser): AuthResponse;
 }
 
 @Injectable()
@@ -11,7 +34,7 @@ export class LoginResponseStrategy implements AuthResponseStrategy {
     return context === 'login' || !context; // default for login
   }
 
-  createResponse(accessToken: string, user: any): any {
+  createResponse(accessToken: string, user: AuthUser): AuthResponse {
     return {
       access_token: accessToken,
       user: {
@@ -29,10 +52,10 @@ export class DetailedLoginResponseStrategy implements AuthResponseStrategy {
     return context === 'detailed';
   }
 
-  createResponse(accessToken: string, user: any): any {
+  createResponse(accessToken: string, user: AuthUser): AuthResponse {
     return {
       access_token: accessToken,
-      refresh_token: null, // Could be implemented later
+      refresh_token: null,
       user: {
         id: user.id,
         name: user.name,
@@ -55,13 +78,19 @@ export class AuthResponseFactory {
     ];
   }
 
-  createLoginResponse(accessToken: string, user: any, context?: string): any {
-    const strategy = this.strategies.find(s => s.canHandle(context));
-    
+  createLoginResponse(
+    accessToken: string,
+    user: AuthUser,
+    context?: string,
+  ): AuthResponse {
+    const strategy = this.strategies.find((s) => s.canHandle(context));
+
     if (!strategy) {
-      throw new Error(`No auth response strategy found for context: ${context}`);
+      throw new Error(
+        `No auth response strategy found for context: ${context}`,
+      );
     }
-    
+
     return strategy.createResponse(accessToken, user);
   }
 }

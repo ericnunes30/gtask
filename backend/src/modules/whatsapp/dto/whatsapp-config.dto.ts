@@ -1,22 +1,29 @@
-import { IsString, IsBoolean, IsNumber, Min, Max, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsBoolean,
+  IsNumber,
+  Min,
+  Max,
+  IsOptional,
+} from 'class-validator';
 
 export class WhatsAppConfigDto {
   @IsString()
-  apiKey: string;
+  apiKey!: string;
 
   @IsString()
-  instance: string;
+  instance!: string;
 
   @IsString()
-  baseUrl: string;
+  baseUrl!: string;
 
   @IsNumber()
   @Min(100)
   @Max(10000)
-  delay: number;
+  delay!: number;
 
   @IsBoolean()
-  enabled: boolean;
+  enabled!: boolean;
 }
 
 export class UpdateWhatsAppPreferencesDto {

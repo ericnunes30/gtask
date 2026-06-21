@@ -16,4 +16,3 @@ export function initSentry(): void {
     profilesSampleRate: 0,
   });
 }
-

@@ -6,10 +6,26 @@ import { User } from '../../user/entities/user.entity';
 import { Occupation } from '../../occupation/entities/occupation.entity';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
+import { Status } from '../entities/enums';
 import { TaskStrategyFactory } from '../strategies/task-strategy.factory';
 import { TaskCreationFactory } from '../factories/task-creation.factory';
 import { TaskCreator } from './task-creator.abstract';
 import { TaskUpdater } from './task-updater.abstract';
+/**
+ * Representa um comentario retornado pela query raw SQL em findOne.
+ * Inclui campos extras (user, likes_count) e o array replies adicionado em tempo de execucao.
+ */
+interface CommentNode {
+  id: number;
+  parent_id: number | null;
+  user_id: number;
+  content: string;
+  created_at: Date;
+  updated_at: Date;
+  user: { id: number; name: string; email: string } | null;
+  likes_count: number;
+  replies: CommentNode[];
+}
 
 @Injectable()
 export class TaskService extends TaskCreator implements TaskUpdater {
@@ -31,21 +47,31 @@ export class TaskService extends TaskCreator implements TaskUpdater {
 
   async create(createTaskDto: CreateTaskDto): Promise<Task> {
     const { users, occupations, ...taskData } = createTaskDto;
-    
-    const task = this.taskCreationFactory.createTask(taskData as CreateTaskDto, this.taskRepository);
+
+    const task = this.taskCreationFactory.createTask(
+      taskData as CreateTaskDto,
+      this.taskRepository,
+    );
     const savedTask = await this.taskRepository.save(task);
 
     if (users && users.length > 0) {
-      const userEntities = await this.userRepository.find({ where: { id: In(users) } });
+      const userEntities = await this.userRepository.find({
+        where: { id: In(users) },
+      });
       savedTask.users = userEntities;
     }
 
     if (occupations && occupations.length > 0) {
-      const occupationEntities = await this.occupationRepository.find({ where: { id: In(occupations) } });
+      const occupationEntities = await this.occupationRepository.find({
+        where: { id: In(occupations) },
+      });
       savedTask.occupations = occupationEntities;
     }
 
-    if ((users && users.length > 0) || (occupations && occupations.length > 0)) {
+    if (
+      (users && users.length > 0) ||
+      (occupations && occupations.length > 0)
+    ) {
       return await this.taskRepository.save(savedTask);
     }
 
@@ -54,7 +80,9 @@ export class TaskService extends TaskCreator implements TaskUpdater {
 
   async findAll(): Promise<Task[]> {
     this.logger.log('findAll called - getting strategy');
-    const strategy = this.taskStrategyFactory.getFindAllStrategy(this.taskRepository);
+    const strategy = this.taskStrategyFactory.getFindAllStrategy(
+      this.taskRepository,
+    );
     this.logger.log(`Using strategy: ${strategy.constructor.name}`);
     const result = await strategy.execute(this.taskRepository);
     this.logger.log(`Found ${result.length} tasks`);
@@ -66,13 +94,14 @@ export class TaskService extends TaskCreator implements TaskUpdater {
       where: { id },
       relations: ['users', 'occupations', 'project', 'reviewer'], // Removido comments daqui
     });
-    
+
     if (!task) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
-// Raw SQL para buscar comentários e suas respostas
-    const comments = await this.dataSource.query(`
+    // Raw SQL para buscar comentários e suas respostas
+    const comments = (await this.dataSource.query(
+      `
       WITH RECURSIVE comment_tree AS (
         SELECT
           c.*,
@@ -90,7 +119,7 @@ export class TaskService extends TaskCreator implements TaskUpdater {
         LEFT JOIN users u ON u.id = c.user_id
         JOIN comment_tree ct ON ct.id = c.parent_id
       )
-      SELECT 
+      SELECT
         *,
         (SELECT json_agg(json_build_object(
           'id', cl.id,
@@ -98,12 +127,14 @@ export class TaskService extends TaskCreator implements TaskUpdater {
           'createdAt', cl.created_at
         )) FROM comment_likes cl WHERE cl.comment_id = comment_tree.id) as likes
       FROM comment_tree;
-    `, [id]);
+    `,
+      [id],
+    )) as unknown as CommentNode[];
 
     // Estrutura os comentários em formato aninhado
-    const commentsMap = new Map();
-    const topLevelComments: any[] = [];
-    comments.forEach(comment => {
+    const commentsMap = new Map<number, CommentNode>();
+    const topLevelComments: CommentNode[] = [];
+    comments.forEach((comment: CommentNode) => {
       comment.replies = [];
       commentsMap.set(comment.id, comment);
       if (comment.parent_id) {
@@ -116,11 +147,13 @@ export class TaskService extends TaskCreator implements TaskUpdater {
       }
     });
 
-    (task as any).comments = topLevelComments;
-    
+    (task as unknown as { comments: CommentNode[] }).comments =
+      topLevelComments;
+
     // Buscar activity logs da tarefa
-    const activityLogs = await this.dataSource.query(`
-      SELECT 
+    const activityLogs: unknown[] = await this.dataSource.query(
+      `
+      SELECT
         al.*,
         json_build_object('id', u.id, 'name', u.name, 'email', u.email) as user
       FROM activity_logs al
@@ -128,21 +161,31 @@ export class TaskService extends TaskCreator implements TaskUpdater {
       WHERE al.task_id = $1
       ORDER BY al.created_at DESC
       LIMIT 50
-    `, [id]);
-    
-    (task as any).activityLogs = activityLogs;
-    // this.logger.debug(`Task data after manual comment hydration: ${JSON.stringify(task, null, 2)}`);
-    
+    `,
+      [id],
+    );
+
+    Object.assign(task, { activityLogs });
+
     return task;
   }
 
-  async update(id: number, updateTaskDto: UpdateTaskDto, userId: number): Promise<Task> {
-    const strategy = this.taskStrategyFactory.getUpdateStrategy(this.taskRepository);
+  async update(
+    id: number,
+    updateTaskDto: UpdateTaskDto,
+    _userId: number,
+  ): Promise<Task> {
+    const strategy = this.taskStrategyFactory.getUpdateStrategy(
+      this.taskRepository,
+    );
     return await strategy.execute(id, updateTaskDto, this.taskRepository);
   }
 
   async remove(id: number): Promise<void> {
-    const task = await this.taskRepository.findOne({ where: { id }, relations: ['project', 'reviewer', 'users', 'occupations'] });
+    const task = await this.taskRepository.findOne({
+      where: { id },
+      relations: ['project', 'reviewer', 'users', 'occupations'],
+    });
     if (!task) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
@@ -150,28 +193,43 @@ export class TaskService extends TaskCreator implements TaskUpdater {
   }
 
   async findByProject(projectId: number): Promise<Task[]> {
-    return await this.taskRepository.find({ where: { project_id: projectId }, relations: ['project', 'reviewer', 'users', 'occupations'] });
+    return await this.taskRepository.find({
+      where: { project_id: projectId },
+      relations: ['project', 'reviewer', 'users', 'occupations'],
+    });
   }
 
   async findByStatus(status: string): Promise<Task[]> {
-    return await this.taskRepository.find({ where: { status: status as any }, relations: ['project', 'reviewer', 'users', 'occupations'] });
+    return await this.taskRepository.find({
+      where: { status: status as Status },
+      relations: ['project', 'reviewer', 'users', 'occupations'],
+    });
   }
 
   async updateTimer(id: number, timerValue: number): Promise<Task> {
-    const strategy = this.taskStrategyFactory.getTimerUpdateStrategy(this.taskRepository);
+    const strategy = this.taskStrategyFactory.getTimerUpdateStrategy(
+      this.taskRepository,
+    );
     return await strategy.execute(id, timerValue, this.taskRepository);
   }
 
   async assignUsers(taskId: number, userIds: number[]): Promise<Task> {
-    const task = await this.taskRepository.findOne({ where: { id: taskId }, relations: ['project', 'reviewer', 'users', 'occupations'] });
-    if (!task) {
-      throw new NotFoundException(`Task with ID ${taskId} not found`);
-    }
-    (task as any).users = userIds.map(id => ({ id }));
-    if (typeof (this.taskRepository as any).update === 'function') {
-      await (this.taskRepository as any).update(taskId, { users: userIds });
-      return await this.taskRepository.findOne({ where: { id: taskId }, relations: ['project', 'reviewer', 'users', 'occupations'] }) as Task;
-    }
-    return await this.taskRepository.save(task);
+    const task = await this.loadTaskOr404(taskId);
+    task.users = userIds.map(
+      (id) => ({ id }) as unknown as (typeof task.users)[number],
+    );
+    await this.taskRepository.update(taskId, {
+      users: userIds.map((id) => ({ id })),
+    } as unknown as Parameters<Repository<Task>['update']>[1]);
+    return await this.loadTaskOr404(taskId);
+  }
+
+  private async loadTaskOr404(taskId: number): Promise<Task> {
+    const t = await this.taskRepository.findOne({
+      where: { id: taskId },
+      relations: ['project', 'reviewer', 'users', 'occupations'],
+    });
+    if (!t) throw new NotFoundException(`Task with ID ${taskId} not found`);
+    return t;
   }
 }

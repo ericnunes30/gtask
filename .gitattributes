@@ -1,0 +1,16 @@
+# Normaliza fins de linha para LF no repositorio e na working tree.
+# Sobrepoe core.autocrlf=true (Windows) para que o Prettier (endOfLine: lf) nao reclame.
+* text=auto eol=lf
+
+# Binarios: nunca normalizar
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.svg binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.lock binary

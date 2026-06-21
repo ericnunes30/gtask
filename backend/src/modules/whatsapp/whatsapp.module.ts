@@ -8,19 +8,9 @@ import { WhatsAppController } from './controllers/whatsapp.controller';
 import { User } from '../user/entities/user.entity';
 
 @Module({
-  imports: [
-    HttpModule,
-    ConfigModule,
-    TypeOrmModule.forFeature([User])
-  ],
+  imports: [HttpModule, ConfigModule, TypeOrmModule.forFeature([User])],
   controllers: [WhatsAppController],
-  providers: [
-    WhatsAppService,
-    MessageFormatterService
-  ],
-  exports: [
-    WhatsAppService,
-    MessageFormatterService
-  ]
+  providers: [WhatsAppService, MessageFormatterService],
+  exports: [WhatsAppService, MessageFormatterService],
 })
 export class WhatsAppModule {}

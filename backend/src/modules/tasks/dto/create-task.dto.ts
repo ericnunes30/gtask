@@ -1,15 +1,25 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsNumber, IsBoolean, IsArray, ValidateNested, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsDateString,
+  IsNumber,
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+  MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { PriorityLevel, Status } from '../entities/enums';
 
 class UsefulLinkDto {
   @IsString()
   @MaxLength(255)
-  title: string;
+  title!: string;
 
   @IsString()
   @MaxLength(500)
-  url: string;
+  url!: string;
 }
 
 export class CreateTaskDto {
@@ -19,17 +29,17 @@ export class CreateTaskDto {
 
   @IsString()
   @MaxLength(255)
-  title: string;
+  title!: string;
 
   @IsOptional()
   @IsString()
   description?: string | null;
 
   @IsEnum(PriorityLevel)
-  priority: PriorityLevel;
+  priority!: PriorityLevel;
 
   @IsEnum(Status)
-  status: Status;
+  status!: Status;
 
   @IsOptional()
   @IsDateString()
@@ -44,7 +54,7 @@ export class CreateTaskDto {
   timer?: number;
 
   @IsNumber()
-  project_id: number;
+  project_id!: number;
 
   @IsOptional()
   @IsNumber()

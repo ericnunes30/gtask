@@ -1,19 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { Task } from '../entities/task.entity';
-import { 
+import {
   TaskUpdateStrategy,
-  RepositoryUpdateStrategy,
-  EntityUpdateStrategy 
+  EntityUpdateStrategy,
 } from './task-update.strategy';
-import { 
+import {
   TaskTimerUpdateStrategy,
   RepositoryTimerUpdateStrategy,
-  EntityTimerUpdateStrategy 
+  EntityTimerUpdateStrategy,
 } from './task-timer-update.strategy';
-import { 
+import {
   TaskFindAllStrategy,
-  RepositoryFindAllStrategy
+  RepositoryFindAllStrategy,
 } from './task-find-all.strategy';
 import { ActiveProjectFindAllStrategy } from './active-project-find-all.strategy';
 
@@ -24,9 +23,7 @@ export class TaskStrategyFactory {
   private readonly findAllStrategies: TaskFindAllStrategy[];
 
   constructor() {
-    this.updateStrategies = [
-      new EntityUpdateStrategy(),
-    ];
+    this.updateStrategies = [new EntityUpdateStrategy()];
 
     this.timerUpdateStrategies = [
       new RepositoryTimerUpdateStrategy(),
@@ -39,15 +36,23 @@ export class TaskStrategyFactory {
     ];
   }
 
-  getUpdateStrategy(repository: Repository<Task>): TaskUpdateStrategy {
+  getUpdateStrategy(_repository: Repository<Task>): TaskUpdateStrategy {
     return this.updateStrategies[0];
   }
 
-  getTimerUpdateStrategy(repository: Repository<Task>): TaskTimerUpdateStrategy {
-    return this.timerUpdateStrategies.find(s => s.canHandle(repository)) || this.timerUpdateStrategies[1];
+  getTimerUpdateStrategy(
+    repository: Repository<Task>,
+  ): TaskTimerUpdateStrategy {
+    return (
+      this.timerUpdateStrategies.find((s) => s.canHandle(repository)) ||
+      this.timerUpdateStrategies[1]
+    );
   }
 
   getFindAllStrategy(repository: Repository<Task>): TaskFindAllStrategy {
-    return this.findAllStrategies.find(s => s.canHandle(repository)) || this.findAllStrategies[1];
+    return (
+      this.findAllStrategies.find((s) => s.canHandle(repository)) ||
+      this.findAllStrategies[1]
+    );
   }
 }

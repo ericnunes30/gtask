@@ -3,34 +3,44 @@ import { Repository } from 'typeorm';
 import { Task } from '../entities/task.entity';
 
 export interface TaskTimerUpdateStrategy {
-  canHandle(repository: any): boolean;
-  execute(id: number, timerValue: number, repository: Repository<Task>): Promise<Task>;
+  canHandle(repository: Repository<Task>): boolean;
+  execute(
+    id: number,
+    timerValue: number,
+    repository: Repository<Task>,
+  ): Promise<Task>;
 }
 
 @Injectable()
 export class RepositoryTimerUpdateStrategy implements TaskTimerUpdateStrategy {
-  canHandle(repository: any): boolean {
+  canHandle(repository: Repository<Task>): boolean {
     return typeof repository.update === 'function';
   }
 
-  async execute(id: number, timerValue: number, repository: Repository<Task>): Promise<Task> {
-    const repoAny = repository as any;
-    
-    const existenceCheck = await repoAny.findOne({
+  async execute(
+    id: number,
+    timerValue: number,
+    repository: Repository<Task>,
+  ): Promise<Task> {
+    const existenceCheck = await repository.findOne({
       where: { id },
       relations: ['users'],
     });
-    
+
     if (!existenceCheck) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
-    await repoAny.update(id, { timer: timerValue });
-    
-    return await repoAny.findOne({
+    await repository.update(id, { timer: timerValue });
+
+    const updated = await repository.findOne({
       where: { id },
       relations: ['project', 'reviewer', 'users', 'occupations'],
-    }) as Task;
+    });
+    if (!updated) {
+      throw new NotFoundException(`Task with ID ${id} not found after update`);
+    }
+    return updated;
   }
 }
 
@@ -40,12 +50,16 @@ export class EntityTimerUpdateStrategy implements TaskTimerUpdateStrategy {
     return true; // fallback strategy
   }
 
-  async execute(id: number, timerValue: number, repository: Repository<Task>): Promise<Task> {
+  async execute(
+    id: number,
+    timerValue: number,
+    repository: Repository<Task>,
+  ): Promise<Task> {
     const fullTask = await repository.findOne({
       where: { id },
       relations: ['project', 'reviewer', 'users', 'occupations'],
     });
-    
+
     if (!fullTask) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }

@@ -1,8 +1,20 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request as NestRequest, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+  Logger,
+} from '@nestjs/common';
 import { RecurringTaskService } from '../services/recurring-task.service';
 import { CreateRecurringTaskDto } from '../dto/create-recurring-task.dto';
 import { UpdateRecurringTaskDto } from '../dto/update-recurring-task.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 @Controller('recurring-tasks')
 @UseGuards(JwtAuthGuard)
@@ -19,10 +31,19 @@ export class RecurringTaskController {
     return this.recurringTaskService.findOne(+id);
   }
 
-@Post()
-  async create(@Body() createRecurringTaskDto: CreateRecurringTaskDto, @NestRequest() req) {
-    Logger.log(`Received createRecurringTaskDto: ${JSON.stringify(createRecurringTaskDto)}`, 'RecurringTaskController');
-    return this.recurringTaskService.create(createRecurringTaskDto, req.user.sub);
+  @Post()
+  async create(
+    @Body() createRecurringTaskDto: CreateRecurringTaskDto,
+    @CurrentUser() currentUser: Express.User,
+  ) {
+    Logger.log(
+      `Received createRecurringTaskDto: ${JSON.stringify(createRecurringTaskDto)}`,
+      'RecurringTaskController',
+    );
+    return this.recurringTaskService.create(
+      createRecurringTaskDto,
+      currentUser.sub,
+    );
   }
 
   @Put(':id')

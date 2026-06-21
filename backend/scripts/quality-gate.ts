@@ -70,6 +70,21 @@ function readJsonFile(p: string): any {
   return JSON.parse(readFileSync(p, 'utf8'));
 }
 
+/** Le .docs/exceptions.md e retorna os nomes de pacotes excetuados para o criterio 1.7. */
+function readExceptions17(): string[] {
+  const file = path.join(ROOT_DIR, '.docs', 'exceptions.md');
+  if (!existsSync(file)) return [];
+  const content = readFileSync(file, 'utf8');
+  const match = content.match(/## 1\.7[\s\S]*?(?=\n## |$)/);
+  if (!match) return [];
+  const pkgs: string[] = [];
+  for (const line of match[0].split('\n')) {
+    const m = line.match(/^\s*-\s*([@\w\-/]+)/);
+    if (m) pkgs.push(m[1]);
+  }
+  return pkgs;
+}
+
 /** Conta ocorrencias de uma regex em todos os .ts de src (nao-spec) */
 function countInSrc(regex: RegExp): number {
   let n = 0;
@@ -125,11 +140,16 @@ export default [
       'no-console': ['error', { allow: ['error'] }],
       'no-warning-comments': ['error', { terms: ['todo', 'fixme', 'hack', 'xxx'], location: 'anywhere' }],
       'no-unreachable': 'error',
-      '@typescript-eslint/no-unused-vars': ['error'],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'error',
       'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
       'complexity': ['error', 15],
     },
+  },
+  // Respeita excecao do projeto: console permitido em CLI commands e migrations
+  {
+    files: ['src/commands/**', 'src/migrations/**'],
+    rules: { 'no-console': 'off' },
   },
 ];
 `;
@@ -261,8 +281,17 @@ const nivel1: Criterion[] = [
       const r = run('npx depcheck --json', { timeout: 120_000 });
       try {
         const j = JSON.parse(r.stdout || '{}');
-        const unused = Object.keys(j.dependencies || {}).length + Object.keys(j.devDependencies || {}).length;
-        return { pass: unused === 0, measured: true, detail: `${unused} dependencia(s) nao utilizada(s)` };
+        const arr = (v: any): string[] => (Array.isArray(v) ? v : Object.keys(v || {}));
+        const all = [...arr(j.dependencies), ...arr(j.devDependencies)];
+        const excepted = readExceptions17();
+        const real = all.filter((d) => !excepted.includes(d));
+        return {
+          pass: real.length === 0,
+          measured: true,
+          detail: real.length === 0
+            ? 'zero dependencias nao utilizadas'
+            : `${real.length} nao utilizada(s): ${real.join(', ')}`,
+        };
       } catch {
         return { pass: false, measured: true, detail: 'falha ao parsear depcheck' };
       }

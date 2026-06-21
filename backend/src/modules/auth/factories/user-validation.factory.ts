@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { UserService } from '../../user/services/user.service';
 import { PasswordVerificationFactory } from '../strategies/password/password-verification.factory';
+import { UserWithRoles } from './token-payload.factory';
 
 export interface UserValidationStrategy {
   canHandle(email: string, password: string): boolean;
-  validate(email: string, password: string): Promise<any>;
+  validate(email: string, password: string): Promise<UserWithRoles | null>;
 }
 
 @Injectable()
@@ -18,20 +19,30 @@ export class StandardUserValidationStrategy implements UserValidationStrategy {
     return true; // fallback strategy
   }
 
-  async validate(email: string, password: string): Promise<any> {
+  async validate(
+    email: string,
+    password: string,
+  ): Promise<UserWithRoles | null> {
     const user = await this.userService.findByEmail(email);
-    if (user && user.password && await this.verifyPassword(password, user.password)) {
-      const { password, ...result } = user;
-      return result;
+    if (
+      user &&
+      user.password &&
+      (await this.verifyPassword(password, user.password))
+    ) {
+      const { password: _password, ...result } = user;
+      return result as unknown as UserWithRoles;
     }
     return null;
   }
 
-  private async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
+  private async verifyPassword(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
     try {
       const strategy = this.passwordFactory.getStrategy(hashedPassword);
       return await strategy.verify(plainPassword, hashedPassword);
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -50,13 +61,16 @@ export class UserValidationFactory {
     ];
   }
 
-  async validateUser(email: string, password: string): Promise<any> {
-    const strategy = this.strategies.find(s => s.canHandle(email, password));
-    
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<UserWithRoles | null> {
+    const strategy = this.strategies.find((s) => s.canHandle(email, password));
+
     if (!strategy) {
       throw new Error(`No user validation strategy found for email: ${email}`);
     }
-    
+
     return await strategy.validate(email, password);
   }
 }

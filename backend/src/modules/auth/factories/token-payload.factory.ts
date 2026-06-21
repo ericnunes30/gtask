@@ -1,9 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { User } from '../../user/entities/user.entity';
+
+/**
+ * Subconjunto de `User` usado pelas estrategias de payload de token.
+ * Permite tipar `user.roles` sem depender da entity completa.
+ */
+export interface UserWithRoles {
+  id: number;
+  email: string;
+  name: string;
+  roles?: { name: string }[];
+}
 
 export interface TokenPayloadStrategy {
-  canHandle(user: any, context?: string): boolean;
-  createPayload(user: any): any;
+  canHandle(user: UserWithRoles, context?: string): boolean;
+  createPayload(user: UserWithRoles): Record<string, unknown>;
 }
 
 @Injectable()
@@ -12,7 +22,7 @@ export class DefaultTokenPayloadStrategy implements TokenPayloadStrategy {
     return true; // fallback strategy
   }
 
-  createPayload(user: any): any {
+  createPayload(user: UserWithRoles): Record<string, unknown> {
     return {
       email: user.email,
       sub: user.id,
@@ -23,16 +33,16 @@ export class DefaultTokenPayloadStrategy implements TokenPayloadStrategy {
 
 @Injectable()
 export class ExtendedTokenPayloadStrategy implements TokenPayloadStrategy {
-  canHandle(user: any, context?: string): boolean {
+  canHandle(user: UserWithRoles, context?: string): boolean {
     return context === 'extended';
   }
 
-  createPayload(user: any): any {
+  createPayload(user: UserWithRoles): Record<string, unknown> {
     return {
       email: user.email,
       sub: user.id,
       name: user.name,
-      roles: user.roles?.map(role => role.name) || [],
+      roles: user.roles?.map((role) => role.name) ?? [],
     };
   }
 }
@@ -48,13 +58,16 @@ export class TokenPayloadFactory {
     ];
   }
 
-  createPayload(user: any, context?: string): any {
-    const strategy = this.strategies.find(s => s.canHandle(user, context));
-    
+  createPayload(
+    user: UserWithRoles,
+    context?: string,
+  ): Record<string, unknown> {
+    const strategy = this.strategies.find((s) => s.canHandle(user, context));
+
     if (!strategy) {
       throw new Error(`No token payload strategy found for user: ${user.id}`);
     }
-    
+
     return strategy.createPayload(user);
   }
 }

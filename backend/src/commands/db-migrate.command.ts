@@ -19,4 +19,3 @@ export class DbMigrateCommand extends CommandRunner {
     this.logger.log('Migrations complete.');
   }
 }
-

@@ -20,7 +20,9 @@ export class ActivityLogService {
     private readonly activityLogRepository: Repository<ActivityLog>,
   ) {}
 
-  async findAll(filters: ActivityLogFilterOptions = {}): Promise<ActivityLog[]> {
+  async findAll(
+    filters: ActivityLogFilterOptions = {},
+  ): Promise<ActivityLog[]> {
     const {
       taskId,
       userId,
@@ -28,7 +30,7 @@ export class ActivityLogService {
       page = 1,
       limit = 20,
       startDate,
-      endDate
+      endDate,
     } = filters;
 
     const where: FindOptionsWhere<ActivityLog> = {};
@@ -64,7 +66,11 @@ export class ActivityLogService {
     });
   }
 
-  async findByTaskId(taskId: number, page: number = 1, limit: number = 20): Promise<ActivityLog[]> {
+  async findByTaskId(
+    taskId: number,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<ActivityLog[]> {
     const skip = (page - 1) * limit;
 
     return this.activityLogRepository.find({
@@ -76,7 +82,10 @@ export class ActivityLogService {
     });
   }
 
-  async findRecentByTaskId(taskId: number, limit: number = 10): Promise<ActivityLog[]> {
+  async findRecentByTaskId(
+    taskId: number,
+    limit: number = 10,
+  ): Promise<ActivityLog[]> {
     return this.activityLogRepository.find({
       where: { taskId },
       relations: ['user'],
@@ -87,7 +96,7 @@ export class ActivityLogService {
 
   async countByTaskId(taskId: number): Promise<number> {
     return this.activityLogRepository.count({
-      where: { taskId }
+      where: { taskId },
     });
   }
 

@@ -14,9 +14,17 @@ export class TaskUpdateNotifierDecorator extends TaskUpdater {
     super();
   }
 
-  async update(id: number, updateTaskDto: UpdateTaskDto, userId: number): Promise<Task> {
+  async update(
+    id: number,
+    updateTaskDto: UpdateTaskDto,
+    userId: number,
+  ): Promise<Task> {
     const oldTask = await this.taskService.findOne(id);
-    const updatedTask = await this.taskService.update(id, updateTaskDto, userId);
+    const updatedTask = await this.taskService.update(
+      id,
+      updateTaskDto,
+      userId,
+    );
     const fullTask = await this.taskService.findOne(id);
 
     this.eventEmitter.emit('task.updated', {
@@ -35,24 +43,30 @@ export class TaskUpdateNotifierDecorator extends TaskUpdater {
     }
 
     if (updateTaskDto.users) {
-      this.eventEmitter.emit('task.assignees.updated', { 
-        task: updatedTask, 
+      this.eventEmitter.emit('task.assignees.updated', {
+        task: updatedTask,
         updatedBy: userId,
         action: 'set',
-        userIds: updateTaskDto.users
+        userIds: updateTaskDto.users,
       });
     }
 
     return updatedTask;
   }
 
-  private getChangedFields(updateTaskDto: UpdateTaskDto, currentTask: Task): Record<string, { oldValue: any; newValue: any }> {
-    const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
+  private getChangedFields(
+    updateTaskDto: UpdateTaskDto,
+    currentTask: Task,
+  ): Record<string, { oldValue: unknown; newValue: unknown }> {
+    const changedFields: Record<
+      string,
+      { oldValue: unknown; newValue: unknown }
+    > = {};
 
     for (const [key, newValue] of Object.entries(updateTaskDto)) {
       if (key === 'users' || key === 'occupations') continue; // Skip relations
-      
-      const oldValue = (currentTask as any)[key];
+
+      const oldValue = (currentTask as unknown as Record<string, unknown>)[key];
       if (oldValue !== newValue) {
         changedFields[key] = { oldValue, newValue };
       }

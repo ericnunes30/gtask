@@ -1,10 +1,24 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Query, Patch, Logger, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+  Query,
+  Patch,
+  Logger,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
 import { TaskCreator } from '../services/task-creator.abstract';
 import { TaskUpdater } from '../services/task-updater.abstract';
 import { TaskService } from '../services/task.service';
 import { AuthGuard } from '@nestjs/passport';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 @Controller('tasks')
 export class TaskController {
@@ -17,13 +31,19 @@ export class TaskController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'))
-  create(@Body() createTaskDto: CreateTaskDto, @Request() req) {
+  create(
+    @Body() createTaskDto: CreateTaskDto,
+    @CurrentUser() currentUser: Express.User,
+  ) {
     // Passamos o ID do usuário autenticado para a camada de criação
-    return this.taskCreator.create(createTaskDto, req.user.sub);
+    return this.taskCreator.create(createTaskDto, currentUser.sub);
   }
 
   @Get()
-  findAll(@Query('project') projectId?: string, @Query('status') status?: string) {
+  findAll(
+    @Query('project') projectId?: string,
+    @Query('status') status?: string,
+  ) {
     if (projectId) {
       return this.taskService.findByProject(+projectId);
     }
@@ -40,21 +60,37 @@ export class TaskController {
 
   @Put(':id')
   @UseGuards(AuthGuard('jwt'))
-  update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto, @Request() req) {
-    return this.taskUpdater.update(+id, updateTaskDto, req.user.sub);
+  update(
+    @Param('id') id: string,
+    @Body() updateTaskDto: UpdateTaskDto,
+    @CurrentUser() currentUser: Express.User,
+  ) {
+    return this.taskUpdater.update(+id, updateTaskDto, currentUser.sub);
   }
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'))
-  async patch(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto, @Request() req) {
+  async patch(
+    @Param('id') id: string,
+    @Body() updateTaskDto: UpdateTaskDto,
+    @CurrentUser() currentUser: Express.User,
+  ) {
     this.logger.log(`[PATCH /tasks/:id] Received request for task ID: ${id}`);
-    this.logger.log(`[PATCH /tasks/:id] Request body: ${JSON.stringify(updateTaskDto)}`);
+    this.logger.log(
+      `[PATCH /tasks/:id] Request body: ${JSON.stringify(updateTaskDto)}`,
+    );
     try {
-      const updatedTask = await this.taskUpdater.update(+id, updateTaskDto, req.user.sub);
+      const updatedTask = await this.taskUpdater.update(
+        +id,
+        updateTaskDto,
+        currentUser.sub,
+      );
       this.logger.log(`[PATCH /tasks/:id] Task ID ${id} updated successfully.`);
       return updatedTask;
-    } catch (error) {
-      this.logger.error(`[PATCH /tasks/:id] Error updating task ID ${id}: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.error(
+        `[PATCH /tasks/:id] Error updating task ID ${id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       throw error; // Re-throw the error so NestJS can handle it
     }
   }

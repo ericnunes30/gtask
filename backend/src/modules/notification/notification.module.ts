@@ -8,16 +8,17 @@ import { DebugLoggerService } from './services/debug-logger.service';
 import { NotificationController } from './controllers/notification.controller';
 import { NotificationFactory } from './factories/notification.factory';
 import { StructuredNotificationEntity } from './entities/notification.entity';
-import { 
-  TaskCreatedStrategy, 
-  TaskStatusUpdatedStrategy, 
-  CommentCreatedStrategy, 
-  TimerStartedStrategy, 
+import {
+  TaskCreatedStrategy,
+  TaskStatusUpdatedStrategy,
+  CommentCreatedStrategy,
+  TimerStartedStrategy,
   TimerPausedStrategy,
-  TaskUpdatedStrategy
+  TaskUpdatedStrategy,
 } from './factories/strategies';
+import type { NotificationStrategy } from './interfaces/notification.types';
 
-const strategies = [
+const strategies: Array<new () => NotificationStrategy> = [
   TaskCreatedStrategy,
   TaskStatusUpdatedStrategy,
   CommentCreatedStrategy,
@@ -32,7 +33,7 @@ const strategies = [
     ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
         signOptions: { expiresIn: '15m' },
       }),
@@ -46,17 +47,11 @@ const strategies = [
     ...strategies,
     {
       provide: 'NOTIFICATION_STRATEGY',
-      useFactory: (...strategies) => strategies,
+      useFactory: (...strategies: NotificationStrategy[]) => strategies,
       inject: strategies,
     },
   ],
-  controllers: [
-    NotificationController,
-  ],
-  exports: [
-    NotificationService,
-    DebugLoggerService,
-    NotificationFactory,
-  ],
+  controllers: [NotificationController],
+  exports: [NotificationService, DebugLoggerService, NotificationFactory],
 })
 export class NotificationModule {}

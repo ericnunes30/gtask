@@ -7,13 +7,11 @@ import {
   Param,
   Query,
   Body,
-  UseGuards,
   Request,
   HttpCode,
   HttpStatus,
-  Patch,
   Headers,
-  UnauthorizedException
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 // import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -22,7 +20,7 @@ import { NotificationService } from '../services/notification.service';
 import { DebugLoggerService } from '../services/debug-logger.service';
 import {
   StructuredNotification,
-  NotificationPagination
+  NotificationPagination,
 } from '../interfaces/notification.types';
 import { NotificationQueryDto } from '../dto/notification-query.dto';
 
@@ -38,169 +36,119 @@ export class NotificationController {
   ) {}
 
   @Get()
-  // @ApiOperation({ summary: 'Buscar notificações estruturadas do usuário' })
-  // @ApiResponse({ status: 200, description: 'Lista de notificações com paginação' })
-  // @ApiResponse({ status: 401, description: 'Não autorizado' })
   async getUserNotifications(
-    @Request() req,
     @Query() options: NotificationQueryDto,
-    @Headers('authorization') authorization: string
+    @Headers('authorization') authorization: string,
   ): Promise<NotificationPagination> {
-    // Verificar manualmente o token JWT
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Token de autenticação não fornecido');
-    }
-    
-    const token = authorization.substring(7); // Remove "Bearer " prefix
-    
-    try {
-      const payload = this.jwtService.verify(token);
-      this.debugLogger.logNotificationEvent('notifications_list_requested', { options }, payload.sub);
-      const result = await this.notificationService.findByUser(payload.sub, options);
-      this.debugLogger.logNotificationEvent('notifications_list_returned', { total: result.total, page: result.page, pageSize: result.pageSize }, payload.sub);
-      return result;
-    } catch (jwtError) {
-      throw new UnauthorizedException('Token inválido ou expirado');
-    }
+    const userId = this.getUserIdFromAuth(authorization);
+    const result = await this.notificationService.findByUser(userId, options);
+    this.debugLogger.logNotificationEvent(
+      'notifications_list_returned',
+      { total: result.total, page: result.page, pageSize: result.pageSize },
+      userId,
+    );
+    return result;
   }
 
   @Get('unread-count')
-  // @ApiOperation({ summary: 'Contar notificações não lidas' })
-  // @ApiResponse({ status: 200, description: 'Número de notificações não lidas' })
   async getUnreadCount(
-    @Headers('authorization') authorization: string
+    @Headers('authorization') authorization: string,
   ): Promise<{ count: number }> {
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Token de autenticação não fornecido');
-    }
-    const token = authorization.substring(7);
-    try {
-      const payload = this.jwtService.verify(token);
-      const count = await this.notificationService.getUnreadCount(payload.sub);
-      return { count };
-    } catch {
-      throw new UnauthorizedException('Token inválido ou expirado');
-    }
+    const userId = this.getUserIdFromAuth(authorization);
+    const count = await this.notificationService.getUnreadCount(userId);
+    return { count };
   }
 
   @Get('stats')
-  // @ApiOperation({ summary: 'Obter estatísticas de notificações do usuário' })
-  // @ApiResponse({ status: 200, description: 'Estatísticas detalhadas' })
   async getUserStats(@Headers('authorization') authorization: string) {
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Token de autenticação não fornecido');
-    }
-    const token = authorization.substring(7);
-    try {
-      const payload = this.jwtService.verify(token);
-      return this.notificationService.getUserStats(payload.sub);
-    } catch {
-      throw new UnauthorizedException('Token inválido ou expirado');
-    }
+    const userId = this.getUserIdFromAuth(authorization);
+    return this.notificationService.getUserStats(userId);
   }
 
   @Get(':id')
-  // @ApiOperation({ summary: 'Buscar notificação específica' })
-  // @ApiResponse({ status: 200, description: 'Notificação encontrada' })
-  // @ApiResponse({ status: 404, description: 'Notificação não encontrada' })
   async getNotificationById(
     @Param('id') id: number,
-    @Headers('authorization') authorization: string
+    @Headers('authorization') authorization: string,
   ): Promise<StructuredNotification> {
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Token de autenticação não fornecido');
+    const userId = this.getUserIdFromAuth(authorization);
+    const notification = await this.notificationService.findById(id, userId);
+    if (!notification) {
+      throw new Error('Notification not found');
     }
-    const token = authorization.substring(7);
-    try {
-      const payload = this.jwtService.verify(token);
-      const notification = await this.notificationService.findById(id, payload.sub);
-      if (!notification) {
-        throw new Error('Notification not found');
-      }
-      return notification;
-    } catch {
-      throw new UnauthorizedException('Token inválido ou expirado');
-    }
+    return notification;
   }
 
   @Put(':id/read')
-  // @ApiOperation({ summary: 'Marcar notificação como lida' })
-  // @ApiResponse({ status: 200, description: 'Notificação marcada como lida' })
   @HttpCode(HttpStatus.OK)
   async markAsRead(
     @Param('id') id: number,
-    @Headers('authorization') authorization: string
+    @Headers('authorization') authorization: string,
   ): Promise<void> {
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Token de autenticação não fornecido');
-    }
-    const token = authorization.substring(7);
-    try {
-      const payload = this.jwtService.verify(token);
-      await this.notificationService.markAsRead(id, payload.sub);
-      this.debugLogger.logNotificationEvent('notification_marked_as_read', { id }, payload.sub);
-    } catch {
-      throw new UnauthorizedException('Token inválido ou expirado');
-    }
+    const userId = this.getUserIdFromAuth(authorization);
+    await this.notificationService.markAsRead(id, userId);
+    this.debugLogger.logNotificationEvent(
+      'notification_marked_as_read',
+      { id },
+      userId,
+    );
   }
 
   @Put('read-all')
-  // @ApiOperation({ summary: 'Marcar todas as notificações como lidas' })
-  // @ApiResponse({ status: 200, description: 'Todas as notificações marcadas como lidas' })
   @HttpCode(HttpStatus.OK)
   async markAllAsRead(
-    @Headers('authorization') authorization: string
+    @Headers('authorization') authorization: string,
   ): Promise<void> {
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Token de autenticação não fornecido');
-    }
-    const token = authorization.substring(7);
-    try {
-      const payload = this.jwtService.verify(token);
-      await this.notificationService.markAllAsRead(payload.sub);
-      this.debugLogger.logNotificationEvent('notifications_marked_all_read', {}, payload.sub);
-    } catch {
-      throw new UnauthorizedException('Token inválido ou expirado');
-    }
+    const userId = this.getUserIdFromAuth(authorization);
+    await this.notificationService.markAllAsRead(userId);
+    this.debugLogger.logNotificationEvent(
+      'notifications_marked_all_read',
+      {},
+      userId,
+    );
   }
 
   @Delete(':id')
-  // @ApiOperation({ summary: 'Excluir notificação' })
-  // @ApiResponse({ status: 200, description: 'Notificação excluída' })
-  // @ApiResponse({ status: 404, description: 'Notificação não encontrada' })
   @HttpCode(HttpStatus.OK)
   async deleteNotification(
     @Param('id') id: number,
-    @Headers('authorization') authorization: string
+    @Headers('authorization') authorization: string,
   ): Promise<void> {
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Token de autenticação não fornecido');
-    }
-    const token = authorization.substring(7);
-    try {
-      const payload = this.jwtService.verify(token);
-      await this.notificationService.delete(id, payload.sub);
-      this.debugLogger.logNotificationEvent('notification_deleted', { id }, payload.sub);
-    } catch {
-      throw new UnauthorizedException('Token inválido ou expirado');
-    }
+    const userId = this.getUserIdFromAuth(authorization);
+    await this.notificationService.delete(id, userId);
+    this.debugLogger.logNotificationEvent(
+      'notification_deleted',
+      { id },
+      userId,
+    );
   }
 
   @Get('search')
-  // @ApiOperation({ summary: 'Buscar notificações com termo de busca' })
-  // @ApiResponse({ status: 200, description: 'Resultados da busca' })
   async searchNotifications(
     @Query('q') searchTerm: string,
     @Query() options: NotificationQueryDto = {},
-    @Headers('authorization') authorization: string
+    @Headers('authorization') authorization: string,
   ): Promise<NotificationPagination> {
+    const userId = this.getUserIdFromAuth(authorization);
+    return this.notificationService.searchNotifications(
+      userId,
+      searchTerm,
+      options,
+    );
+  }
+
+  /**
+   * Extrai o userId (sub) do header Authorization, validando o JWT.
+   * Lancamento centraliza o tratamento de erro (token ausente/invalido/expirado)
+   * para evitar repeticao em todos os endpoints.
+   */
+  private getUserIdFromAuth(authorization: string | undefined): number {
     if (!authorization || !authorization.startsWith('Bearer ')) {
       throw new UnauthorizedException('Token de autenticação não fornecido');
     }
     const token = authorization.substring(7);
     try {
-      const payload = this.jwtService.verify(token);
-      return this.notificationService.searchNotifications(payload.sub, searchTerm, options);
+      const payload = this.jwtService.verify<{ sub: number }>(token);
+      return payload.sub;
     } catch {
       throw new UnauthorizedException('Token inválido ou expirado');
     }
@@ -219,12 +167,13 @@ export class NotificationController {
   // @ApiOperation({ summary: 'Limpar notificações antigas (admin)' })
   // @ApiResponse({ status: 200, description: 'Limpeza concluída' })
   async cleanupOldNotifications(
-    @Body('daysToKeep') daysToKeep: number = 90
+    @Body('daysToKeep') daysToKeep: number = 90,
   ): Promise<{ message: string; deletedCount: number }> {
-    const deletedCount = await this.notificationService.cleanupOldNotifications(daysToKeep);
+    const deletedCount =
+      await this.notificationService.cleanupOldNotifications(daysToKeep);
     return {
       message: 'Old notifications cleaned up successfully',
-      deletedCount
+      deletedCount,
     };
   }
 }

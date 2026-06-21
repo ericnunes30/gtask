@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await CommandFactory.run(AppModule, {
+  await CommandFactory.run(AppModule, {
     logger: new Logger('Console'),
   });
 
@@ -11,4 +11,4 @@ async function bootstrap() {
   // por exemplo, fechar conexões de banco de dados se necessário
 }
 
-bootstrap();
+void bootstrap();

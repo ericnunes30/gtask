@@ -1,12 +1,12 @@
-import { 
-  Entity, 
-  Column, 
-  PrimaryGeneratedColumn, 
-  CreateDateColumn, 
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
   ManyToMany,
-  JoinTable
+  JoinTable,
 } from 'typeorm';
 import { Task } from '../../tasks/entities/task.entity';
 import { User } from '../../user/entities/user.entity';
@@ -16,46 +16,46 @@ import { PriorityLevel } from '../../tasks/entities/enums';
 @Entity('projects')
 export class Project {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ type: 'varchar' })
-  title: string;
+  title!: string;
 
   @Column({ nullable: true, type: 'text' })
-  description: string | null;
+  description!: string | null;
 
   @Column({ type: 'boolean' })
-  status: boolean;
+  status!: boolean;
 
   @Column({
     type: 'enum',
     enum: PriorityLevel,
   })
-  priority: PriorityLevel;
+  priority!: PriorityLevel;
 
   @Column({ type: 'timestamp' })
-  start_date: Date;
+  start_date!: Date;
 
   @Column({ type: 'timestamp' })
-  end_date: Date;
+  end_date!: Date;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
-  @OneToMany(() => Task, task => task.project)
-  tasks: Task[];
+  @OneToMany(() => Task, (task) => task.project)
+  tasks!: Task[];
 
   @ManyToMany(() => User)
   @JoinTable({
     name: 'projects_users',
     joinColumn: { name: 'project_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' }
+    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
   })
-  users: User[];
+  users!: User[];
 
-  @ManyToMany(() => Occupation, occupation => occupation.projects)
-  occupations: Occupation[];
+  @ManyToMany(() => Occupation, (occupation) => occupation.projects)
+  occupations!: Occupation[];
 }

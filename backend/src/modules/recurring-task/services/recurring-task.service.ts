@@ -41,15 +41,22 @@ export class RecurringTaskService {
     return await this.occupationEnhancer.enhance(recurringTask);
   }
 
-  async create(createRecurringTaskDto: CreateRecurringTaskDto, userId: number): Promise<RecurringTask> {
-    this.logger.log(`Iniciando criação de tarefa recorrente para o usuário ${userId} com dados: ${JSON.stringify(createRecurringTaskDto)}`);
+  async create(
+    createRecurringTaskDto: CreateRecurringTaskDto,
+    userId: number,
+  ): Promise<RecurringTask> {
+    this.logger.log(
+      `Iniciando criação de tarefa recorrente para o usuário ${userId} com dados: ${JSON.stringify(createRecurringTaskDto)}`,
+    );
     try {
       const recurringTask = this.creationFactory.createRecurringTask(
-        createRecurringTaskDto, 
+        createRecurringTaskDto,
         this.recurringTaskRepository,
-        userId
+        userId,
       );
-      this.logger.log(`Entidade criada pelo factory: ${JSON.stringify(recurringTask)}`);
+      this.logger.log(
+        `Entidade criada pelo factory: ${JSON.stringify(recurringTask)}`,
+      );
 
       const savedTask = await this.recurringTaskRepository.save(recurringTask);
       this.logger.log(`Tarefa salva no banco de dados com ID: ${savedTask.id}`);
@@ -57,8 +64,11 @@ export class RecurringTaskService {
       const enhancedTask = await this.occupationEnhancer.enhance(savedTask);
       this.logger.log('Tarefa "melhorada" com sucesso.');
       return enhancedTask;
-    } catch (error) {
-      this.logger.error('Erro capturado no RecurringTaskService', error.stack);
+    } catch (error: unknown) {
+      this.logger.error(
+        'Erro capturado no RecurringTaskService',
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error; // Re-lança o erro para não quebrar o fluxo de exceção do NestJS
     }
   }
@@ -68,8 +78,11 @@ export class RecurringTaskService {
     updateRecurringTaskDto: UpdateRecurringTaskDto,
   ): Promise<RecurringTask> {
     const recurringTask = await this.findOne(id);
-    
-    const updatedTask = this.updateFactory.updateRecurringTask(recurringTask, updateRecurringTaskDto);
+
+    const updatedTask = this.updateFactory.updateRecurringTask(
+      recurringTask,
+      updateRecurringTaskDto,
+    );
     const savedTask = await this.recurringTaskRepository.save(updatedTask);
     return await this.occupationEnhancer.enhance(savedTask);
   }

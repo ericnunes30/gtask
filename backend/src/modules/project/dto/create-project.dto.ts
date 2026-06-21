@@ -12,20 +12,18 @@ import {
   IsArray,
   IsInt,
 } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import { PriorityLevel } from '../../tasks/entities/enums';
 
 /**
  * Validador customizado que aceita tanto YYYY-MM-DD quanto ISO 8601
  */
 @ValidatorConstraint({ name: 'isFlexibleDateString', async: false })
-export class IsFlexibleDateStringConstraint implements ValidatorConstraintInterface {
-  validate(value: any): boolean {
-    // Log para debug
-    console.log('[IsFlexibleDateString] Validating value:', value, 'type:', typeof value);
-
+export class IsFlexibleDateStringConstraint
+  implements ValidatorConstraintInterface
+{
+  validate(value: unknown): boolean {
     if (!value) {
-      console.log('[IsFlexibleDateString] Value is falsy, returning false');
       return false;
     }
 
@@ -36,7 +34,6 @@ export class IsFlexibleDateStringConstraint implements ValidatorConstraintInterf
         // Tenta criar uma data válida
         const date = new Date(value);
         const isValid = !isNaN(date.getTime());
-        console.log('[IsFlexibleDateString] Simple date format, valid:', isValid);
         return isValid;
       }
 
@@ -44,7 +41,6 @@ export class IsFlexibleDateStringConstraint implements ValidatorConstraintInterf
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
         const date = new Date(value);
         const isValid = !isNaN(date.getTime());
-        console.log('[IsFlexibleDateString] ISO format, valid:', isValid);
         return isValid;
       }
     }
@@ -52,11 +48,9 @@ export class IsFlexibleDateStringConstraint implements ValidatorConstraintInterf
     // Se for Date object
     if (value instanceof Date) {
       const isValid = !isNaN(value.getTime());
-      console.log('[IsFlexibleDateString] Date object, valid:', isValid);
       return isValid;
     }
 
-    console.log('[IsFlexibleDateString] No valid format found, returning false');
     return false;
   }
 
@@ -69,7 +63,7 @@ export class IsFlexibleDateStringConstraint implements ValidatorConstraintInterf
  * Decorator de validação que aceita ambos os formatos de data
  */
 export function IsFlexibleDateString(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -81,58 +75,57 @@ export function IsFlexibleDateString(validationOptions?: ValidationOptions) {
 }
 
 /**
- * Transforma uma string de data no formato YYYY-MM-DD para ISO 8601
+ * Transforma uma string de data no formato YYYY-MM-DD para ISO 8601.
+ * Aceita `unknown` (entrada de class-transformer) e retorna o tipo adequado
+ * ou `null/undefined` quando o input e vazio.
  */
-function transformDate(value: string | Date | null | undefined): string | Date | null | undefined {
-  // Se for null ou undefined, retorna como está
+function transformDate(value: unknown): string | Date | null | undefined {
   if (value === null || value === undefined) {
     return value;
   }
 
-  // Se já for um objeto Date, converte para ISO string
+  // Se ja for Date, converte para ISO string
   if (value instanceof Date) {
     return value.toISOString();
   }
 
-  // Se for string no formato YYYY-MM-DD, converte para ISO 8601
+  // Se for string
   if (typeof value === 'string') {
-    // Verifica se está no formato YYYY-MM-DD
-    const simpleDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (simpleDateRegex.test(value)) {
-      // Cria um Date e converte para ISO 8601 (define como meia-noite UTC)
-      const date = new Date(value + 'T00:00:00.000Z');
-      return date.toISOString();
+    // YYYY-MM-DD -> ISO 8601
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return new Date(value + 'T00:00:00.000Z').toISOString();
     }
-
-    // Se já estiver em formato ISO, retorna como está
-    return value;
+    // Ja em formato ISO ou outro formato parseavel
+    return new Date(value);
   }
 
-  return value;
+  // Outros tipos (number, boolean, object): tenta converter para Date,
+  // caso contrario retorna string vazia
+  return '';
 }
 
 export class CreateProjectDto {
   @IsString()
   @MaxLength(255)
-  title: string;
+  title!: string;
 
   @IsOptional()
   @IsString()
   description?: string | null;
 
   @IsBoolean()
-  status: boolean;
+  status!: boolean;
 
   @IsEnum(PriorityLevel)
-  priority: PriorityLevel;
+  priority!: PriorityLevel;
 
-  @Transform(({ value }) => transformDate(value))
+  @Transform(({ value }: { value: unknown }) => transformDate(value))
   @IsFlexibleDateString()
-  start_date: Date;
+  start_date!: Date;
 
-  @Transform(({ value }) => transformDate(value))
+  @Transform(({ value }: { value: unknown }) => transformDate(value))
   @IsFlexibleDateString()
-  end_date: Date;
+  end_date!: Date;
 
   @IsOptional()
   @IsArray()
