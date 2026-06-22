@@ -16,17 +16,13 @@ import { CommentService } from '../services/comment.service';
 import { CreateCommentDto } from '../dto/create-comment.dto';
 import { UpdateCommentDto } from '../dto/update-comment.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
-import { CommentCreator } from '../services/comment-creator.abstract';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 @Controller('comments')
 export class CommentController {
   private readonly logger = new Logger(CommentController.name);
 
-  constructor(
-    private readonly commentService: CommentService,
-    private readonly commentCreator: CommentCreator,
-  ) {}
+  constructor(private readonly commentService: CommentService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -40,7 +36,7 @@ export class CommentController {
     this.logger.log(
       `[POST /comments] DTO: ${JSON.stringify(createCommentDto)}`,
     );
-    return this.commentCreator.create(createCommentDto, currentUser.sub);
+    return this.commentService.create(createCommentDto, currentUser.sub);
   }
 
   @Get()
