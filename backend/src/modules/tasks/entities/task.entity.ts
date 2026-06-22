@@ -18,6 +18,7 @@ import { Occupation } from '../../occupation/entities/occupation.entity';
 import { Comment } from '../../comment/entities/comment.entity';
 import { RecurringTask } from '../../recurring-task/entities/recurring-task.entity';
 import { ActivityLog } from '../../activity-log/entities/activity-log.entity';
+import type { CommentNode } from '../helpers/task-comments.helper';
 
 @Entity('tasks')
 export class Task {
@@ -108,7 +109,7 @@ export class Task {
   occupations!: Occupation[];
 
   @OneToMany(() => Comment, (comment) => comment.task)
-  comments!: Comment[];
+  comments!: (Comment | CommentNode)[];
 
   @OneToMany(() => ActivityLog, (activityLog) => activityLog.task)
   activityLogs!: ActivityLog[];
