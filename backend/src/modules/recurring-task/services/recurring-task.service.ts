@@ -5,8 +5,6 @@ import { RecurringTask } from '../entities/recurring-task.entity';
 import { CreateRecurringTaskDto } from '../dto/create-recurring-task.dto';
 import { UpdateRecurringTaskDto } from '../dto/update-recurring-task.dto';
 import { OccupationEnhancer } from '../enhancers/occupation-enhancer';
-import { RecurringTaskCreationFactory } from '../factories/recurring-task-creation.factory';
-import { RecurringTaskUpdateFactory } from '../factories/recurring-task-update.factory';
 
 @Injectable()
 export class RecurringTaskService {
@@ -16,8 +14,6 @@ export class RecurringTaskService {
     @InjectRepository(RecurringTask)
     private recurringTaskRepository: Repository<RecurringTask>,
     private occupationEnhancer: OccupationEnhancer,
-    private creationFactory: RecurringTaskCreationFactory,
-    private updateFactory: RecurringTaskUpdateFactory,
   ) {}
 
   async findAll(): Promise<RecurringTask[]> {
@@ -49,14 +45,11 @@ export class RecurringTaskService {
       `Iniciando criação de tarefa recorrente para o usuário ${userId} com dados: ${JSON.stringify(createRecurringTaskDto)}`,
     );
     try {
-      const recurringTask = this.creationFactory.createRecurringTask(
+      const recurringTask = this.buildRecurringTask(
         createRecurringTaskDto,
-        this.recurringTaskRepository,
         userId,
       );
-      this.logger.log(
-        `Entidade criada pelo factory: ${JSON.stringify(recurringTask)}`,
-      );
+      this.logger.log(`Entidade construida: ${JSON.stringify(recurringTask)}`);
 
       const savedTask = await this.recurringTaskRepository.save(recurringTask);
       this.logger.log(`Tarefa salva no banco de dados com ID: ${savedTask.id}`);
@@ -69,8 +62,30 @@ export class RecurringTaskService {
         'Erro capturado no RecurringTaskService',
         error instanceof Error ? error.stack : String(error),
       );
-      throw error; // Re-lança o erro para não quebrar o fluxo de exceção do NestJS
+      throw error;
     }
+  }
+
+  private buildRecurringTask(
+    dto: CreateRecurringTaskDto,
+    userId: number,
+  ): RecurringTask {
+    return this.recurringTaskRepository.create({
+      name: dto.name,
+      templateData: {
+        ...dto.templateData,
+        occupation_ids: dto.templateData.occupation_ids,
+      },
+      next_due_date: dto.next_due_date
+        ? new Date(dto.next_due_date)
+        : new Date(),
+      is_active: dto.is_active ?? true,
+      schedule_type: dto.schedule_type,
+      frequency_interval: dto.frequency_interval ?? null,
+      frequency_cron: dto.frequency_cron ?? null,
+      userId,
+      projectId: dto.projectId,
+    });
   }
 
   async update(
@@ -79,12 +94,38 @@ export class RecurringTaskService {
   ): Promise<RecurringTask> {
     const recurringTask = await this.findOne(id);
 
-    const updatedTask = this.updateFactory.updateRecurringTask(
-      recurringTask,
-      updateRecurringTaskDto,
-    );
-    const savedTask = await this.recurringTaskRepository.save(updatedTask);
+    this.applyUpdate(recurringTask, updateRecurringTaskDto);
+
+    const savedTask = await this.recurringTaskRepository.save(recurringTask);
     return await this.occupationEnhancer.enhance(savedTask);
+  }
+
+  private applyUpdate(task: RecurringTask, dto: UpdateRecurringTaskDto): void {
+    if (dto.next_due_date) {
+      task.next_due_date = new Date(dto.next_due_date);
+    }
+
+    if (dto.templateData) {
+      task.templateData = {
+        ...task.templateData,
+        ...dto.templateData,
+        occupation_ids:
+          dto.templateData.occupation_ids || task.templateData.occupation_ids,
+      };
+    }
+
+    if (dto.is_active !== null && dto.is_active !== undefined) {
+      task.is_active = dto.is_active;
+    }
+
+    Object.assign(task, {
+      name: dto.name || task.name,
+      schedule_type: dto.schedule_type || task.schedule_type,
+      frequency_interval: dto.frequency_interval || task.frequency_interval,
+      frequency_cron: dto.frequency_cron || task.frequency_cron,
+      userId: dto.userId || task.userId,
+      projectId: dto.projectId || task.projectId,
+    });
   }
 
   async remove(id: number): Promise<void> {

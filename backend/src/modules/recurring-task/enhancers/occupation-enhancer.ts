@@ -3,10 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RecurringTask } from '../entities/recurring-task.entity';
 import { Occupation } from '../../occupation/entities/occupation.entity';
-import { RecurringTaskEnhancer } from './recurring-task-enhancer.interface';
 
+/**
+ * Popula a propriedade `occupations` a partir dos IDs armazenados em
+ * `templateData.occupation_ids`. Mantido como classe injetavel para facilitar
+ * testes unitarios; pode virar helper no service se novos enhancers nao surgirem.
+ */
 @Injectable()
-export class OccupationEnhancer implements RecurringTaskEnhancer {
+export class OccupationEnhancer {
   constructor(
     @InjectRepository(Occupation)
     private occupationRepository: Repository<Occupation>,
