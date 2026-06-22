@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { Task } from '../entities/task.entity';
-import { TaskFindAllStrategy } from './task-find-all.strategy';
+
+export interface TaskFindAllStrategy {
+  execute(repository: Repository<Task>): Promise<Task[]>;
+}
 
 @Injectable()
 export class ActiveProjectFindAllStrategy implements TaskFindAllStrategy {
