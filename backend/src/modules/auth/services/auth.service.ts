@@ -9,12 +9,8 @@ import { UserService } from '../../user/services/user.service';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { SetupDto } from '../dto/setup.dto';
-import {
-  TokenPayloadFactory,
-  UserWithRoles,
-} from '../factories/token-payload.factory';
-import { AuthResponseFactory } from '../factories/auth-response.factory';
-import { UserValidationFactory } from '../factories/user-validation.factory';
+import { UserWithRoles } from '../interfaces/user-with-roles.interface';
+import { PasswordVerificationFactory } from '../strategies/password/password-verification.factory';
 
 @Injectable()
 export class AuthService {
@@ -23,16 +19,44 @@ export class AuthService {
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
-    private tokenPayloadFactory: TokenPayloadFactory,
-    private authResponseFactory: AuthResponseFactory,
-    private userValidationFactory: UserValidationFactory,
+    private passwordFactory: PasswordVerificationFactory,
   ) {}
 
   async validateUser(
     email: string,
     password: string,
   ): Promise<UserWithRoles | null> {
-    return await this.userValidationFactory.validateUser(email, password);
+    const user = await this.userService.findByEmail(email);
+    if (
+      user &&
+      user.password &&
+      (await this.verifyPassword(password, user.password))
+    ) {
+      const { password: _password, ...result } = user;
+      return result as unknown as UserWithRoles;
+    }
+    return null;
+  }
+
+  private async verifyPassword(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    try {
+      const strategy = this.passwordFactory.getStrategy(hashedPassword);
+      return await strategy.verify(plainPassword, hashedPassword);
+    } catch {
+      return false;
+    }
+  }
+
+  private buildTokenPayload(user: UserWithRoles): Record<string, unknown> {
+    return {
+      email: user.email,
+      sub: user.id,
+      name: user.name,
+      roles: user.roles?.map((role) => role.name) ?? [],
+    };
   }
 
   async checkSetupStatus(): Promise<{ needsSetup: boolean }> {
@@ -48,10 +72,7 @@ export class AuthService {
 
     const user = await this.userService.createFirstAdmin(setupDto);
 
-    const accessTokenPayload = this.tokenPayloadFactory.createPayload(
-      user,
-      'extended',
-    );
+    const accessTokenPayload = this.buildTokenPayload(user as UserWithRoles);
     const refreshTokenPayload = { sub: user.id };
 
     const accessToken = this.jwtService.sign(accessTokenPayload, {
@@ -77,10 +98,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const accessTokenPayload = this.tokenPayloadFactory.createPayload(
-      user,
-      'extended',
-    );
+    const accessTokenPayload = this.buildTokenPayload(user);
     const refreshTokenPayload = { sub: user.id }; // Minimal payload for refresh token
 
     const accessToken = this.jwtService.sign(accessTokenPayload, {
@@ -109,9 +127,8 @@ export class AuthService {
         throw new UnauthorizedException('Invalid user');
       }
 
-      const newAccessTokenPayload = this.tokenPayloadFactory.createPayload(
-        user,
-        'extended',
+      const newAccessTokenPayload = this.buildTokenPayload(
+        user as UserWithRoles,
       );
       const newAccessToken = this.jwtService.sign(newAccessTokenPayload, {
         expiresIn: '15m',

@@ -177,7 +177,128 @@ refactor(comment): emite evento comment.created diretamente no service
 
 ---
 
-## Fase 5 — Validação final e ajustes
+## Fase 5 — Quebrar arquivos grandes (critério 2.5 max-lines)
+
+### Objetivo
+Reduzir para abaixo de 300 linhas os arquivos que hoje ultrapassam o limite do Quality Gate.
+
+### Arquivos identificados
+
+| Arquivo | Linhas | Ação proposta |
+|---|---|---|
+| `src/modules/events/gateways/events.gateway.ts` | 509 | Dividir responsabilidades |
+| `src/modules/notification/factories/strategies.ts` | 507 | Separar strategies em arquivos |
+| `src/modules/whatsapp/services/whatsapp.service.ts` | 455 | Ignorar (módulo de integração futura) |
+| `src/modules/notification/services/notification.service.ts` | 332 | Extrair query helpers |
+
+### Estratégia por arquivo
+
+#### 5.1 `events.gateway.ts` → dividir em 3 partes
+
+Atualmente ele mistura:
+1. Handlers de WebSocket (`@SubscribeMessage`)
+2. Listeners de eventos de domínio (`@OnEvent` para notificações)
+3. Verificações de startup e helpers genéricos
+4. Bridge de eventos de timer
+
+Proposta:
+
+```text
+src/modules/events/
+├── gateways/
+│   └── events.gateway.ts           # WebSocket handlers + bridge timer (target: ~180 linhas)
+├── listeners/
+│   └── notification-event.listener.ts  # @OnEvent('task.created', 'comment.created', etc.)
+└── services/
+    └── startup-verification.service.ts # performStartupVerification, verifyServices, verifyEventHandlers
+```
+
+**Como fazer sem quebrar comportamento:**
+
+- `EventsGateway` continua injetando tudo, mas delega:
+  - `handleEvent()` e handlers `@OnEvent` → `NotificationEventListener`
+  - `performStartupVerification()` → `StartupVerificationService`
+- O bridge de timer (`timer.started`, `timer.paused`, `timer.tick`) pode continuar no gateway, pois é parte do próprio WebSocket.
+
+**Risco:** médio. Os listeners `@OnEvent` precisam continuar registrados como providers e o `EventEmitterModule` precisa achá-los.
+
+---
+
+#### 5.2 `notification/factories/strategies.ts` → separar em arquivos por strategy
+
+Atualmente o arquivo tem:
+- `BaseNotificationStrategy` (classe abstrata)
+- `TaskCreatedStrategy`
+- `TaskStatusUpdatedStrategy`
+- `CommentCreatedStrategy`
+- `TaskUpdatedStrategy`
+- `TimerStartedStrategy`
+- `TimerPausedStrategy`
+
+Proposta:
+
+```text
+src/modules/notification/strategies/
+├── base-notification.strategy.ts
+├── task-created.strategy.ts
+├── task-status-updated.strategy.ts
+├── comment-created.strategy.ts
+├── task-updated.strategy.ts
+├── timer-started.strategy.ts
+└── timer-paused.strategy.ts
+```
+
+**Como fazer:**
+- Mover cada strategy para seu arquivo.
+- Manter `NotificationStrategy` como interface exportada de `strategies/base-notification.strategy.ts` ou de `interfaces/notification.types.ts`.
+- Atualizar `NotificationModule` para importar e fornecer todas as strategies via provider token `NOTIFICATION_STRATEGY`.
+
+**Risco:** baixo. É apenas reorganização física, sem mudança de comportamento.
+
+---
+
+#### 5.3 `notification/services/notification.service.ts` → extrair query helpers
+
+Atualmente 332 linhas. A maior parte é CRUD e filtros de query.
+
+Proposta (suficiente para baixar de 300):
+
+```text
+src/modules/notification/services/
+├── notification.service.ts       # CRUD principal + regras de negócio
+└── notification-query.builder.ts  # helper de filtros e query builder
+```
+
+**Como fazer:**
+- Extrair `applyFilters()` e helpers de estatísticas (`getUserStats`) para `NotificationQueryBuilder`.
+- Ou, alternativa mais simples: remover logs duplicados e função `searchNotifications` que só delega para `findByUser` (código morto/suspeito).
+
+**Risco:** baixo. É refatoração interna do service.
+
+---
+
+### Ordem de execução dentro da Fase 5
+
+1. **5.2 strategies** — menor risco, ganho grande (507 → ~80 linhas cada arquivo).
+2. **5.3 notification.service** — ajuste simples.
+3. **5.1 events.gateway** — maior risco, fazer por último.
+
+### Commit sugerido
+```text
+refactor(backend): quebra arquivos grandes acima de 300 linhas
+
+- Separa notification strategies em arquivos individuais.
+- Extrai helpers de query de NotificationService.
+- Divide EventsGateway: gateway WS, listener de eventos e service de
+  verificacao de startup.
+
+Quality Gate:
+- Reduz numero de arquivos acima de 300 linhas.
+```
+
+---
+
+## Fase 6 — Validação final e ajustes
 
 ### Checklist
 - [ ] `npm run lint` passa
