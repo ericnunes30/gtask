@@ -1,5 +1,6 @@
 // @ts-check
 import eslint from '@eslint/js';
+import eslintPluginImport from 'eslint-plugin-import';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -10,6 +11,8 @@ export default tseslint.config(
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
+  eslintPluginImport.flatConfigs.recommended,
+  eslintPluginImport.flatConfigs.typescript,
   eslintPluginPrettierRecommended,
   {
     languageOptions: {
@@ -37,6 +40,7 @@ export default tseslint.config(
           caughtErrorsIgnorePattern: '^_',
         },
       ],
+      'import/no-unresolved': ['error', { commonjs: true, caseSensitive: true }],
     },
   },
   // Scripts CLI e migrations: console.log e permitido (saida de terminal / one-off).

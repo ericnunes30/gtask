@@ -357,6 +357,40 @@ const nivel1: Criterion[] = [
       return { pass: n === 0, measured: true, detail: n === 0 ? 'zero violacoes' : `${n} violacao(oes)` };
     },
   },
+  {
+    id: '1.11',
+    nivel: 1,
+    nome: 'Sem imports nao resolvidos',
+    run: () => {
+      const n = countRule(lintProject(), 'import/no-unresolved');
+      return { pass: n === 0, measured: true, detail: n === 0 ? 'zero violacoes' : `${n} import(s) nao resolvido(s)` };
+    },
+  },
+  {
+    id: '1.12',
+    nivel: 1,
+    nome: 'Sem arquivos mortos no src (unimported)',
+    run: () => {
+      if (!binInstalled('unimported')) {
+        return {
+          pass: false,
+          measured: false,
+          detail: 'unimported nao instalado (npm i -D unimported)',
+        };
+      }
+      const r = run('npx unimported --no-cache', { timeout: 180_000 });
+      const deadMatch = r.stdout.match(/unimported files?\s+\[?(\d+)\]?/i) || r.stdout.match(/(\d+)\s+unimported/i);
+      const dead = deadMatch ? parseInt(deadMatch[1], 10) : -1;
+      if (dead === -1) {
+        return { pass: false, measured: true, detail: 'falha ao medir arquivos mortos - rode npx unimported' };
+      }
+      return {
+        pass: dead === 0,
+        measured: true,
+        detail: dead === 0 ? 'zero arquivos mortos' : `${dead} arquivo(s) morto(s) - rode npx unimported`,
+      };
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------

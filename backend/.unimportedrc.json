@@ -1,0 +1,31 @@
+{
+  "entry": ["src/main.ts", "src/console.ts"],
+  "extensions": [".ts", ".js"],
+  "ignorePatterns": [
+    "node_modules/**",
+    "dist/**",
+    "test/**",
+    "scripts/**",
+    "**/*.spec.ts",
+    "**/*.d.ts",
+    "src/config/*.debug.ts",
+    "src/database/**",
+    "src/modules/whatsapp/**"
+  ],
+  "ignoreUnimported": [
+    "src/database/data-source.ts",
+    "src/database/migrations/*.ts",
+    "src/config/cors.config.debug.ts",
+    "src/modules/whatsapp/**"
+  ],
+  "ignoreUnused": [
+    "@nestjs/platform-express",
+    "@nestjs/platform-socket.io",
+    "@nestjs/axios",
+    "@types/luxon"
+  ],
+  "ignoreUnresolved": [
+    "bufferutil",
+    "utf-8-validate"
+  ]
+}
