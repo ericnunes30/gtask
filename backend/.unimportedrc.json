@@ -16,6 +16,11 @@
     "src/database/data-source.ts",
     "src/database/migrations/*.ts",
     "src/config/cors.config.debug.ts",
+    "src/modules/events/services/timer.service.ts",
+    "src/modules/notification/dto/create-notification.dto.ts",
+    "src/modules/notification/dto/update-notification.dto.ts",
+    "src/modules/permission/interfaces/permission.interface.ts",
+    "src/modules/user/dto/user-response.dto.ts",
     "src/modules/whatsapp/**"
   ],
   "ignoreUnused": [
