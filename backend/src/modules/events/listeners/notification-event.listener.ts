@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Server } from 'socket.io';
 import { Task } from '../../tasks/entities/task.entity';
@@ -7,7 +7,8 @@ import { NotificationService } from '../../notification/services/notification.se
 import { NotificationFactory } from '../../notification/factories/notification.factory';
 import { DebugLoggerService } from '../../notification/services/debug-logger.service';
 import { UserService } from '../../user/services/user.service';
-import { PermissionService } from '../../permission/services/permission.service';
+import type { NotificationRecipientResolver } from '../../notification/interfaces/notification-recipient-resolver.interface';
+import { NOTIFICATION_RECIPIENT_RESOLVER } from '../../notification/interfaces/notification-recipient-resolver.token';
 
 @Injectable()
 export class NotificationEventListener {
@@ -18,7 +19,8 @@ export class NotificationEventListener {
     private readonly notificationFactory: NotificationFactory,
     private readonly debugLogger: DebugLoggerService,
     private readonly userService: UserService,
-    private readonly permissionService: PermissionService,
+    @Inject(NOTIFICATION_RECIPIENT_RESOLVER)
+    private readonly recipientResolver: NotificationRecipientResolver,
   ) {}
 
   private serverRef: Server | null = null;
@@ -130,7 +132,7 @@ export class NotificationEventListener {
   async handleTaskCreatedEvent(payload: { task: Task; createdBy: number }) {
     this.logger.log(`🆕 Task created event received: ${payload.task.title}`);
     await this.handleEvent('task.created', payload, (p) =>
-      this.permissionService.getTaskCreatedNotificationRecipients(
+      this.recipientResolver.getTaskCreatedNotificationRecipients(
         p.task,
         p.createdBy,
       ),
@@ -148,7 +150,7 @@ export class NotificationEventListener {
       `🔄 Task status changed event received: ${payload.oldStatus} → ${payload.newStatus}`,
     );
     await this.handleEvent('task.status.changed', payload, (p) =>
-      this.permissionService.getTaskStatusUpdatedNotificationRecipients(
+      this.recipientResolver.getTaskStatusUpdatedNotificationRecipients(
         p.task,
         p.updatedBy,
         p.newStatus,
@@ -165,7 +167,7 @@ export class NotificationEventListener {
       `💬 Comment created event received: ${payload.comment.content.substring(0, 50)}...`,
     );
     await this.handleEvent('comment.created', payload, (p) =>
-      this.permissionService.getCommentCreatedNotificationRecipients(
+      this.recipientResolver.getCommentCreatedNotificationRecipients(
         p.comment,
         p.createdBy,
       ),
@@ -182,7 +184,7 @@ export class NotificationEventListener {
       `📝 Task updated event received: ${payload.task.title} - Fields changed: ${Object.keys(payload.changedFields).join(', ')}`,
     );
     await this.handleEvent('task.updated', payload, (p) =>
-      this.permissionService.getTaskUpdatedNotificationRecipients(
+      this.recipientResolver.getTaskUpdatedNotificationRecipients(
         p.task,
         p.updatedBy,
       ),

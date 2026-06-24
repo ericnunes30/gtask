@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Task } from '../../tasks/entities/task.entity';
 import { Comment } from '../../comment/entities/comment.entity';
+import { NotificationRecipientResolver } from '../../notification/interfaces/notification-recipient-resolver.interface';
 
 @Injectable()
-export class PermissionService {
+export class NotificationRecipientService
+  implements NotificationRecipientResolver
+{
   /**
    * Determina quais usuários devem receber notificações para um evento de criação de tarefa
    * @param task A tarefa criada
