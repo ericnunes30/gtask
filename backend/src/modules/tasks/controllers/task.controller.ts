@@ -13,8 +13,6 @@ import {
 } from '@nestjs/common';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
-import { TaskCreator } from '../services/task-creator.abstract';
-import { TaskUpdater } from '../services/task-updater.abstract';
 import { TaskService } from '../services/task.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -23,11 +21,7 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 @Controller('tasks')
 export class TaskController {
   private readonly logger = new Logger(TaskController.name);
-  constructor(
-    private readonly taskService: TaskService,
-    private readonly taskCreator: TaskCreator,
-    private readonly taskUpdater: TaskUpdater,
-  ) {}
+  constructor(private readonly taskService: TaskService) {}
 
   @Post()
   create(
@@ -35,7 +29,7 @@ export class TaskController {
     @CurrentUser() currentUser: Express.User,
   ) {
     // Passamos o ID do usuário autenticado para a camada de criação
-    return this.taskCreator.create(createTaskDto, currentUser.sub);
+    return this.taskService.create(createTaskDto, currentUser.sub);
   }
 
   @Get()
@@ -63,7 +57,7 @@ export class TaskController {
     @Body() updateTaskDto: UpdateTaskDto,
     @CurrentUser() currentUser: Express.User,
   ) {
-    return this.taskUpdater.update(+id, updateTaskDto, currentUser.sub);
+    return this.taskService.update(+id, updateTaskDto, currentUser.sub);
   }
 
   @Patch(':id')
@@ -77,7 +71,7 @@ export class TaskController {
       `[PATCH /tasks/:id] Request body: ${JSON.stringify(updateTaskDto)}`,
     );
     try {
-      const updatedTask = await this.taskUpdater.update(
+      const updatedTask = await this.taskService.update(
         +id,
         updateTaskDto,
         currentUser.sub,

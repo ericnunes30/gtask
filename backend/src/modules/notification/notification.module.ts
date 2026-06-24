@@ -15,7 +15,7 @@ import {
   TimerStartedStrategy,
   TimerPausedStrategy,
   TaskUpdatedStrategy,
-} from './factories/strategies';
+} from './strategies';
 import type { NotificationStrategy } from './interfaces/notification.types';
 
 const strategies: Array<new () => NotificationStrategy> = [

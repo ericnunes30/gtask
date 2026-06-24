@@ -1,57 +1,38 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, DataSource } from 'typeorm';
+import { Repository, In } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Task } from '../entities/task.entity';
 import { User } from '../../user/entities/user.entity';
 import { Occupation } from '../../occupation/entities/occupation.entity';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
 import { Status } from '../entities/enums';
-import { TaskStrategyFactory } from '../strategies/task-strategy.factory';
-import { TaskCreationFactory } from '../factories/task-creation.factory';
-import { TaskCreator } from './task-creator.abstract';
-import { TaskUpdater } from './task-updater.abstract';
-/**
- * Representa um comentario retornado pela query raw SQL em findOne.
- * Inclui campos extras (user, likes_count) e o array replies adicionado em tempo de execucao.
- */
-interface CommentNode {
-  id: number;
-  parent_id: number | null;
-  user_id: number;
-  content: string;
-  created_at: Date;
-  updated_at: Date;
-  user: { id: number; name: string; email: string } | null;
-  likes_count: number;
-  replies: CommentNode[];
-}
+import { ActiveProjectFindAllStrategy } from '../strategies/active-project-find-all.strategy';
+import { TaskCommentsHelper } from '../helpers/task-comments.helper';
 
 @Injectable()
-export class TaskService extends TaskCreator implements TaskUpdater {
+export class TaskService {
   private readonly logger = new Logger(TaskService.name);
 
   constructor(
-    private dataSource: DataSource, // Injetar o DataSource para Raw SQL
     @InjectRepository(Task)
     private taskRepository: Repository<Task>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
     @InjectRepository(Occupation)
     private occupationRepository: Repository<Occupation>,
-    private taskStrategyFactory: TaskStrategyFactory,
-    private taskCreationFactory: TaskCreationFactory,
-  ) {
-    super();
-  }
+    private activeProjectFindAllStrategy: ActiveProjectFindAllStrategy,
+    private eventEmitter: EventEmitter2,
+  ) {}
 
-  async create(createTaskDto: CreateTaskDto): Promise<Task> {
+  async create(createTaskDto: CreateTaskDto, userId: number): Promise<Task> {
     const { users, occupations, ...taskData } = createTaskDto;
 
-    const task = this.taskCreationFactory.createTask(
-      taskData as CreateTaskDto,
-      this.taskRepository,
-    );
+    const task = this.taskRepository.create({
+      ...taskData,
+      timer: taskData.timer ?? 0,
+    });
     const savedTask = await this.taskRepository.save(task);
 
     if (users && users.length > 0) {
@@ -68,23 +49,23 @@ export class TaskService extends TaskCreator implements TaskUpdater {
       savedTask.occupations = occupationEntities;
     }
 
-    if (
-      (users && users.length > 0) ||
-      (occupations && occupations.length > 0)
-    ) {
-      return await this.taskRepository.save(savedTask);
-    }
+    const taskWithRelations =
+      (users && users.length > 0) || (occupations && occupations.length > 0)
+        ? await this.taskRepository.save(savedTask)
+        : savedTask;
 
-    return savedTask;
+    this.eventEmitter.emit('task.created', {
+      task: taskWithRelations,
+      createdBy: userId,
+    });
+    return taskWithRelations;
   }
 
   async findAll(): Promise<Task[]> {
-    this.logger.log('findAll called - getting strategy');
-    const strategy = this.taskStrategyFactory.getFindAllStrategy(
+    this.logger.log('findAll called - usando ActiveProjectFindAllStrategy');
+    const result = await this.activeProjectFindAllStrategy.execute(
       this.taskRepository,
     );
-    this.logger.log(`Using strategy: ${strategy.constructor.name}`);
-    const result = await strategy.execute(this.taskRepository);
     this.logger.log(`Found ${result.length} tasks`);
     return result;
   }
@@ -92,79 +73,23 @@ export class TaskService extends TaskCreator implements TaskUpdater {
   async findOne(id: number): Promise<Task> {
     const task = await this.taskRepository.findOne({
       where: { id },
-      relations: ['users', 'occupations', 'project', 'reviewer'], // Removido comments daqui
+      relations: ['users', 'occupations', 'project', 'reviewer'],
     });
 
     if (!task) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
-    // Raw SQL para buscar comentários e suas respostas
-    const comments = (await this.dataSource.query(
-      `
-      WITH RECURSIVE comment_tree AS (
-        SELECT
-          c.*,
-          json_build_object('id', u.id, 'name', u.name, 'email', u.email) as user,
-          (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id) as likes_count
-        FROM comments c
-        LEFT JOIN users u ON u.id = c.user_id
-        WHERE c.task_id = $1 AND c.parent_id IS NULL
-        UNION ALL
-        SELECT
-          c.*,
-          json_build_object('id', u.id, 'name', u.name, 'email', u.email) as user,
-          (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id) as likes_count
-        FROM comments c
-        LEFT JOIN users u ON u.id = c.user_id
-        JOIN comment_tree ct ON ct.id = c.parent_id
-      )
-      SELECT
-        *,
-        (SELECT json_agg(json_build_object(
-          'id', cl.id,
-          'userId', cl.user_id,
-          'createdAt', cl.created_at
-        )) FROM comment_likes cl WHERE cl.comment_id = comment_tree.id) as likes
-      FROM comment_tree;
-    `,
-      [id],
-    )) as unknown as CommentNode[];
-
-    // Estrutura os comentários em formato aninhado
-    const commentsMap = new Map<number, CommentNode>();
-    const topLevelComments: CommentNode[] = [];
-    comments.forEach((comment: CommentNode) => {
-      comment.replies = [];
-      commentsMap.set(comment.id, comment);
-      if (comment.parent_id) {
-        const parent = commentsMap.get(comment.parent_id);
-        if (parent) {
-          parent.replies.push(comment);
-        }
-      } else {
-        topLevelComments.push(comment);
-      }
-    });
-
-    (task as unknown as { comments: CommentNode[] }).comments =
-      topLevelComments;
-
-    // Buscar activity logs da tarefa
-    const activityLogs: unknown[] = await this.dataSource.query(
-      `
-      SELECT
-        al.*,
-        json_build_object('id', u.id, 'name', u.name, 'email', u.email) as user
-      FROM activity_logs al
-      LEFT JOIN users u ON u.id = al.user_id
-      WHERE al.task_id = $1
-      ORDER BY al.created_at DESC
-      LIMIT 50
-    `,
-      [id],
+    const comments = await TaskCommentsHelper.fetchNestedComments(
+      this.taskRepository.manager.connection,
+      id,
     );
+    task.comments = comments;
 
+    const activityLogs = await TaskCommentsHelper.fetchActivityLogs(
+      this.taskRepository.manager.connection,
+      id,
+    );
     Object.assign(task, { activityLogs });
 
     return task;
@@ -173,12 +98,91 @@ export class TaskService extends TaskCreator implements TaskUpdater {
   async update(
     id: number,
     updateTaskDto: UpdateTaskDto,
-    _userId: number,
+    userId: number,
   ): Promise<Task> {
-    const strategy = this.taskStrategyFactory.getUpdateStrategy(
-      this.taskRepository,
-    );
-    return await strategy.execute(id, updateTaskDto, this.taskRepository);
+    const oldTask = await this.findOne(id);
+
+    const updatedTask = await this.applyUpdate(id, updateTaskDto);
+    const fullTask = await this.findOne(id);
+
+    this.eventEmitter.emit('task.updated', {
+      task: fullTask,
+      updatedBy: userId,
+      changedFields: this.getChangedFields(updateTaskDto, oldTask),
+    });
+
+    if (updateTaskDto.status && oldTask.status !== updateTaskDto.status) {
+      this.eventEmitter.emit('task.status.changed', {
+        task: fullTask,
+        updatedBy: userId,
+        oldStatus: oldTask.status,
+        newStatus: updateTaskDto.status,
+      });
+    }
+
+    if (updateTaskDto.users) {
+      this.eventEmitter.emit('task.assignees.updated', {
+        task: updatedTask,
+        updatedBy: userId,
+        action: 'set',
+        userIds: updateTaskDto.users,
+      });
+    }
+
+    return updatedTask;
+  }
+
+  private async applyUpdate(
+    id: number,
+    updateTaskDto: UpdateTaskDto,
+  ): Promise<Task> {
+    const task = await this.taskRepository.findOne({ where: { id } });
+    if (!task) {
+      throw new NotFoundException(`Task with ID ${id} not found`);
+    }
+
+    const {
+      users: userIds,
+      occupations: occupationIds,
+      ...taskData
+    } = updateTaskDto;
+
+    Object.assign(task, taskData);
+
+    if (userIds) {
+      task.users = await this.taskRepository.manager.find(User, {
+        where: { id: In(userIds) },
+      });
+    }
+
+    if (occupationIds) {
+      task.occupations = await this.taskRepository.manager.find(Occupation, {
+        where: { id: In(occupationIds) },
+      });
+    }
+
+    return await this.taskRepository.save(task);
+  }
+
+  private getChangedFields(
+    updateTaskDto: UpdateTaskDto,
+    currentTask: Task,
+  ): Record<string, { oldValue: unknown; newValue: unknown }> {
+    const changedFields: Record<
+      string,
+      { oldValue: unknown; newValue: unknown }
+    > = {};
+
+    for (const [key, newValue] of Object.entries(updateTaskDto)) {
+      if (key === 'users' || key === 'occupations') continue;
+
+      const oldValue = (currentTask as unknown as Record<string, unknown>)[key];
+      if (oldValue !== newValue) {
+        changedFields[key] = { oldValue, newValue };
+      }
+    }
+
+    return changedFields;
   }
 
   async remove(id: number): Promise<void> {
@@ -207,10 +211,17 @@ export class TaskService extends TaskCreator implements TaskUpdater {
   }
 
   async updateTimer(id: number, timerValue: number): Promise<Task> {
-    const strategy = this.taskStrategyFactory.getTimerUpdateStrategy(
-      this.taskRepository,
-    );
-    return await strategy.execute(id, timerValue, this.taskRepository);
+    const fullTask = await this.taskRepository.findOne({
+      where: { id },
+      relations: ['project', 'reviewer', 'users', 'occupations'],
+    });
+
+    if (!fullTask) {
+      throw new NotFoundException(`Task with ID ${id} not found`);
+    }
+
+    fullTask.timer = timerValue;
+    return await this.taskRepository.save(fullTask);
   }
 
   async assignUsers(taskId: number, userIds: number[]): Promise<Task> {

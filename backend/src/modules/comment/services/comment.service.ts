@@ -1,15 +1,15 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Comment } from '../entities/comment.entity';
 import { CreateCommentDto } from '../dto/create-comment.dto';
 import { UpdateCommentDto } from '../dto/update-comment.dto';
 import { CommentLike } from '../entities/comment-like.entity';
 import { User } from '../../user/entities/user.entity';
-import { CommentCreator } from './comment-creator.abstract';
 
 @Injectable()
-export class CommentService extends CommentCreator {
+export class CommentService {
   private readonly logger = new Logger(CommentService.name);
 
   constructor(
@@ -19,9 +19,8 @@ export class CommentService extends CommentCreator {
     private commentLikeRepository: Repository<CommentLike>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-  ) {
-    super();
-  }
+    private eventEmitter: EventEmitter2,
+  ) {}
 
   async create(
     createCommentDto: CreateCommentDto,
@@ -40,8 +39,11 @@ export class CommentService extends CommentCreator {
       this.logger.log(
         `Service: Comment #${savedComment.id} saved successfully. Refetching with relations...`,
       );
-      // Re-fetch the comment to include all relations and DB-generated values
-      return this.findOne(savedComment.id);
+      const comment = await this.findOne(savedComment.id);
+
+      this.eventEmitter.emit('comment.created', { comment, createdBy: userId });
+
+      return comment;
     } catch (error: unknown) {
       this.logger.error(
         `Service: Failed to save comment.`,

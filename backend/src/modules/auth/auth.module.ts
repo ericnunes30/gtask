@@ -9,9 +9,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { UserModule } from '../user/user.module';
 import { PasswordVerificationFactory } from './strategies/password/password-verification.factory';
-import { TokenPayloadFactory } from './factories/token-payload.factory';
-import { AuthResponseFactory } from './factories/auth-response.factory';
-import { UserValidationFactory } from './factories/user-validation.factory';
 
 import { CommonModule } from '../../common/common.module';
 
@@ -35,9 +32,6 @@ import { CommonModule } from '../../common/common.module';
     JwtStrategy,
     LocalStrategy,
     PasswordVerificationFactory,
-    TokenPayloadFactory,
-    AuthResponseFactory,
-    UserValidationFactory,
   ],
   exports: [AuthService],
 })
