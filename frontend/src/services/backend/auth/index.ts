@@ -136,12 +136,6 @@ export const useGetCurrentUser = (enabled = true) => {
       enabled: enabled && authService.isAuthenticated(),
       retry: false,
       staleTime: 1000 * 60 * 10, // 10 minutos - dados de usuário mudam moderadamente
-      onError: (error: any) => {
-        if (error.response?.status === 401) {
-          // Token expirado ou inválido
-          window.location.href = '/login'
-        }
-      },
     }
   )
 }
