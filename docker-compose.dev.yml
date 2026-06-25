@@ -52,6 +52,12 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3334').on('error', () => process.exit(1)).on('response', () => process.exit(0))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # Frontend em modo desenvolvimento (Vite)
   frontend:
@@ -80,7 +86,7 @@ services:
     restart: unless-stopped
     # Healthcheck para o Vite dev server
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080').on('error', () => process.exit(1)).on('response', () => process.exit(0))"]
       interval: 30s
       timeout: 10s
       retries: 3
