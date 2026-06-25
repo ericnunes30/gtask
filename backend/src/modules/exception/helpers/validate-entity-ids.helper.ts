@@ -1,4 +1,4 @@
-import { In, type Repository } from 'typeorm';
+import { In, type Repository, type FindOptionsWhere } from 'typeorm';
 
 export type EntityRepository<T extends { id: number }> = Pick<
   Repository<T>,
@@ -18,7 +18,7 @@ export async function validateEntityIds<T extends { id: number }>(
 
   const uniqueIds = [...new Set(ids)];
   const entities = await repository.find({
-    where: { id: In(uniqueIds) },
+    where: { id: In(uniqueIds) } as FindOptionsWhere<T>,
   });
 
   const foundIds = new Set(entities.map((entity) => entity.id));
