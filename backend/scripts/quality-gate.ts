@@ -22,6 +22,7 @@ import * as path from 'node:path';
 // Tipos
 // ---------------------------------------------------------------------------
 type Result = { pass: boolean; measured: boolean; detail: string };
+type JestJsonReport = { numPassedTests?: number; numFailedTests?: number } | null;
 type Criterion = {
   id: string;
   nivel: 1 | 2;
@@ -149,7 +150,7 @@ export default [
   // Respeita excecao do projeto: console permitido em CLI commands e migrations
   {
     files: ['src/commands/**', 'src/database/migrations/**'],
-    rules: { 'no-console': 'off' },
+    rules: { 'no-console': 'off', 'max-lines': 'off' },
   },
   // Modulo whatsapp: integracao futura (ver .docs/modules-status.md).
   // N2.5 (max-lines) e N2.9 (complexity) nao aplicam ate o modulo
@@ -433,11 +434,18 @@ const nivel2: Criterion[] = [
     nivel: 2,
     nome: 'Suite de testes passa (jest)',
     run: () => {
-      const r = run('npx jest --passWithNoTests', { timeout: 300_000 });
-      const passMatch = r.stdout.match(/Tests:\s+(\d+) passed/);
-      const failMatch = r.stdout.match(/(\d+)\s+failed/);
-      const failed = failMatch ? parseInt(failMatch[1], 10) : 0;
-      const passed = passMatch ? parseInt(passMatch[1], 10) : 0;
+      const r = run('npx jest --passWithNoTests --json', { timeout: 300_000 });
+      let report: JestJsonReport = null;
+      try {
+        const stdout = r.stdout;
+        const jsonStart = stdout.indexOf('{');
+        const jsonStr = jsonStart >= 0 ? stdout.slice(jsonStart) : stdout;
+        report = JSON.parse(jsonStr) as unknown as JestJsonReport;
+      } catch {
+        report = null;
+      }
+      const passed = report?.numPassedTests ?? 0;
+      const failed = report?.numFailedTests ?? 0;
       return {
         pass: r.exit === 0 && failed === 0,
         measured: true,

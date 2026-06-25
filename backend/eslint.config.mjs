@@ -43,6 +43,26 @@ export default tseslint.config(
       'import/no-unresolved': ['error', { commonjs: true, caseSensitive: true }],
     },
   },
+  {
+    files: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
+    languageOptions: {
+      parserOptions: {
+        project: './tsconfig.spec.json',
+        projectService: false,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      // Specs usam mocks extensivamente; regras de "unsafe" geram ruido
+      // sem valor pratico em testes de unidade.
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+    },
+  },
   // Scripts CLI e migrations: console.log e permitido (saida de terminal / one-off).
   // Migrations vazias (up/down sem await) sao padrao -> require-await desligado.
   // Migrations manipulam dados legados em formato nao tipado -> no-explicit-any off.

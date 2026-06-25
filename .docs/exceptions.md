@@ -4,6 +4,7 @@
 
 As dependências abaixo são mantidas intencionalmente, mesmo sendo reportadas como "não utilizadas" pelo depcheck, porque são ferramentas de infraestrutura/auditoria ou dependências transitórias necessárias ao workflow:
 
+- @types/jest: tipos do Jest usados pelo TypeScript/ESLint para checagem dos arquivos `.spec.ts`.
 - @nestjs/schematics: dependência do @nestjs/cli para scaffolding (nest generate).
 - @types/pg: tipos do driver PostgreSQL — mantido para compatibilidade com queries nativas.
 - depcheck: ferramenta usada pelo próprio critério 1.7 do Quality Gate.
