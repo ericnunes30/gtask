@@ -10,7 +10,7 @@ interface SocketState {
 
   // Ações
   setConnected: (connected: boolean) => void
-  initializeSocket: () => void
+  initializeSocket: () => () => void
   disconnectSocket: () => void
   updateAuth: () => void
 }
@@ -30,33 +30,37 @@ export const useSocketStore = create<SocketState>()(
 
         initializeSocket: () => {
           const socket = get().socket
-          if (!socket) return
+          if (!socket) return () => {}
 
-          const { accessToken, refreshAuthToken } = useAuthStore.getState()
+          const { refreshAuthToken } = useAuthStore.getState()
 
-          // Event listeners
           const onConnect = () => {
             set({ isConnected: true })
+            // Reset flag so future disconnects can attempt refresh again.
+            tokenRefreshAttempted = false
           }
 
           const onDisconnect = () => {
             set({ isConnected: false })
           }
 
-          const onError = () => {
-            set({ isConnected: false })
-          }
-
-          const onConnectError = async (err: any) => {
+          const onConnectError = async (err: unknown) => {
             set({ isConnected: false })
 
-            // Handle token refresh
-            if (!tokenRefreshAttempted && typeof err?.message === 'string' && err.message.includes('Invalid token')) {
+            const message =
+              err && typeof (err as { message?: unknown }).message === 'string'
+                ? (err as { message: string }).message
+                : ''
+
+            // Handle token refresh once per disconnect cycle.
+            if (
+              !tokenRefreshAttempted &&
+              message.toLowerCase().includes('invalid token')
+            ) {
               tokenRefreshAttempted = true
               const success = await refreshAuthToken()
               if (success) {
-                const newToken = useAuthStore.getState().accessToken
-                socket.auth = newToken ? ({ token: newToken } as any) : undefined
+                // Auth function in ws.ts will read the new token from LS.
                 socket.connect()
               }
             }
@@ -64,15 +68,21 @@ export const useSocketStore = create<SocketState>()(
 
           socket.on('connect', onConnect)
           socket.on('disconnect', onDisconnect)
-          socket.on('connect_error', onError)
           socket.on('connect_error', onConnectError)
+
+          // Keep socket auth in sync whenever the access token changes.
+          const unsubscribeAuth = useAuthStore.subscribe((state, prevState) => {
+            if (state.accessToken !== prevState.accessToken) {
+              get().updateAuth()
+            }
+          })
 
           // Cleanup
           return () => {
             socket.off('connect', onConnect)
             socket.off('disconnect', onDisconnect)
-            socket.off('connect_error', onError)
             socket.off('connect_error', onConnectError)
+            unsubscribeAuth()
           }
         },
 
@@ -88,14 +98,12 @@ export const useSocketStore = create<SocketState>()(
           const socket = get().socket
           const { accessToken } = useAuthStore.getState()
 
-          if (socket) {
-            socket.auth = accessToken ? ({ token: accessToken } as any) : undefined
+          if (!socket) return
 
-            if (accessToken && socket.disconnected) {
-              socket.connect()
-            } else if (!accessToken && socket.connected) {
-              socket.disconnect()
-            }
+          if (accessToken && socket.disconnected) {
+            socket.connect()
+          } else if (!accessToken && socket.connected) {
+            socket.disconnect()
           }
         }
       }
