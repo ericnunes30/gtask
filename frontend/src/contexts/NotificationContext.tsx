@@ -1,6 +1,6 @@
 ﻿
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useSocket } from './SocketContext';
+import { useSocket } from './adapters/SocketContextAdapter';
 import { useAuth } from './adapters/AuthContextAdapter';
 import { toast } from 'sonner';
 import { Bell, MessageSquare, Play, Pause, ClipboardList, BellRing } from 'lucide-react';

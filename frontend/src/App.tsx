@@ -5,7 +5,8 @@ import './styles/tiptap.css';
 import 'prosemirror-view/style/prosemirror.css';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { setupAuthInterceptor } from '@/services/backend/api';
+import { setupAuthInterceptor, ejectAuthInterceptor } from '@/services/backend/api';
+import { useSocketStore } from '@/stores/socketStore';
 import AppRoutes from "@/routes";
 import { AppInitializer } from '@/components/AppInitializer';
 import { TaskModalProvider } from '@/components/providers/TaskModalProvider';
@@ -19,10 +20,19 @@ import { PageTransition } from '@/components/transitions/PageTransition';
 const AuthInterceptorSetup = () => {
   const refreshAuthToken = useAuthStore((state) => state.refreshAuthToken);
   const logout = useAuthStore((state) => state.logout);
+  const updateAuth = useSocketStore((state) => state.updateAuth);
 
   useEffect(() => {
-    setupAuthInterceptor(refreshAuthToken, logout);
-  }, [refreshAuthToken, logout]);
+    setupAuthInterceptor({
+      refreshAuthToken,
+      logout,
+      onRefreshed: () => updateAuth(),
+    });
+
+    return () => {
+      ejectAuthInterceptor();
+    };
+  }, [refreshAuthToken, logout, updateAuth]);
 
   return null; // This component does not render anything
 };
