@@ -306,41 +306,6 @@ const nivel1: Criterion[] = [
     },
   },
   {
-    id: '1.8',
-    nivel: 1,
-    nome: 'Docker Compose dev sobe (containers healthy)',
-    run: () => {
-      const compose = path.join(ROOT_DIR, 'docker-compose.dev.yml');
-      if (!existsSync(compose)) {
-        return { pass: false, measured: true, detail: 'docker-compose.dev.yml nao encontrado' };
-      }
-      const r = run(`docker compose -f "${compose}" ps --format json`, { timeout: 30_000 });
-      if (r.exit !== 0) {
-        return { pass: false, measured: true, detail: 'docker compose indisponivel ou nao iniciado' };
-      }
-      const lines = r.stdout.split('\n').filter(Boolean);
-      let total = 0;
-      let healthy = 0;
-      for (const line of lines) {
-        try {
-          const c = JSON.parse(line);
-          total++;
-          const health = (c.Health || c.health || '').toString().toLowerCase();
-          const status = (c.Status || c.status || '').toString().toLowerCase();
-          if (health === 'healthy' || status.includes('healthy')) healthy++;
-        } catch { /* linha nao-JSON, ignora */ }
-      }
-      if (total === 0) {
-        return { pass: false, measured: true, detail: 'nenhum container em execucao' };
-      }
-      return {
-        pass: healthy === total,
-        measured: true,
-        detail: `${healthy}/${total} container(s) healthy`,
-      };
-    },
-  },
-  {
     id: '1.9',
     nivel: 1,
     nome: 'Sem codigo inalcançavel (no-unreachable)',

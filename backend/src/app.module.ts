@@ -21,12 +21,14 @@ import { CommandsModule } from './commands/commands.module';
 import { EventsModule } from './modules/events/events.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { PermissionModule } from './modules/permission/permission.module';
+import { ExceptionModule } from './modules/exception/exception.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ExceptionModule,
     CommonModule,
     ThrottlerModule.forRoot([
       {
