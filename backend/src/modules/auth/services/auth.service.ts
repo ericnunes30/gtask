@@ -4,6 +4,7 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../../user/services/user.service';
 import { LoginDto } from '../dto/login.dto';
@@ -15,12 +16,19 @@ import { PasswordVerificationFactory } from '../strategies/password/password-ver
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly refreshSecret: string;
 
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
     private passwordFactory: PasswordVerificationFactory,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    this.refreshSecret =
+      this.configService.get<string>('JWT_REFRESH_SECRET') ??
+      this.configService.get<string>('JWT_SECRET') ??
+      'your-secret-key';
+  }
 
   async validateUser(
     email: string,
@@ -121,7 +129,9 @@ export class AuthService {
 
   async refreshToken(token: string) {
     try {
-      const payload = this.jwtService.verify<{ sub: number }>(token);
+      const payload = this.jwtService.verify<{ sub: number }>(token, {
+        secret: this.refreshSecret,
+      });
       const user = await this.userService.findOne(payload.sub);
       if (!user) {
         throw new UnauthorizedException('Invalid user');
@@ -133,8 +143,15 @@ export class AuthService {
       const newAccessToken = this.jwtService.sign(newAccessTokenPayload, {
         expiresIn: '15m',
       });
+      const newRefreshToken = this.jwtService.sign(
+        { sub: user.id },
+        {
+          secret: this.refreshSecret,
+          expiresIn: '7d',
+        },
+      );
 
-      return { accessToken: newAccessToken };
+      return { accessToken: newAccessToken, refreshToken: newRefreshToken };
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
