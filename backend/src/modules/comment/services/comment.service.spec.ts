@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { CommentService } from './comment.service';
@@ -108,7 +107,9 @@ describe('CommentService', () => {
     it('should throw CommentNotFoundException when not found', async () => {
       commentRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne(999)).rejects.toThrow(CommentNotFoundException);
+      await expect(service.findOne(999)).rejects.toThrow(
+        CommentNotFoundException,
+      );
     });
   });
 
