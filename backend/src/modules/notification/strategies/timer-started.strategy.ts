@@ -10,6 +10,7 @@ import {
   BaseNotificationStrategy,
   NotificationPayload,
 } from './base-notification.strategy';
+import { InvalidStrategyPayloadException } from '../exceptions/invalid-strategy-payload.exception';
 
 @Injectable()
 export class TimerStartedStrategy extends BaseNotificationStrategy {
@@ -25,7 +26,7 @@ export class TimerStartedStrategy extends BaseNotificationStrategy {
   ): ReturnType<BaseNotificationStrategy['create']> {
     const p = payload as unknown as TimerEventPayload;
     if (!this.validate(payload)) {
-      throw new Error('Invalid payload for TimerStartedStrategy');
+      throw new InvalidStrategyPayloadException(NotificationType.TIMER_STARTED);
     }
 
     const { task, userId, performer, duration } = p;
