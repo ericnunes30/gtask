@@ -1,11 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { RoleService } from './role.service';
 import { Role } from '../entities/role.entity';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
+import { RoleNotFoundException } from '../exceptions/role-not-found.exception';
+import { DuplicateRoleNameException } from '../exceptions/duplicate-role-name.exception';
 
 type MockRepository<T> = jest.Mocked<Repository<T>>;
 
@@ -83,22 +84,41 @@ describe('RoleService', () => {
       expect(result).toEqual(mockRole);
     });
 
-    it('should throw NotFoundException when role not found', async () => {
+    it('should throw RoleNotFoundException when role not found', async () => {
       roleRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999)).rejects.toThrow(RoleNotFoundException);
     });
   });
 
   describe('update', () => {
     it('should update role', async () => {
-      roleRepository.findOne.mockResolvedValue(mockRole);
+      roleRepository.findOne
+        .mockResolvedValueOnce(mockRole) // findOne for the role itself
+        .mockResolvedValueOnce(null); // duplicate name check: no conflict
       roleRepository.save.mockResolvedValue({ ...mockRole, name: 'UPDATED' });
 
       const dto: UpdateRoleDto = { name: 'UPDATED' } as UpdateRoleDto;
       const result = await service.update(1, dto);
 
       expect(result.name).toBe('UPDATED');
+    });
+
+    it('should throw DuplicateRoleNameException when name already exists', async () => {
+      const existingRole = {
+        ...mockRole,
+        id: 2,
+        name: 'EXISTING',
+      } as unknown as Role;
+      roleRepository.findOne
+        .mockResolvedValueOnce(mockRole) // findOne for the role itself
+        .mockResolvedValueOnce(existingRole); // duplicate name check: conflict
+
+      const dto: UpdateRoleDto = { name: 'EXISTING' } as UpdateRoleDto;
+
+      await expect(service.update(1, dto)).rejects.toThrow(
+        DuplicateRoleNameException,
+      );
     });
   });
 

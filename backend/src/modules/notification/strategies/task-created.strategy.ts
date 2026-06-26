@@ -8,6 +8,7 @@ import {
   BaseNotificationStrategy,
   NotificationPayload,
 } from './base-notification.strategy';
+import { InvalidStrategyPayloadException } from '../exceptions/invalid-strategy-payload.exception';
 
 @Injectable()
 export class TaskCreatedStrategy extends BaseNotificationStrategy {
@@ -30,7 +31,7 @@ export class TaskCreatedStrategy extends BaseNotificationStrategy {
   ): ReturnType<BaseNotificationStrategy['create']> {
     const p = payload as unknown as TaskCreatedPayload;
     if (!this.validate(payload)) {
-      throw new Error('Invalid payload for TaskCreatedStrategy');
+      throw new InvalidStrategyPayloadException(NotificationType.TASK_CREATED);
     }
 
     const { task, createdBy, performer } = p;

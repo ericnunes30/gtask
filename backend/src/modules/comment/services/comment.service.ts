@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -7,6 +7,10 @@ import { CreateCommentDto } from '../dto/create-comment.dto';
 import { UpdateCommentDto } from '../dto/update-comment.dto';
 import { CommentLike } from '../entities/comment-like.entity';
 import { User } from '../../user/entities/user.entity';
+import { CommentNotFoundException } from '../exceptions/comment-not-found.exception';
+import { UserNotFoundException } from '../../user/exceptions/user-not-found.exception';
+import { validateEntityIds } from '../../exception/helpers/validate-entity-ids.helper';
+import { Task } from '../../tasks/entities/task.entity';
 
 @Injectable()
 export class CommentService {
@@ -19,6 +23,8 @@ export class CommentService {
     private commentLikeRepository: Repository<CommentLike>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Task)
+    private taskRepository: Repository<Task>,
     private eventEmitter: EventEmitter2,
   ) {}
 
@@ -28,6 +34,12 @@ export class CommentService {
   ): Promise<Comment> {
     this.logger.log(
       `Service: Creating comment for user #${userId} with DTO: ${JSON.stringify(createCommentDto)}`,
+    );
+    await validateEntityIds(
+      this.taskRepository,
+      [createCommentDto.task_id],
+      (missing) =>
+        new BadRequestException(`Task with ID ${missing[0]} not found`),
     );
     const commentEntity = this.commentRepository.create({
       ...createCommentDto,
@@ -80,7 +92,7 @@ export class CommentService {
     });
 
     if (!comment) {
-      throw new NotFoundException(`Comentário com ID ${id} não encontrado`);
+      throw new CommentNotFoundException(id);
     }
 
     return comment;
@@ -99,7 +111,7 @@ export class CommentService {
     });
 
     if (!comment) {
-      throw new NotFoundException(`Comentário com ID ${id} não encontrado`);
+      throw new CommentNotFoundException(id);
     }
 
     return comment;
@@ -129,14 +141,10 @@ export class CommentService {
   async likeComment(commentId: number, userId: number): Promise<void> {
     const comment = await this.findOneWithoutLikes(commentId);
 
-    if (!comment) {
-      throw new NotFoundException(`Comment with ID ${commentId} not found`);
-    }
-
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!user) {
-      throw new NotFoundException(`User with ID ${userId} not found`);
+      throw new UserNotFoundException(userId);
     }
 
     const existingLike = await this.commentLikeRepository.findOne({
@@ -160,14 +168,10 @@ export class CommentService {
   async unlikeComment(commentId: number, userId: number): Promise<void> {
     const comment = await this.findOneWithoutLikes(commentId);
 
-    if (!comment) {
-      throw new NotFoundException(`Comment with ID ${commentId} not found`);
-    }
-
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!user) {
-      throw new NotFoundException(`User with ID ${userId} not found`);
+      throw new UserNotFoundException(userId);
     }
 
     const existingLike = await this.commentLikeRepository.findOne({

@@ -1,19 +1,16 @@
-import {
-  Injectable,
-  NotFoundException,
-  InternalServerErrorException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, In, DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import * as fs from 'fs';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { Role } from '../../role/entities/role.entity';
 import { Occupation } from '../../occupation/entities/occupation.entity';
 import { SetupDto } from '../../auth/dto/setup.dto';
+import { UserNotFoundException } from '../exceptions/user-not-found.exception';
+import { RoleNotFoundException } from '../../role/exceptions/role-not-found.exception';
+import { OccupationNotFoundException } from '../../occupation/exceptions/occupation-not-found.exception';
 
 @Injectable()
 export class UserService {
@@ -49,8 +46,9 @@ export class UserService {
       });
 
       if (occupations.length !== occupationIds.length) {
-        throw new NotFoundException(
-          'Uma ou mais occupations não foram encontradas',
+        throw new OccupationNotFoundException(
+          0,
+          'One or more occupations not found',
         );
       }
 
@@ -94,8 +92,9 @@ export class UserService {
       });
 
       if (!adminRole) {
-        throw new InternalServerErrorException(
-          'ADMIN role not found. Ensure api-security-hardening migration has run.',
+        throw new RoleNotFoundException(
+          0,
+          'ADMIN role not found. Ensure migration has run.',
         );
       }
 
@@ -142,7 +141,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException(`Usuário com ID ${id} não encontrado`);
+      throw new UserNotFoundException(id);
     }
 
     return user;
@@ -178,12 +177,6 @@ export class UserService {
     Object.assign(user, updateUserDto);
     const savedUser = await this.userRepository.save(user);
 
-    const logMessage = `[${new Date().toISOString()}] User ${savedUser.id} updated. ${updateUserDto.password ? 'Password changed.' : ''}\n`;
-    fs.appendFileSync(
-      'G:/novosApps/manager-group/backend/server.log',
-      logMessage,
-    );
-
     return savedUser;
   }
 
@@ -199,7 +192,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
+      throw new UserNotFoundException(userId);
     }
 
     // Buscar roles válidos pelos IDs fornecidos
@@ -208,7 +201,7 @@ export class UserService {
     });
 
     if (roles.length !== roleIds.length) {
-      throw new NotFoundException('Uma ou mais roles não foram encontradas');
+      throw new RoleNotFoundException(0, 'One or more roles not found');
     }
 
     // Atribuir as roles ao usuário
@@ -227,7 +220,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
+      throw new UserNotFoundException(userId);
     }
 
     // Buscar occupations válidos pelos IDs fornecidos
@@ -236,8 +229,9 @@ export class UserService {
     });
 
     if (occupations.length !== occupationIds.length) {
-      throw new NotFoundException(
-        'Uma ou mais ocupações não foram encontradas',
+      throw new OccupationNotFoundException(
+        0,
+        'One or more occupations not found',
       );
     }
 

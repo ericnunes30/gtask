@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { TimerService } from './timer.service';
 import { Task } from '../entities/task.entity';
+import { TaskNotFoundException } from '../exceptions/task-not-found.exception';
 
 type MockRepository<T> = jest.Mocked<Repository<T>>;
 
@@ -70,12 +71,10 @@ describe('TimerService', () => {
       expect(setInterval).toHaveBeenCalled();
     });
 
-    it('should not start timer when task not found', async () => {
+    it('should throw TaskNotFoundException when task not found', async () => {
       taskRepository.findOne.mockResolvedValue(null);
 
-      await service.start(1, 1);
-
-      expect(setInterval).not.toHaveBeenCalled();
+      await expect(service.start(1, 1)).rejects.toThrow(TaskNotFoundException);
     });
 
     it('should not start duplicate timer for same task', async () => {

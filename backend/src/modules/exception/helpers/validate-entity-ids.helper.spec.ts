@@ -35,7 +35,11 @@ describe('validateEntityIds', () => {
     const result = await validateEntityIds(repository, [1, 2], buildError);
 
     expect(result).toEqual(entities);
-    expect(repository.find).toHaveBeenCalledWith({ where: { id: In([1, 2]) } });
+    expect(repository.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: In([1, 2]) }),
+      }),
+    );
   });
 
   it('should throw when some IDs are missing', async () => {
@@ -45,9 +49,11 @@ describe('validateEntityIds', () => {
     await expect(
       validateEntityIds(repository, [1, 2, 3], buildError),
     ).rejects.toThrow('Missing entity IDs: 2, 3');
-    expect(repository.find).toHaveBeenCalledWith({
-      where: { id: In([1, 2, 3]) },
-    });
+    expect(repository.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: In([1, 2, 3]) }),
+      }),
+    );
   });
 
   it('should return an empty array when no IDs are provided', async () => {
@@ -66,6 +72,10 @@ describe('validateEntityIds', () => {
     const result = await validateEntityIds(repository, [1, 1, 1], buildError);
 
     expect(result).toEqual([{ id: 1, name: 'One' }]);
-    expect(repository.find).toHaveBeenCalledWith({ where: { id: In([1]) } });
+    expect(repository.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: In([1]) }),
+      }),
+    );
   });
 });

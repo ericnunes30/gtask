@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Task } from '../entities/task.entity';
 import { Repository } from 'typeorm';
+import { TaskNotFoundException } from '../exceptions/task-not-found.exception';
 
 @Injectable()
 export class TimerService {
@@ -29,8 +30,7 @@ export class TimerService {
       relations: ['users'],
     });
     if (!task) {
-      this.logger.error(`Task with ID ${taskId} not found.`);
-      return;
+      throw new TaskNotFoundException(taskId);
     }
 
     // Para qualquer outro timer que o mesmo usuário tenha ativo, pause-o.
@@ -39,7 +39,10 @@ export class TimerService {
         where: { id: otherTaskId },
         relations: ['users'],
       });
-      if (otherTask && otherTask.users.some((user) => user.id === userId)) {
+      if (!otherTask) {
+        throw new TaskNotFoundException(otherTaskId);
+      }
+      if (otherTask.users.some((user) => user.id === userId)) {
         this.logger.log(
           `Pausing timer for task ${otherTaskId} because user ${userId} started a new one.`,
         );
