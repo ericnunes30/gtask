@@ -18,6 +18,7 @@ import { UpdateCommentDto } from '../dto/update-comment.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
+@UseGuards(JwtAuthGuard)
 @Controller('comments')
 export class CommentController {
   private readonly logger = new Logger(CommentController.name);
@@ -25,7 +26,6 @@ export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
   create(
     @Body() createCommentDto: CreateCommentDto,
     @CurrentUser() currentUser: Express.User,
@@ -66,7 +66,6 @@ export class CommentController {
   }
 
   @Post(':id/like')
-  @UseGuards(JwtAuthGuard)
   likeComment(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() currentUser: Express.User,
@@ -75,7 +74,6 @@ export class CommentController {
   }
 
   @Delete(':id/like')
-  @UseGuards(JwtAuthGuard)
   unlikeComment(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() currentUser: Express.User,

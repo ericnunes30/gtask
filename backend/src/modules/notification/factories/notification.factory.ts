@@ -3,6 +3,8 @@ import {
   StructuredNotification,
   NotificationStrategy,
 } from '../interfaces/notification.types';
+import { StrategyNotFoundException } from '../exceptions/strategy-not-found.exception';
+import { InvalidStrategyPayloadException } from '../exceptions/invalid-strategy-payload.exception';
 
 @Injectable()
 export class NotificationFactory {
@@ -24,11 +26,11 @@ export class NotificationFactory {
     try {
       const strategy = this.strategies.get(eventType);
       if (!strategy) {
-        throw new Error(`No strategy found for event type: ${eventType}`);
+        throw new StrategyNotFoundException(eventType);
       }
 
       if (!strategy.validate(payload)) {
-        throw new Error(`Invalid payload for event type: ${eventType}`);
+        throw new InvalidStrategyPayloadException(eventType);
       }
 
       const notification = strategy.create(payload);
@@ -139,7 +141,7 @@ export class NotificationFactory {
   validateRequiredEvents(): boolean {
     const requiredEvents = [
       'task.created',
-      'task.status.updated',
+      'task.status.changed',
       'comment.created',
       'timer.started',
       'timer.paused',

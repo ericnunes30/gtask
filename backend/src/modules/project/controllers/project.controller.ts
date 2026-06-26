@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  ParseIntPipe,
   Put,
   Delete,
   UseGuards,
@@ -29,22 +30,25 @@ export class ProjectController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.projectService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.projectService.findOne(id);
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateProjectDto: UpdateProjectDto) {
-    return this.projectService.update(+id, updateProjectDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateProjectDto: UpdateProjectDto,
+  ) {
+    return this.projectService.update(id, updateProjectDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.projectService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.projectService.remove(id);
   }
 
   @Get(':id/tasks')
-  findProjectTasks(@Param('id') id: string) {
-    return this.projectService.findProjectTasks(+id);
+  findProjectTasks(@Param('id', ParseIntPipe) id: number) {
+    return this.projectService.findProjectTasks(id);
   }
 }

@@ -10,6 +10,7 @@ import {
   BaseNotificationStrategy,
   NotificationPayload,
 } from './base-notification.strategy';
+import { InvalidStrategyPayloadException } from '../exceptions/invalid-strategy-payload.exception';
 
 @Injectable()
 export class CommentCreatedStrategy extends BaseNotificationStrategy {
@@ -32,7 +33,9 @@ export class CommentCreatedStrategy extends BaseNotificationStrategy {
   ): ReturnType<BaseNotificationStrategy['create']> {
     const p = payload as unknown as CommentCreatedPayload;
     if (!this.validate(payload)) {
-      throw new Error('Invalid payload for CommentCreatedStrategy');
+      throw new InvalidStrategyPayloadException(
+        NotificationType.COMMENT_CREATED,
+      );
     }
 
     const { comment, createdBy, performer } = p;

@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../entities/role.entity';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
+import { RoleNotFoundException } from '../exceptions/role-not-found.exception';
+import { DuplicateRoleNameException } from '../exceptions/duplicate-role-name.exception';
 
 @Injectable()
 export class RoleService {
@@ -16,6 +18,12 @@ export class RoleService {
 
   async create(createRoleDto: CreateRoleDto): Promise<Role> {
     this.logger.log('Creating a new role');
+    const existing = await this.roleRepository.findOne({
+      where: { name: createRoleDto.name },
+    });
+    if (existing) {
+      throw new DuplicateRoleNameException(createRoleDto.name);
+    }
     const role = this.roleRepository.create(createRoleDto);
     return await this.roleRepository.save(role);
   }
@@ -46,7 +54,7 @@ export class RoleService {
 
     if (!role) {
       this.logger.warn(`Role with ID ${id} not found`);
-      throw new NotFoundException(`Função com ID ${id} não encontrada`);
+      throw new RoleNotFoundException(id);
     }
 
     return role;
@@ -55,6 +63,14 @@ export class RoleService {
   async update(id: number, updateRoleDto: UpdateRoleDto): Promise<Role> {
     this.logger.log(`Updating role with ID: ${id}`);
     const role = await this.findOne(id);
+    if (updateRoleDto.name && updateRoleDto.name !== role.name) {
+      const existing = await this.roleRepository.findOne({
+        where: { name: updateRoleDto.name },
+      });
+      if (existing) {
+        throw new DuplicateRoleNameException(updateRoleDto.name);
+      }
+    }
     Object.assign(role, updateRoleDto);
     return await this.roleRepository.save(role);
   }

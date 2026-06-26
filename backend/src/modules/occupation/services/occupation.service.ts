@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Occupation } from '../entities/occupation.entity';
 import { User } from '../../user/entities/user.entity';
 import { CreateOccupationDto } from '../dto/create-occupation.dto';
 import { UpdateOccupationDto } from '../dto/update-occupation.dto';
+import { OccupationNotFoundException } from '../exceptions/occupation-not-found.exception';
+import { DuplicateOccupationNameException } from '../exceptions/duplicate-occupation-name.exception';
+import { UserNotInOccupationException } from '../exceptions/user-not-in-occupation.exception';
+import { UserNotFoundException } from '../../user/exceptions/user-not-found.exception';
 
 @Injectable()
 export class OccupationService {
@@ -19,6 +23,12 @@ export class OccupationService {
 
   async create(createOccupationDto: CreateOccupationDto): Promise<Occupation> {
     this.logger.log('Creating a new occupation');
+    const existing = await this.occupationRepository.findOne({
+      where: { name: createOccupationDto.name },
+    });
+    if (existing) {
+      throw new DuplicateOccupationNameException(createOccupationDto.name);
+    }
     const occupation = this.occupationRepository.create(createOccupationDto);
     return await this.occupationRepository.save(occupation);
   }
@@ -49,7 +59,7 @@ export class OccupationService {
 
     if (!occupation) {
       this.logger.warn(`Occupation with ID ${id} not found`);
-      throw new NotFoundException(`Ocupação com ID ${id} não encontrada`);
+      throw new OccupationNotFoundException(id);
     }
 
     return occupation;
@@ -61,6 +71,17 @@ export class OccupationService {
   ): Promise<Occupation> {
     this.logger.log(`Updating occupation with ID: ${id}`);
     const occupation = await this.findOne(id);
+    if (
+      updateOccupationDto.name &&
+      updateOccupationDto.name !== occupation.name
+    ) {
+      const existing = await this.occupationRepository.findOne({
+        where: { name: updateOccupationDto.name },
+      });
+      if (existing) {
+        throw new DuplicateOccupationNameException(updateOccupationDto.name);
+      }
+    }
     Object.assign(occupation, updateOccupationDto);
     return await this.occupationRepository.save(occupation);
   }
@@ -84,9 +105,7 @@ export class OccupationService {
     });
 
     if (!occupation) {
-      throw new NotFoundException(
-        `Ocupação com ID ${occupationId} não encontrada`,
-      );
+      throw new OccupationNotFoundException(occupationId);
     }
 
     // Buscar o usuário
@@ -95,7 +114,7 @@ export class OccupationService {
     });
 
     if (!user) {
-      throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
+      throw new UserNotFoundException(userId);
     }
 
     // Verificar se o usuário já está na ocupação
@@ -131,17 +150,13 @@ export class OccupationService {
     });
 
     if (!occupation) {
-      throw new NotFoundException(
-        `Ocupação com ID ${occupationId} não encontrada`,
-      );
+      throw new OccupationNotFoundException(occupationId);
     }
 
     // Verificar se o usuário está na ocupação
     const userIndex = occupation.users?.findIndex((u) => u.id === userId);
     if (userIndex === -1 || userIndex === undefined) {
-      throw new NotFoundException(
-        `Usuário com ID ${userId} não encontrado na ocupação`,
-      );
+      throw new UserNotInOccupationException(userId, occupationId);
     }
 
     // Remover o usuário da ocupação

@@ -1,14 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { CommentService } from './comment.service';
 import { Comment } from '../entities/comment.entity';
 import { CommentLike } from '../entities/comment-like.entity';
 import { User } from '../../user/entities/user.entity';
+import { Task } from '../../tasks/entities/task.entity';
 import { CreateCommentDto } from '../dto/create-comment.dto';
 import { UpdateCommentDto } from '../dto/update-comment.dto';
+import { CommentNotFoundException } from '../exceptions/comment-not-found.exception';
 
 type MockRepository<T> = jest.Mocked<Repository<T>>;
 
@@ -29,6 +30,7 @@ describe('CommentService', () => {
   let commentRepository: MockRepository<Comment>;
   let commentLikeRepository: MockRepository<CommentLike>;
   let userRepository: MockRepository<User>;
+  let taskRepository: MockRepository<Task>;
   let eventEmitter: { emit: jest.Mock };
 
   const mockComment = {
@@ -43,6 +45,7 @@ describe('CommentService', () => {
     commentRepository = createMockRepository<Comment>();
     commentLikeRepository = createMockRepository<CommentLike>();
     userRepository = createMockRepository<User>();
+    taskRepository = createMockRepository<Task>();
     eventEmitter = { emit: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -54,6 +57,7 @@ describe('CommentService', () => {
           useValue: commentLikeRepository,
         },
         { provide: getRepositoryToken(User), useValue: userRepository },
+        { provide: getRepositoryToken(Task), useValue: taskRepository },
         { provide: EventEmitter2, useValue: eventEmitter },
       ],
     }).compile();
@@ -67,13 +71,14 @@ describe('CommentService', () => {
 
   describe('create', () => {
     it('should create and emit comment.created event', async () => {
+      taskRepository.find.mockResolvedValue([{ id: 10 } as Task]);
       commentRepository.create.mockReturnValue(mockComment);
       commentRepository.save.mockResolvedValue(mockComment);
       commentRepository.findOne.mockResolvedValue(mockComment);
 
       const dto: CreateCommentDto = {
         content: 'Hello',
-        taskId: 10,
+        task_id: 10,
       } as CreateCommentDto;
 
       const result = await service.create(dto, 1);
@@ -99,10 +104,12 @@ describe('CommentService', () => {
       expect(result).toEqual(mockComment);
     });
 
-    it('should throw NotFoundException when not found', async () => {
+    it('should throw CommentNotFoundException when not found', async () => {
       commentRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999)).rejects.toThrow(
+        CommentNotFoundException,
+      );
     });
   });
 

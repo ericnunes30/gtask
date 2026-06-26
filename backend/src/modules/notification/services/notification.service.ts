@@ -10,6 +10,8 @@ import {
 import { NotificationFactory } from '../factories/notification.factory';
 import { DebugLoggerService } from './debug-logger.service';
 import { NotificationQueryHelper } from './notification-query.helper';
+import { InvalidNotificationDataException } from '../exceptions/invalid-notification-data.exception';
+import { NotificationNotFoundException } from '../exceptions/notification-not-found.exception';
 
 @Injectable()
 export class NotificationService {
@@ -27,7 +29,7 @@ export class NotificationService {
   ): Promise<StructuredNotification> {
     try {
       if (!this.notificationFactory.validateNotification(notification)) {
-        throw new Error('Invalid notification data');
+        throw new InvalidNotificationDataException();
       }
 
       this.logger.log(
@@ -125,13 +127,16 @@ export class NotificationService {
   }
 
   async markAsRead(id: number, userId: number): Promise<void> {
-    await this.repository.update(
+    const result = await this.repository.update(
       { id, userId },
       {
         isRead: true,
         readAt: new Date(),
       },
     );
+    if (result.affected === 0) {
+      throw new NotificationNotFoundException(id);
+    }
     this.debugLogger.logNotificationEvent(
       'notification_marked_as_read',
       { id },
@@ -155,7 +160,10 @@ export class NotificationService {
   }
 
   async delete(id: number, userId: number): Promise<void> {
-    await this.repository.delete({ id, userId });
+    const result = await this.repository.delete({ id, userId });
+    if (result.affected === 0) {
+      throw new NotificationNotFoundException(id);
+    }
     this.debugLogger.logNotificationEvent(
       'notification_deleted',
       { id },
