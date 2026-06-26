@@ -30,21 +30,21 @@ export class OccupationController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.occupationService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.occupationService.findOne(id);
   }
 
   @Put(':id')
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateOccupationDto: UpdateOccupationDto,
   ) {
-    return this.occupationService.update(+id, updateOccupationDto);
+    return this.occupationService.update(id, updateOccupationDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.occupationService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.occupationService.remove(id);
   }
 
   @Post(':id/users')
