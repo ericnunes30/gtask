@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
 import { OccupationNotFoundException } from '../exceptions/occupation-not-found.exception';
 import { Repository } from 'typeorm';
 import { OccupationService } from './occupation.service';
@@ -97,7 +96,9 @@ describe('OccupationService', () => {
     it('should throw OccupationNotFoundException when occupation not found', async () => {
       occupationRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne(999)).rejects.toThrow(OccupationNotFoundException);
+      await expect(service.findOne(999)).rejects.toThrow(
+        OccupationNotFoundException,
+      );
     });
   });
 

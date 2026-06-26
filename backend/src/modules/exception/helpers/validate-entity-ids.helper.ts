@@ -1,19 +1,31 @@
-import { Repository, In, FindOptionsWhere } from 'typeorm';
+import { In, type Repository, type FindOptionsWhere } from 'typeorm';
+
+export type EntityRepository<T extends { id: number }> = Pick<
+  Repository<T>,
+  'find'
+>;
+
+export type EntityIdErrorFactory = (missingIds: number[]) => Error;
 
 export async function validateEntityIds<T extends { id: number }>(
-  repository: Repository<T>,
+  repository: EntityRepository<T>,
   ids: number[],
-  errorFactory: (missingIds: number[]) => Error,
+  buildError: EntityIdErrorFactory,
 ): Promise<T[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const uniqueIds = [...new Set(ids)];
   const entities = await repository.find({
-    where: { id: In(ids) } as FindOptionsWhere<T>,
+    where: { id: In(uniqueIds) } as FindOptionsWhere<T>,
   });
 
-  const foundIds = new Set(entities.map((e) => e.id));
-  const missingIds = ids.filter((id) => !foundIds.has(id));
+  const foundIds = new Set(entities.map((entity) => entity.id));
+  const missingIds = uniqueIds.filter((id) => !foundIds.has(id));
 
   if (missingIds.length > 0) {
-    throw errorFactory(missingIds);
+    throw buildError(missingIds);
   }
 
   return entities;

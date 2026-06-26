@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Task } from '../entities/task.entity';
 import { User } from '../../user/entities/user.entity';
@@ -10,6 +10,10 @@ import { UpdateTaskDto } from '../dto/update-task.dto';
 import { Status } from '../entities/enums';
 import { ActiveProjectFindAllStrategy } from '../strategies/active-project-find-all.strategy';
 import { TaskCommentsHelper } from '../helpers/task-comments.helper';
+import { TaskNotFoundException } from '../exceptions/task-not-found.exception';
+import { RelatedUsersNotFoundException } from '../exceptions/related-users-not-found.exception';
+import { RelatedOccupationsNotFoundException } from '../exceptions/related-occupations-not-found.exception';
+import { validateEntityIds } from '../../exception/helpers/validate-entity-ids.helper';
 
 @Injectable()
 export class TaskService {
@@ -36,17 +40,19 @@ export class TaskService {
     const savedTask = await this.taskRepository.save(task);
 
     if (users && users.length > 0) {
-      const userEntities = await this.userRepository.find({
-        where: { id: In(users) },
-      });
-      savedTask.users = userEntities;
+      savedTask.users = await validateEntityIds(
+        this.userRepository,
+        users,
+        (missing) => new RelatedUsersNotFoundException(missing),
+      );
     }
 
     if (occupations && occupations.length > 0) {
-      const occupationEntities = await this.occupationRepository.find({
-        where: { id: In(occupations) },
-      });
-      savedTask.occupations = occupationEntities;
+      savedTask.occupations = await validateEntityIds(
+        this.occupationRepository,
+        occupations,
+        (missing) => new RelatedOccupationsNotFoundException(missing),
+      );
     }
 
     const taskWithRelations =
@@ -77,7 +83,7 @@ export class TaskService {
     });
 
     if (!task) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
+      throw new TaskNotFoundException(id);
     }
 
     const comments = await TaskCommentsHelper.fetchNestedComments(
@@ -138,7 +144,7 @@ export class TaskService {
   ): Promise<Task> {
     const task = await this.taskRepository.findOne({ where: { id } });
     if (!task) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
+      throw new TaskNotFoundException(id);
     }
 
     const {
@@ -150,15 +156,19 @@ export class TaskService {
     Object.assign(task, taskData);
 
     if (userIds) {
-      task.users = await this.taskRepository.manager.find(User, {
-        where: { id: In(userIds) },
-      });
+      task.users = await validateEntityIds(
+        this.taskRepository.manager.getRepository(User),
+        userIds,
+        (missing) => new RelatedUsersNotFoundException(missing),
+      );
     }
 
     if (occupationIds) {
-      task.occupations = await this.taskRepository.manager.find(Occupation, {
-        where: { id: In(occupationIds) },
-      });
+      task.occupations = await validateEntityIds(
+        this.taskRepository.manager.getRepository(Occupation),
+        occupationIds,
+        (missing) => new RelatedOccupationsNotFoundException(missing),
+      );
     }
 
     return await this.taskRepository.save(task);
@@ -191,7 +201,7 @@ export class TaskService {
       relations: ['project', 'reviewer', 'users', 'occupations'],
     });
     if (!task) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
+      throw new TaskNotFoundException(id);
     }
     await this.taskRepository.remove(task);
   }
@@ -217,7 +227,7 @@ export class TaskService {
     });
 
     if (!fullTask) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
+      throw new TaskNotFoundException(id);
     }
 
     fullTask.timer = timerValue;
@@ -226,12 +236,12 @@ export class TaskService {
 
   async assignUsers(taskId: number, userIds: number[]): Promise<Task> {
     const task = await this.loadTaskOr404(taskId);
-    task.users = userIds.map(
-      (id) => ({ id }) as unknown as (typeof task.users)[number],
+    task.users = await validateEntityIds(
+      this.userRepository,
+      userIds,
+      (missing) => new RelatedUsersNotFoundException(missing),
     );
-    await this.taskRepository.update(taskId, {
-      users: userIds.map((id) => ({ id })),
-    } as unknown as Parameters<Repository<Task>['update']>[1]);
+    await this.taskRepository.save(task);
     return await this.loadTaskOr404(taskId);
   }
 
@@ -240,7 +250,7 @@ export class TaskService {
       where: { id: taskId },
       relations: ['project', 'reviewer', 'users', 'occupations'],
     });
-    if (!t) throw new NotFoundException(`Task with ID ${taskId} not found`);
+    if (!t) throw new TaskNotFoundException(taskId);
     return t;
   }
 }

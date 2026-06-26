@@ -10,6 +10,7 @@ import {
   Patch,
   Logger,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
@@ -47,22 +48,22 @@ export class TaskController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.taskService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.taskService.findOne(id);
   }
 
   @Put(':id')
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateTaskDto: UpdateTaskDto,
     @CurrentUser() currentUser: Express.User,
   ) {
-    return this.taskService.update(+id, updateTaskDto, currentUser.sub);
+    return this.taskService.update(id, updateTaskDto, currentUser.sub);
   }
 
   @Patch(':id')
   async patch(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateTaskDto: UpdateTaskDto,
     @CurrentUser() currentUser: Express.User,
   ) {
@@ -72,7 +73,7 @@ export class TaskController {
     );
     try {
       const updatedTask = await this.taskService.update(
-        +id,
+        id,
         updateTaskDto,
         currentUser.sub,
       );
@@ -87,17 +88,23 @@ export class TaskController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.taskService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.taskService.remove(id);
   }
 
   @Patch(':id/timer')
-  updateTimer(@Param('id') id: string, @Body('timer') timer: number) {
-    return this.taskService.updateTimer(+id, timer);
+  updateTimer(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('timer') timer: number,
+  ) {
+    return this.taskService.updateTimer(id, timer);
   }
 
   @Post(':id/assign-users')
-  assignUsers(@Param('id') id: string, @Body('userIds') userIds: number[]) {
-    return this.taskService.assignUsers(+id, userIds);
+  assignUsers(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('userIds') userIds: number[],
+  ) {
+    return this.taskService.assignUsers(id, userIds);
   }
 }
