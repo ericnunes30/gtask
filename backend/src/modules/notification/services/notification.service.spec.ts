@@ -289,9 +289,7 @@ describe('NotificationService', () => {
 
   describe('getUserStats', () => {
     it('should return total, unread, byType and byPriority stats', async () => {
-      repository.count
-        .mockResolvedValueOnce(10)
-        .mockResolvedValueOnce(3);
+      repository.count.mockResolvedValueOnce(10).mockResolvedValueOnce(3);
 
       const typeQueryBuilder = {
         ...createMockQueryBuilder(),
@@ -337,10 +335,9 @@ describe('NotificationService', () => {
       const result = await service.cleanupOldNotifications(30);
 
       expect(qb.delete).toHaveBeenCalled();
-      expect(qb.where).toHaveBeenCalledWith(
-        'createdAt < :cutoffDate',
-        { cutoffDate: expect.any(Date) },
-      );
+      expect(qb.where).toHaveBeenCalledWith('createdAt < :cutoffDate', {
+        cutoffDate: expect.any(Date),
+      });
       expect(qb.andWhere).toHaveBeenCalledWith('isRead = true');
       expect(qb.execute).toHaveBeenCalled();
       expect(result).toBe(10);
@@ -361,10 +358,9 @@ describe('NotificationService', () => {
 
       expect(result.items).toHaveLength(1);
       expect(result.total).toBe(1);
-      expect(qb.where).toHaveBeenCalledWith(
-        'notification.userId = :userId',
-        { userId: 1 },
-      );
+      expect(qb.where).toHaveBeenCalledWith('notification.userId = :userId', {
+        userId: 1,
+      });
     });
   });
 });

@@ -31,7 +31,22 @@ function createMockRepository<T>(): MockRepository<T> {
   } as unknown as MockRepository<T>;
 }
 
-let mockQueryRunner: any;
+interface MockQueryRunner {
+  connect: jest.Mock;
+  startTransaction: jest.Mock;
+  manager: {
+    count: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    findOne: jest.Mock;
+  };
+  query: jest.Mock;
+  commitTransaction: jest.Mock;
+  rollbackTransaction: jest.Mock;
+  release: jest.Mock;
+}
+
+let mockQueryRunner: MockQueryRunner;
 
 function createMockDataSource(): unknown {
   mockQueryRunner = {

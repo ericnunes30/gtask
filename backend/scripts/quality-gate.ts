@@ -159,6 +159,11 @@ export default [
     files: ['src/modules/whatsapp/**/*.ts'],
     rules: { 'max-lines': 'off', 'complexity': 'off' },
   },
+  // Specs de teste: max-lines nao aplica (foco em cobertura, nao tamanho)
+  {
+    files: ['src/**/*.spec.ts'],
+    rules: { 'max-lines': 'off' },
+  },
 ];
 `;
   writeFileSync(tmpConfig, body, 'utf8');
