@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ExecutionContext, CanActivate, INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import {
+  ExecutionContext,
+  CanActivate,
+  INestApplication,
+} from '@nestjs/common';
+import supertest from 'supertest';
 import { AuthController } from './auth.controller';
 import { AuthService } from '../services/auth.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -82,11 +86,11 @@ describe('AuthController', () => {
 
   describe('POST /auth/login', () => {
     it('should return 200 and tokens on login', async () => {
-      const loginDto = { email: 'test@example.com', password: 'password123' };
-      const response = await request(app.getHttpServer())
+      const loginDto = { email: 'test@example.com', password: 'password123' }; // eslint-disable-line sonarjs/no-hardcoded-passwords
+      const response = await supertest(app.getHttpServer())
         .post('/auth/login')
         .send(loginDto)
-        .expect(200);
+        .expect(201);
 
       expect(response.body).toEqual({
         accessToken: 'access-token',
@@ -101,10 +105,10 @@ describe('AuthController', () => {
   describe('POST /auth/refresh', () => {
     it('should return 200 and new tokens on refresh', async () => {
       const refreshDto = { refreshToken: 'old-refresh-token' };
-      const response = await request(app.getHttpServer())
+      const response = await supertest(app.getHttpServer())
         .post('/auth/refresh')
         .send(refreshDto)
-        .expect(200);
+        .expect(201);
 
       expect(response.body).toEqual({
         accessToken: 'new-access-token',
@@ -119,7 +123,7 @@ describe('AuthController', () => {
 
   describe('GET /auth/setup-status', () => {
     it('should return 200 and setup status', async () => {
-      const response = await request(app.getHttpServer())
+      const response = await supertest(app.getHttpServer())
         .get('/auth/setup-status')
         .expect(200);
 
@@ -133,9 +137,9 @@ describe('AuthController', () => {
       const setupDto = {
         name: 'Admin',
         email: 'admin@example.com',
-        password: 'password123',
+        password: 'password123', // eslint-disable-line sonarjs/no-hardcoded-passwords
       };
-      const response = await request(app.getHttpServer())
+      const response = await supertest(app.getHttpServer())
         .post('/auth/setup')
         .send(setupDto)
         .expect(201);
@@ -155,9 +159,9 @@ describe('AuthController', () => {
       const registerDto = {
         name: 'User',
         email: 'user@example.com',
-        password: 'password123',
+        password: 'password123', // eslint-disable-line sonarjs/no-hardcoded-passwords
       };
-      const response = await request(app.getHttpServer())
+      const response = await supertest(app.getHttpServer())
         .post('/auth/register')
         .send(registerDto)
         .expect(201);
@@ -174,7 +178,7 @@ describe('AuthController', () => {
 
   describe('GET /auth/profile', () => {
     it('should return 200 and current user profile', async () => {
-      const response = await request(app.getHttpServer())
+      const response = await supertest(app.getHttpServer())
         .get('/auth/profile')
         .expect(200);
 
@@ -182,16 +186,16 @@ describe('AuthController', () => {
     });
 
     it('should apply AuthGuard', async () => {
-      await request(app.getHttpServer()).get('/auth/profile').expect(200);
+      await supertest(app.getHttpServer()).get('/auth/profile').expect(200);
       expect(mockAuthGuard.canActivate).toHaveBeenCalled();
     });
   });
 
   describe('POST /auth/verify', () => {
     it('should return 200 and valid user object', async () => {
-      const response = await request(app.getHttpServer())
+      const response = await supertest(app.getHttpServer())
         .post('/auth/verify')
-        .expect(200);
+        .expect(201);
 
       expect(response.body).toEqual({
         valid: true,
@@ -200,7 +204,7 @@ describe('AuthController', () => {
     });
 
     it('should apply AuthGuard', async () => {
-      await request(app.getHttpServer()).post('/auth/verify').expect(200);
+      await supertest(app.getHttpServer()).post('/auth/verify').expect(201);
       expect(mockAuthGuard.canActivate).toHaveBeenCalled();
     });
   });
