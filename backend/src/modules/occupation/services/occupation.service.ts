@@ -155,7 +155,7 @@ export class OccupationService {
 
     // Verificar se o usuário está na ocupação
     const userIndex = occupation.users?.findIndex((u) => u.id === userId);
-    if (userIndex === -1 || userIndex === undefined) {
+    if (userIndex === -1) {
       throw new UserNotInOccupationException(userId, occupationId);
     }
 

@@ -78,9 +78,7 @@ export class StartupVerificationService {
           error,
         );
 
-        if (attempt < maxRetries) {
-          await this.delay(this.retryDelay * attempt);
-        }
+        await this.maybeDelay(attempt, maxRetries);
       }
     }
 
@@ -92,6 +90,11 @@ export class StartupVerificationService {
       finalError,
     );
     throw finalError;
+  }
+
+  private async maybeDelay(attempt: number, maxRetries: number): Promise<void> {
+    if (attempt >= maxRetries) return;
+    await this.delay(this.retryDelay * attempt);
   }
 
   private delay(ms: number): Promise<void> {

@@ -54,6 +54,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
       if (typeof responseData === 'string') {
         message = responseData;
+        // eslint-disable-next-line sonarjs/different-types-comparison
       } else if (typeof responseData === 'object' && responseData !== null) {
         const data = responseData as Record<string, unknown>;
         message =

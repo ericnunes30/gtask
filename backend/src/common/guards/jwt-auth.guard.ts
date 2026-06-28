@@ -26,12 +26,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     _status?: unknown,
   ): TUser {
     if (err || !user) {
+      /* eslint-disable sonarjs/no-nested-conditional */
       const infoMessage =
         info instanceof Error
           ? info.message
           : typeof info === 'string'
             ? info
             : 'Unauthorized';
+      /* eslint-enable sonarjs/no-nested-conditional */
       const errStack = err instanceof Error ? err.stack : undefined;
       this.logger.error(`Authentication Error: ${infoMessage}`, errStack);
       throw err instanceof Error ? err : new UnauthorizedException(infoMessage);

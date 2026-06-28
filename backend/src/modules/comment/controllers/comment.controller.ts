@@ -9,7 +9,6 @@ import {
   ParseIntPipe,
   Query,
   UseGuards,
-  Request,
   Logger,
 } from '@nestjs/common';
 import { CommentService } from '../services/comment.service';

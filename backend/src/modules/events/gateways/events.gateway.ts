@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/void-use */
 import { Logger, Injectable, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {

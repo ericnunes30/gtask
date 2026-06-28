@@ -7,7 +7,6 @@ import {
   Param,
   Body,
   UseGuards,
-  Request,
   Logger,
 } from '@nestjs/common';
 import { RecurringTaskService } from '../services/recurring-task.service';

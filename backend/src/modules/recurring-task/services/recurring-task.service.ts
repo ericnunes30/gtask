@@ -114,6 +114,7 @@ export class RecurringTaskService {
       };
     }
 
+    // eslint-disable-next-line sonarjs/different-types-comparison
     if (dto.is_active !== null && dto.is_active !== undefined) {
       task.is_active = dto.is_active;
     }

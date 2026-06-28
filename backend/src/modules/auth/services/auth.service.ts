@@ -40,6 +40,7 @@ export class AuthService {
       user.password &&
       (await this.verifyPassword(password, user.password))
     ) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars, sonarjs/no-unused-vars
       const { password: _password, ...result } = user;
       return result as unknown as UserWithRoles;
     }

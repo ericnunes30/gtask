@@ -86,45 +86,60 @@ export class NotificationEventListener {
     }
 
     for (const userId of uniqueUserIds) {
-      try {
-        const notification = this.notificationFactory.create(
-          eventName,
-          enrichedPayload as Record<string, unknown>,
-        );
-        notification.userId = userId;
+      await this.processNotification(
+        eventName,
+        userId,
+        enrichedPayload as Record<string, unknown>,
+      );
+    }
+  }
 
-        this.logger.log(
-          `GATEWAY: Creating notification for user ${userId}, Event: ${eventName}`,
-        );
+  private emitToUser(userId: number, notification: unknown): void {
+    if (!this.serverRef) return;
+    this.serverRef
+      .to(`user_${userId}`)
+      .emit('new_structured_notification', notification);
+    this.logger.log(`🚀 WebSocket notification sent to user_${userId}`);
+  }
 
-        const savedNotification =
-          await this.notificationService.create(notification);
-        this.logger.log(
-          `✅ Notification created successfully for user ${userId} with ID ${savedNotification.id}`,
-        );
+  private async processNotification(
+    eventName: string,
+    userId: number,
+    enrichedPayload: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const notification = this.notificationFactory.create(
+        eventName,
+        enrichedPayload,
+      );
+      notification.userId = userId;
 
-        if (this.serverRef) {
-          this.serverRef
-            .to(`user_${userId}`)
-            .emit('new_structured_notification', savedNotification);
-          this.logger.log(`🚀 WebSocket notification sent to user_${userId}`);
-        }
+      this.logger.log(
+        `GATEWAY: Creating notification for user ${userId}, Event: ${eventName}`,
+      );
 
-        this.debugLogger.logNotificationEvent(
-          'structured_notification_sent',
-          {
-            userId,
-            type: eventName,
-            notificationId: savedNotification.id,
-          },
+      const savedNotification =
+        await this.notificationService.create(notification);
+      this.logger.log(
+        `✅ Notification created successfully for user ${userId} with ID ${savedNotification.id}`,
+      );
+
+      this.emitToUser(userId, savedNotification);
+
+      this.debugLogger.logNotificationEvent(
+        'structured_notification_sent',
+        {
           userId,
-        );
-      } catch (error: unknown) {
-        this.logger.error(
-          `❌ Failed to create or send structured notification for user ${userId}:`,
-          error,
-        );
-      }
+          type: eventName,
+          notificationId: savedNotification.id,
+        },
+        userId,
+      );
+    } catch (error: unknown) {
+      this.logger.error(
+        `❌ Failed to create or send structured notification for user ${userId}:`,
+        error,
+      );
     }
   }
 

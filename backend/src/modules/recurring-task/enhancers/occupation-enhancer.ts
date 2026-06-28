@@ -21,6 +21,7 @@ export class OccupationEnhancer {
       task.templateData.occupation_ids &&
       task.templateData.occupation_ids.length > 0
     ) {
+      // eslint-disable-next-line sonarjs/deprecation
       const occupations = await this.occupationRepository.findByIds(
         task.templateData.occupation_ids,
       );

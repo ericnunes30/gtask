@@ -3,6 +3,7 @@ import eslint from '@eslint/js';
 import eslintPluginImport from 'eslint-plugin-import';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
+import sonarjs from 'eslint-plugin-sonarjs';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -14,6 +15,7 @@ export default tseslint.config(
   eslintPluginImport.flatConfigs.recommended,
   eslintPluginImport.flatConfigs.typescript,
   eslintPluginPrettierRecommended,
+  sonarjs.configs.recommended,
   {
     languageOptions: {
       globals: {
@@ -36,11 +38,12 @@ export default tseslint.config(
         'error',
         {
           argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
+          caughtErrors: 'all',
         },
       ],
       'import/no-unresolved': ['error', { commonjs: true, caseSensitive: true }],
+      'max-depth': ['warn', 2],
+      'sonarjs/cognitive-complexity': ['warn', 15],
     },
   },
   {

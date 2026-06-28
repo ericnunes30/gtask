@@ -79,6 +79,7 @@ export function IsFlexibleDateString(validationOptions?: ValidationOptions) {
  * Aceita `unknown` (entrada de class-transformer) e retorna o tipo adequado
  * ou `null/undefined` quando o input e vazio.
  */
+// eslint-disable-next-line sonarjs/function-return-type
 function transformDate(value: unknown): string | Date | null | undefined {
   if (value === null || value === undefined) {
     return value;

@@ -34,7 +34,7 @@ export class TimerService {
     }
 
     // Para qualquer outro timer que o mesmo usuário tenha ativo, pause-o.
-    for (const [otherTaskId, _timerData] of this.activeTimers.entries()) {
+    for (const otherTaskId of this.activeTimers.keys()) {
       const otherTask = await this.taskRepository.findOne({
         where: { id: otherTaskId },
         relations: ['users'],
