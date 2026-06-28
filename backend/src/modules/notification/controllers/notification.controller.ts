@@ -64,6 +64,20 @@ export class NotificationController {
     return this.notificationService.getUserStats(userId);
   }
 
+  @Get('search')
+  async searchNotifications(
+    @Query('q') searchTerm: string,
+    @Query() options: NotificationQueryDto = {},
+    @CurrentUser() currentUser: Express.User,
+  ): Promise<NotificationPagination> {
+    const userId = currentUser.sub;
+    return this.notificationService.searchNotifications(
+      userId,
+      searchTerm,
+      options,
+    );
+  }
+
   @Get(':id')
   async getNotificationById(
     @Param('id', ParseIntPipe) id: number,
@@ -116,20 +130,6 @@ export class NotificationController {
       'notification_deleted',
       { id },
       userId,
-    );
-  }
-
-  @Get('search')
-  async searchNotifications(
-    @Query('q') searchTerm: string,
-    @Query() options: NotificationQueryDto = {},
-    @CurrentUser() currentUser: Express.User,
-  ): Promise<NotificationPagination> {
-    const userId = currentUser.sub;
-    return this.notificationService.searchNotifications(
-      userId,
-      searchTerm,
-      options,
     );
   }
 
