@@ -73,15 +73,11 @@ export class AuthService {
     return { needsSetup: count === 0 };
   }
 
-  async setupFirstUser(setupDto: SetupDto) {
-    const count = await this.userService.count();
-    if (count > 0) {
-      throw new ForbiddenException('Setup already completed. Please login.');
-    }
-
-    const user = await this.userService.createFirstAdmin(setupDto);
-
-    const accessTokenPayload = this.buildTokenPayload(user as UserWithRoles);
+  private generateTokens(user: UserWithRoles): {
+    accessToken: string;
+    refreshToken: string;
+  } {
+    const accessTokenPayload = this.buildTokenPayload(user);
     const refreshTokenPayload = { sub: user.id };
 
     const accessToken = this.jwtService.sign(accessTokenPayload, {
@@ -90,6 +86,20 @@ export class AuthService {
     const refreshToken = this.jwtService.sign(refreshTokenPayload, {
       expiresIn: '7d',
     });
+
+    return { accessToken, refreshToken };
+  }
+
+  async setupFirstUser(setupDto: SetupDto) {
+    const count = await this.userService.count();
+    if (count > 0) {
+      throw new ForbiddenException('Setup already completed. Please login.');
+    }
+
+    const user = await this.userService.createFirstAdmin(setupDto);
+    const { accessToken, refreshToken } = this.generateTokens(
+      user as UserWithRoles,
+    );
 
     this.logger.log(`Setup completed for first admin user: ${user.email}`);
 
@@ -107,15 +117,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const accessTokenPayload = this.buildTokenPayload(user);
-    const refreshTokenPayload = { sub: user.id }; // Minimal payload for refresh token
-
-    const accessToken = this.jwtService.sign(accessTokenPayload, {
-      expiresIn: '15m',
-    });
-    const refreshToken = this.jwtService.sign(refreshTokenPayload, {
-      expiresIn: '7d',
-    });
+    const { accessToken, refreshToken } = this.generateTokens(user);
 
     this.logger.log(
       `Successfully created access and refresh tokens for user ${user.email}`,

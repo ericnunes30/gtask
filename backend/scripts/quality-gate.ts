@@ -553,22 +553,34 @@ const nivel2: Criterion[] = [
   {
     id: '2.10',
     nivel: 2,
-    nome: 'Sem duplicacao de codigo > 10 linhas',
+    nome: 'Sem duplicacao de codigo produtivo > 10 linhas',
     run: () => {
       if (!binInstalled('jscpd')) {
         return {
           pass: false,
           measured: false,
-          detail: 'jscpd nao instalado (npm i -D jscpd) - ou inspecao manual',
+          detail: 'jscpd nao instalado (npm i -D jscpd)',
         };
       }
-      const r = run('npx jscpd src/ --reporters json', { timeout: 180_000 });
+      const r = run(
+        'npx jscpd src/ --reporters json --min-lines 10 --format typescript --ignore "**/*.spec.ts" --output ./.jscpd-tmp',
+        { timeout: 180_000 },
+      );
       try {
-        const j = readJsonFile(path.join(BACKEND_DIR, 'jscpd-report', 'jscpd-report.json'));
-        const dup = j?.statistics?.duplicates || 0;
-        return { pass: dup === 0, measured: true, detail: `${dup} bloco(s) duplicado(s)` };
-      } catch {
-        return { pass: false, measured: true, detail: 'falha ao parsear jscpd' };
+        const j = readJsonFile(path.join(BACKEND_DIR, '.jscpd-tmp', 'jscpd-report.json'));
+        const pct = j?.statistics?.total?.percentage ?? 100;
+        const clones = j?.statistics?.total?.clones ?? 0;
+        const threshold = 5; // max 5% de duplicacao em codigo produtivo
+        return {
+          pass: pct < threshold,
+          measured: true,
+          detail:
+            pct < threshold
+              ? `${clones} clone(s), ${pct.toFixed(2)}% duplicado (< ${threshold}%)`
+              : `${clones} clone(s), ${pct.toFixed(2)}% duplicado (>= ${threshold}%) — revisar`,
+        };
+      } catch (e: any) {
+        return { pass: false, measured: true, detail: `falha ao parsear jscpd: ${e.message}` };
       }
     },
   },

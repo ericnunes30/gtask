@@ -124,4 +124,54 @@ export abstract class BaseNotificationStrategy {
       version: '1.0',
     };
   }
+
+  protected createTimerNotificationData(
+    task: TaskLite,
+    action: string,
+    status: string,
+    duration: number | undefined,
+    oldValue: Record<string, unknown> | null,
+    performer: unknown,
+  ): StructuredNotification['data'] {
+    return {
+      entityType: 'timer',
+      entityId: task.id,
+      action,
+      changes: {
+        timer: {
+          oldValue,
+          newValue: {
+            taskId: task.id,
+            duration: duration || 0,
+            status,
+          },
+        },
+      },
+      relatedEntities: [
+        {
+          type: 'timer',
+          id: task.id,
+          name: `Timer da tarefa ${task.title}`,
+          metadata: {
+            taskId: task.id,
+            duration: duration || 0,
+            status,
+          },
+        },
+        ...this.createTaskRelatedEntities(task, performer),
+      ],
+      context: this.createNotificationContext(performer, `timer_${action}`, {
+        duration,
+      }),
+    };
+  }
+
+  protected createTimerMetadata(action: string): NotificationMetadata {
+    return {
+      source: 'timer_system',
+      category: NotificationCategory.TIMER,
+      tags: ['timer', action, 'task'],
+      version: '1.0',
+    };
+  }
 }

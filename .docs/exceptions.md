@@ -8,6 +8,7 @@ As dependências abaixo são mantidas intencionalmente, mesmo sendo reportadas c
 - @nestjs/schematics: dependência do @nestjs/cli para scaffolding (nest generate).
 - @types/pg: tipos do driver PostgreSQL — mantido para compatibilidade com queries nativas.
 - depcheck: ferramenta usada pelo próprio critério 1.7 do Quality Gate.
+- jscpd: ferramenta usada pelo critério 2.10 do Quality Gate (detecção de duplicação de código).
 - tsconfig-paths: usado no script test:debug para resolução de paths do Jest.
 - unimported: ferramenta usada pelo critério 1.12 do Quality Gate.
 

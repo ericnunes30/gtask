@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule } from '@nestjs/config';
 
 import { NotificationService } from './services/notification.service';
 import { DebugLoggerService } from './services/debug-logger.service';
@@ -17,6 +16,7 @@ import {
   TaskUpdatedStrategy,
 } from './strategies';
 import type { NotificationStrategy } from './interfaces/notification.types';
+import { JwtConfigModule } from '../../config/jwt-module.config';
 
 const strategies: Array<new () => NotificationStrategy> = [
   TaskCreatedStrategy,
@@ -31,14 +31,7 @@ const strategies: Array<new () => NotificationStrategy> = [
   imports: [
     TypeOrmModule.forFeature([StructuredNotificationEntity]),
     ConfigModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
-        signOptions: { expiresIn: '15m' },
-      }),
-      inject: [ConfigService],
-    }),
+    JwtConfigModule,
   ],
   providers: [
     NotificationService,

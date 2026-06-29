@@ -138,14 +138,22 @@ export class CommentService {
     });
   }
 
-  async likeComment(commentId: number, userId: number): Promise<void> {
+  private async loadCommentAndUser(
+    commentId: number,
+    userId: number,
+  ): Promise<{ comment: Comment; user: User }> {
     const comment = await this.findOneWithoutLikes(commentId);
-
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!user) {
       throw new UserNotFoundException(userId);
     }
+
+    return { comment, user };
+  }
+
+  async likeComment(commentId: number, userId: number): Promise<void> {
+    const { comment } = await this.loadCommentAndUser(commentId, userId);
 
     const existingLike = await this.commentLikeRepository.findOne({
       where: { commentId, userId },
@@ -166,13 +174,7 @@ export class CommentService {
   }
 
   async unlikeComment(commentId: number, userId: number): Promise<void> {
-    const comment = await this.findOneWithoutLikes(commentId);
-
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-
-    if (!user) {
-      throw new UserNotFoundException(userId);
-    }
+    const { comment } = await this.loadCommentAndUser(commentId, userId);
 
     const existingLike = await this.commentLikeRepository.findOne({
       where: { commentId, userId },
