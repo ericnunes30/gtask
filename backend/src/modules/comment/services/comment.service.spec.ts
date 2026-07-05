@@ -183,9 +183,7 @@ describe('CommentService', () => {
         task_id: 999,
       } as CreateCommentDto;
 
-      await expect(service.create(dto, 1)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.create(dto, 1)).rejects.toThrow(BadRequestException);
       expect(commentRepository.save).not.toHaveBeenCalled();
     });
 
@@ -213,7 +211,7 @@ describe('CommentService', () => {
         task_id: 10,
       } as CreateCommentDto;
 
-      await expect(service.create(dto, 1)).rejects.toThrow('unexpected failure');
+      await expect(service.create(dto, 1)).rejects.toBe('unexpected failure');
     });
   });
 

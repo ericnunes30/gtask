@@ -205,14 +205,21 @@ describe('OccupationService', () => {
     it('should rethrow when repository.find rejects with a non-Error value', async () => {
       occupationRepository.find.mockRejectedValue('string error');
 
-      await expect(service.findAll()).rejects.toThrow('string error');
+      await expect(service.findAll()).rejects.toBe('string error');
     });
   });
 
   describe('update error paths', () => {
     it('should throw DuplicateOccupationNameException when renaming to existing name', async () => {
+      const existingOccupation = {
+        id: 1,
+        name: 'Developer',
+        users: [],
+        projects: [],
+        tasks: [],
+      } as Occupation;
       occupationRepository.findOne
-        .mockResolvedValueOnce(mockOccupation)
+        .mockResolvedValueOnce(existingOccupation)
         .mockResolvedValueOnce({
           id: 5,
           name: 'Senior Developer',
@@ -228,8 +235,15 @@ describe('OccupationService', () => {
     });
 
     it('should skip duplicate check when name is unchanged', async () => {
-      occupationRepository.findOne.mockResolvedValue(mockOccupation);
-      occupationRepository.save.mockResolvedValue(mockOccupation);
+      const existingOccupation = {
+        id: 1,
+        name: 'Developer',
+        users: [],
+        projects: [],
+        tasks: [],
+      } as Occupation;
+      occupationRepository.findOne.mockResolvedValue(existingOccupation);
+      occupationRepository.save.mockResolvedValue(existingOccupation);
 
       const dto: UpdateOccupationDto = {
         name: 'Developer',
@@ -238,19 +252,26 @@ describe('OccupationService', () => {
       const result = await service.update(1, dto);
 
       expect(occupationRepository.findOne).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(mockOccupation);
+      expect(result).toEqual(existingOccupation);
     });
 
     it('should skip duplicate check when name is not provided', async () => {
-      occupationRepository.findOne.mockResolvedValue(mockOccupation);
-      occupationRepository.save.mockResolvedValue(mockOccupation);
+      const existingOccupation = {
+        id: 1,
+        name: 'Developer',
+        users: [],
+        projects: [],
+        tasks: [],
+      } as Occupation;
+      occupationRepository.findOne.mockResolvedValue(existingOccupation);
+      occupationRepository.save.mockResolvedValue(existingOccupation);
 
       const dto: UpdateOccupationDto = {} as UpdateOccupationDto;
 
       const result = await service.update(1, dto);
 
       expect(occupationRepository.findOne).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(mockOccupation);
+      expect(result).toEqual(existingOccupation);
     });
   });
 
