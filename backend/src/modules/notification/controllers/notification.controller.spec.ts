@@ -290,4 +290,94 @@ describe('NotificationController', () => {
       );
     });
   });
+
+  describe('Error paths and edge cases', () => {
+    it('should return 400 when notification id is not numeric (GET /:id)', async () => {
+      await request(app.getHttpServer())
+        .get('/notifications/abc')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(notificationService.findById).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when notification id is not numeric (PUT /:id/read)', async () => {
+      await request(app.getHttpServer())
+        .put('/notifications/abc/read')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(notificationService.markAsRead).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when notification id is not numeric (DELETE /:id)', async () => {
+      await request(app.getHttpServer())
+        .delete('/notifications/abc')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(notificationService.delete).not.toHaveBeenCalled();
+    });
+
+    it('should pass searchTerm to searchNotifications when q query param is provided', async () => {
+      notificationService.searchNotifications.mockResolvedValue(
+        mockNotificationPagination,
+      );
+
+      await request(app.getHttpServer())
+        .get('/notifications/search?q=task')
+        .expect(HttpStatus.OK);
+
+      expect(notificationService.searchNotifications).toHaveBeenCalledWith(
+        mockUser.sub,
+        'task',
+        expect.any(Object),
+      );
+    });
+
+    it('should use default daysToKeep=90 when body omits daysToKeep', async () => {
+      notificationService.cleanupOldNotifications.mockResolvedValue(10);
+
+      const response = await request(app.getHttpServer())
+        .post('/notifications/admin/cleanup-old')
+        .send({})
+        .expect(HttpStatus.CREATED);
+
+      expect(response.body).toEqual({
+        message: 'Old notifications cleaned up successfully',
+        deletedCount: 10,
+      });
+      expect(notificationService.cleanupOldNotifications).toHaveBeenCalledWith(
+        90,
+      );
+    });
+
+    it('should accept pagination query params on GET /notifications', async () => {
+      notificationService.findByUser.mockResolvedValue(
+        mockNotificationPagination,
+      );
+
+      await request(app.getHttpServer())
+        .get('/notifications?page=2&pageSize=10&isRead=false')
+        .expect(HttpStatus.OK);
+
+      expect(notificationService.findByUser).toHaveBeenCalledWith(
+        mockUser.sub,
+        expect.objectContaining({ page: '2', pageSize: '10' }),
+      );
+    });
+
+    it('should propagate service error from findByUser as 500', async () => {
+      notificationService.findByUser.mockRejectedValue(new Error('DB error'));
+
+      await request(app.getHttpServer())
+        .get('/notifications')
+        .expect(HttpStatus.INTERNAL_SERVER_ERROR);
+    });
+
+    it('should propagate service error from markAsRead as 500', async () => {
+      notificationService.markAsRead.mockRejectedValue(new Error('fail'));
+
+      await request(app.getHttpServer())
+        .put('/notifications/1/read')
+        .expect(HttpStatus.INTERNAL_SERVER_ERROR);
+    });
+  });
 });

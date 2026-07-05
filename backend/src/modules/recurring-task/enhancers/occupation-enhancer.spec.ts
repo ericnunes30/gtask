@@ -83,6 +83,22 @@ describe('OccupationEnhancer', () => {
       expect(mockOccupationRepository.findByIds).not.toHaveBeenCalled();
       expect(result.templateData.occupations).toBeUndefined();
     });
+
+    it('should return task unchanged when occupation_ids is undefined', async () => {
+      const task = createMockRecurringTask({
+        templateData: {
+          title: 'Weekly Report',
+          priority: PriorityLevel.MEDIUM,
+          assignee_ids: [1],
+          occupation_ids: undefined,
+        },
+      });
+      const result = await enhancer.enhance(task);
+
+      // eslint-disable-next-line sonarjs/deprecation
+      expect(mockOccupationRepository.findByIds).not.toHaveBeenCalled();
+      expect(result.templateData.occupations).toBeUndefined();
+    });
   });
 
   describe('enhanceMany', () => {

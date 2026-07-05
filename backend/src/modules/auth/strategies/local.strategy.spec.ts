@@ -52,5 +52,13 @@ describe('LocalStrategy', () => {
         strategy.validate('user@example.com', 'wrong-password'),
       ).rejects.toThrow(UnauthorizedException);
     });
+
+    it('should throw UnauthorizedException when user is undefined', async () => {
+      authService.validateUser.mockResolvedValue(undefined);
+
+      await expect(
+        strategy.validate('user@example.com', 'password'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
   });
 });

@@ -173,4 +173,36 @@ describe('RecurringTaskController', () => {
       expect(recurringTaskService.remove).toHaveBeenCalledWith(1);
     });
   });
+
+  describe('Error paths and edge cases', () => {
+    it('should propagate service error as 500 when create throws', async () => {
+      recurringTaskService.create.mockRejectedValue(new Error('DB error'));
+
+      const response = await request(app.getHttpServer())
+        .post('/recurring-tasks')
+        .send({
+          name: 'Weekly Report',
+          schedule_type: ScheduleType.INTERVAL,
+          projectId: 1,
+          templateData: {
+            title: 'Weekly Report',
+            priority: PriorityLevel.MEDIUM,
+            assignee_ids: [1],
+            occupation_ids: [1],
+          },
+        })
+        .expect(HttpStatus.INTERNAL_SERVER_ERROR);
+
+      expect(response.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
+      expect(recurringTaskService.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('should propagate service error as 500 when findOne throws', async () => {
+      recurringTaskService.findOne.mockRejectedValue(new Error('not found'));
+
+      await request(app.getHttpServer())
+        .get('/recurring-tasks/1')
+        .expect(HttpStatus.INTERNAL_SERVER_ERROR);
+    });
+  });
 });

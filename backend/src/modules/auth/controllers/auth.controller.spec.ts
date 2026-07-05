@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   CanActivate,
   INestApplication,
+  UnauthorizedException,
 } from '@nestjs/common';
 import supertest from 'supertest';
 import { AuthController } from './auth.controller';
@@ -206,6 +207,41 @@ describe('AuthController', () => {
     it('should apply AuthGuard', async () => {
       await supertest(app.getHttpServer()).post('/auth/verify').expect(201);
       expect(mockAuthGuard.canActivate).toHaveBeenCalled();
+    });
+  });
+
+  describe('Error paths and edge cases', () => {
+    it('should propagate UnauthorizedException as 401 on login failure', async () => {
+      mockAuthService.login.mockRejectedValueOnce(
+        new UnauthorizedException('Invalid credentials'),
+      );
+
+      const response = await supertest(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: 'bad@example.com', password: 'wrong' })
+        .expect(401);
+
+      expect(response.body).toHaveProperty('message');
+      expect(mockAuthService.login).toHaveBeenCalledWith({
+        email: 'bad@example.com',
+        password: 'wrong',
+      });
+    });
+
+    it('should propagate UnauthorizedException as 401 on refresh failure', async () => {
+      mockAuthService.refreshToken.mockRejectedValueOnce(
+        new UnauthorizedException('Invalid refresh token'),
+      );
+
+      const response = await supertest(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: 'invalid-token' })
+        .expect(401);
+
+      expect(response.body).toHaveProperty('message');
+      expect(mockAuthService.refreshToken).toHaveBeenCalledWith(
+        'invalid-token',
+      );
     });
   });
 });

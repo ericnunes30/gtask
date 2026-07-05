@@ -178,4 +178,26 @@ describe('CommentController', () => {
       expect(mockCommentService.unlikeComment).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('Error paths and edge cases', () => {
+    it('should return 400 when comment id is not numeric (GET /:id)', async () => {
+      await supertest(app.getHttpServer()).get('/comments/abc').expect(400);
+
+      expect(mockCommentService.findOne).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when comment id is not numeric (DELETE /:id)', async () => {
+      await supertest(app.getHttpServer()).delete('/comments/abc').expect(400);
+
+      expect(mockCommentService.remove).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when comment id is not numeric (POST /:id/like)', async () => {
+      await supertest(app.getHttpServer())
+        .post('/comments/abc/like')
+        .expect(400);
+
+      expect(mockCommentService.likeComment).not.toHaveBeenCalled();
+    });
+  });
 });

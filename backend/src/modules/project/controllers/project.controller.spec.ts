@@ -155,4 +155,30 @@ describe('ProjectController', () => {
       expect(projectService.findProjectTasks).toHaveBeenCalledWith(1);
     });
   });
+
+  describe('Error paths and edge cases', () => {
+    it('should return 400 when project id is not numeric (GET /:id)', async () => {
+      await request(app.getHttpServer())
+        .get('/projects/abc')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(projectService.findOne).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when project id is not numeric (DELETE /:id)', async () => {
+      await request(app.getHttpServer())
+        .delete('/projects/abc')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(projectService.remove).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when project id is not numeric (GET /:id/tasks)', async () => {
+      await request(app.getHttpServer())
+        .get('/projects/abc/tasks')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(projectService.findProjectTasks).not.toHaveBeenCalled();
+    });
+  });
 });

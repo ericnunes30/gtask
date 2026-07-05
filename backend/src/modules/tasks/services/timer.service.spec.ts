@@ -105,6 +105,53 @@ describe('TimerService', () => {
 
       expect(taskRepository.update).toHaveBeenCalledWith(1, { timer: 0 });
     });
+
+    it('should not pause other timer belonging to a different user', async () => {
+      taskRepository.findOne.mockImplementation((opts: unknown) => {
+        const where = (opts as { where: { id: number } }).where;
+        // task 1 belongs to user 2, task 2 belongs to user 1
+        const users = where.id === 1 ? [{ id: 2 }] : [{ id: 1 }];
+        return {
+          id: where.id,
+          timer: 0,
+          users,
+        } as unknown as Task;
+      });
+
+      await service.start(1, 2);
+      await service.start(2, 1);
+
+      // timer for task 1 should NOT be paused (different user)
+      expect(taskRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw TaskNotFoundException when other task disappears mid-loop', async () => {
+      let callCount = 0;
+      taskRepository.findOne.mockImplementation((opts: unknown) => {
+        callCount++;
+        const where = (opts as { where: { id: number } }).where;
+        // first call: start task 1 successfully
+        if (callCount === 1) {
+          return {
+            id: where.id,
+            timer: 0,
+            users: [{ id: 1 }],
+          } as unknown as Task;
+        }
+        // subsequent calls: task 1 lookup during second start returns null
+        if (where.id === 1) {
+          return null;
+        }
+        return {
+          id: where.id,
+          timer: 0,
+          users: [{ id: 1 }],
+        } as unknown as Task;
+      });
+
+      await service.start(1, 1);
+      await expect(service.start(2, 1)).rejects.toThrow(TaskNotFoundException);
+    });
   });
 
   describe('pause', () => {

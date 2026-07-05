@@ -118,4 +118,34 @@ describe('ActivityLogController', () => {
       expect(mockActivityLogService.findByTaskId).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('Error paths and edge cases', () => {
+    it('should apply default pagination when only taskId is provided', async () => {
+      await request(app.getHttpServer())
+        .get('/activity-logs?taskId=5')
+        .expect(HttpStatus.OK);
+
+      expect(mockActivityLogService.findAll).toHaveBeenCalledWith({
+        taskId: '5',
+        userId: undefined,
+        actionType: undefined,
+        page: 1,
+        limit: 20,
+      });
+    });
+
+    it('should apply default pagination when only actionType is provided', async () => {
+      await request(app.getHttpServer())
+        .get('/activity-logs?actionType=update')
+        .expect(HttpStatus.OK);
+
+      expect(mockActivityLogService.findAll).toHaveBeenCalledWith({
+        taskId: undefined,
+        userId: undefined,
+        actionType: 'update',
+        page: 1,
+        limit: 20,
+      });
+    });
+  });
 });

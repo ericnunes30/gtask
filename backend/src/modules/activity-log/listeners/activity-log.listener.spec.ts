@@ -88,6 +88,29 @@ describe('ActivityLogListener', () => {
 
       loggerErrorSpy.mockRestore();
     });
+
+    it('should handle non-Error rejection and log stringified error', async () => {
+      const nonError = 'connection lost';
+      repository.save.mockRejectedValueOnce(nonError);
+
+      const loggerErrorSpy = jest
+        .spyOn(
+          (listener as unknown as Record<string, unknown>)['logger'],
+          'error',
+        )
+        .mockImplementation(() => {});
+
+      await expect(
+        listener.handleTaskCreatedEvent(payload),
+      ).resolves.not.toThrow();
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        'connection lost',
+      );
+
+      loggerErrorSpy.mockRestore();
+    });
   });
 
   describe('handleCommentCreatedEvent', () => {
@@ -191,6 +214,46 @@ describe('ActivityLogListener', () => {
 
       expect(repository.save).toHaveBeenCalledTimes(2);
       expect(loggerErrorSpy).toHaveBeenCalledTimes(2);
+
+      loggerErrorSpy.mockRestore();
+    });
+
+    it('should not save anything when changedFields is empty', async () => {
+      await listener.handleTaskUpdatedEvent({
+        task,
+        updatedBy: 1,
+        changedFields: {},
+      });
+
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('should handle non-Error rejection and log stringified error', async () => {
+      const nonError = 'task-update-failed';
+      repository.save.mockRejectedValueOnce(nonError);
+
+      const loggerErrorSpy = jest
+        .spyOn(
+          (listener as unknown as Record<string, unknown>)['logger'],
+          'error',
+        )
+        .mockImplementation(() => {});
+
+      await expect(
+        listener.handleTaskUpdatedEvent({
+          task,
+          updatedBy: 1,
+          changedFields: {
+            status: { oldValue: 'open', newValue: 'closed' },
+          },
+        }),
+      ).resolves.not.toThrow();
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        String(nonError),
+      );
 
       loggerErrorSpy.mockRestore();
     });

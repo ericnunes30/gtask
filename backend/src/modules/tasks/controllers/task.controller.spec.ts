@@ -214,4 +214,59 @@ describe('TaskController', () => {
       expect(mockTaskService.assignUsers).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('Error paths and edge cases', () => {
+    it('should return 400 when task id is not numeric (GET /:id)', async () => {
+      await supertest(app.getHttpServer()).get('/tasks/abc').expect(400);
+
+      expect(mockTaskService.findOne).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when task id is not numeric (DELETE /:id)', async () => {
+      await supertest(app.getHttpServer()).delete('/tasks/abc').expect(400);
+
+      expect(mockTaskService.remove).not.toHaveBeenCalled();
+    });
+
+    it('should log and re-throw when PATCH update throws an Error', async () => {
+      const updateError = new Error('Task update failed');
+      mockTaskService.update.mockRejectedValueOnce(updateError);
+
+      await supertest(app.getHttpServer())
+        .patch('/tasks/1')
+        .send({ title: 'Boom' })
+        .expect(500);
+
+      expect(mockTaskService.update).toHaveBeenCalledWith(
+        1,
+        { title: 'Boom' },
+        mockUser.sub,
+      );
+    });
+
+    it('should log String(error) when PATCH update throws a non-Error value', async () => {
+      const nonErrorValue: unknown = 'non-error failure';
+      mockTaskService.update.mockRejectedValueOnce(nonErrorValue);
+
+      const response = await supertest(app.getHttpServer())
+        .patch('/tasks/1')
+        .send({ title: 'Boom' })
+        .expect(500);
+
+      expect(response.status).toBe(500);
+      expect(mockTaskService.update).toHaveBeenCalledWith(
+        1,
+        { title: 'Boom' },
+        mockUser.sub,
+      );
+    });
+
+    it('should call findAll when neither project nor status query param is provided', async () => {
+      await supertest(app.getHttpServer()).get('/tasks').expect(200);
+
+      expect(mockTaskService.findAll).toHaveBeenCalledTimes(1);
+      expect(mockTaskService.findByProject).not.toHaveBeenCalled();
+      expect(mockTaskService.findByStatus).not.toHaveBeenCalled();
+    });
+  });
 });
