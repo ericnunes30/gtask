@@ -113,5 +113,27 @@ describe('LockService', () => {
       await expect(service.release(lockKey)).resolves.toBeUndefined();
       expect(repository.delete).toHaveBeenCalledWith({ lockKey });
     });
+
+    it('should log non-Error rejection via String() without throwing', async () => {
+      const lockKey = 'test-lock';
+      repository.delete.mockRejectedValue('connection lost' as never);
+
+      await expect(service.release(lockKey)).resolves.toBeUndefined();
+      expect(repository.delete).toHaveBeenCalledWith({ lockKey });
+    });
+  });
+
+  describe('acquire with non-Error rejection', () => {
+    it('should rethrow non-Error, non-object rejection (getErrorCode non-object branch)', async () => {
+      const lockKey = 'test-lock';
+      repository.create.mockReturnValue({
+        lockKey,
+        instanceId: 'test-instance',
+        createdAt: new Date(),
+      } as TaskLock);
+      repository.save.mockRejectedValue('unexpected string' as never);
+
+      await expect(service.acquire(lockKey)).rejects.toBe('unexpected string');
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { BadRequestException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { CommentService } from './comment.service';
 import { Comment } from '../entities/comment.entity';
@@ -10,6 +11,7 @@ import { Task } from '../../tasks/entities/task.entity';
 import { CreateCommentDto } from '../dto/create-comment.dto';
 import { UpdateCommentDto } from '../dto/update-comment.dto';
 import { CommentNotFoundException } from '../exceptions/comment-not-found.exception';
+import { UserNotFoundException } from '../../user/exceptions/user-not-found.exception';
 
 type MockRepository<T> = jest.Mocked<Repository<T>>;
 
@@ -168,6 +170,125 @@ describe('CommentService', () => {
       expect(commentLikeRepository.remove).toHaveBeenCalled();
       expect(commentRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ likesCount: 0 }),
+      );
+    });
+  });
+
+  describe('create error paths', () => {
+    it('should throw BadRequestException when task does not exist', async () => {
+      taskRepository.find.mockResolvedValue([]);
+
+      const dto: CreateCommentDto = {
+        content: 'Hello',
+        task_id: 999,
+      } as CreateCommentDto;
+
+      await expect(service.create(dto, 1)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(commentRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should rethrow when save rejects with an Error', async () => {
+      taskRepository.find.mockResolvedValue([{ id: 10 } as Task]);
+      commentRepository.create.mockReturnValue(mockComment);
+      commentRepository.save.mockRejectedValue(new Error('save failed'));
+
+      const dto: CreateCommentDto = {
+        content: 'Hello',
+        task_id: 10,
+      } as CreateCommentDto;
+
+      await expect(service.create(dto, 1)).rejects.toThrow('save failed');
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
+
+    it('should rethrow when save rejects with a non-Error value', async () => {
+      taskRepository.find.mockResolvedValue([{ id: 10 } as Task]);
+      commentRepository.create.mockReturnValue(mockComment);
+      commentRepository.save.mockRejectedValue('unexpected failure');
+
+      const dto: CreateCommentDto = {
+        content: 'Hello',
+        task_id: 10,
+      } as CreateCommentDto;
+
+      await expect(service.create(dto, 1)).rejects.toThrow('unexpected failure');
+    });
+  });
+
+  describe('findOneWithoutLikes', () => {
+    it('should return comment when found', async () => {
+      commentRepository.findOne.mockResolvedValue(mockComment);
+
+      const result = await service.findOneWithoutLikes(1);
+
+      expect(result).toEqual(mockComment);
+    });
+
+    it('should throw CommentNotFoundException when not found', async () => {
+      commentRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findOneWithoutLikes(999)).rejects.toThrow(
+        CommentNotFoundException,
+      );
+    });
+  });
+
+  describe('remove', () => {
+    it('should remove comment', async () => {
+      commentRepository.findOne.mockResolvedValue(mockComment);
+
+      await service.remove(1);
+
+      expect(commentRepository.remove).toHaveBeenCalledWith(mockComment);
+    });
+  });
+
+  describe('findByTaskId', () => {
+    it('should return comments for a given task id', async () => {
+      commentRepository.find.mockResolvedValue([mockComment]);
+
+      const result = await service.findByTaskId(10);
+
+      expect(result).toEqual([mockComment]);
+      expect(commentRepository.find).toHaveBeenCalledWith({
+        where: { task: { id: 10 } },
+        relations: ['user', 'task', 'likes'],
+      });
+    });
+  });
+
+  describe('likeComment error paths', () => {
+    it('should throw UserNotFoundException when user does not exist', async () => {
+      commentRepository.findOne.mockResolvedValue(mockComment);
+      userRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.likeComment(1, 999)).rejects.toThrow(
+        UserNotFoundException,
+      );
+    });
+  });
+
+  describe('unlikeComment error paths', () => {
+    it('should not decrement when user has not liked the comment', async () => {
+      const likedComment = { ...mockComment, likesCount: 1 } as Comment;
+      commentRepository.findOne.mockResolvedValue(likedComment);
+      userRepository.findOne.mockResolvedValue({ id: 2 } as User);
+      commentLikeRepository.findOne.mockResolvedValue(null);
+
+      await service.unlikeComment(1, 2);
+
+      expect(commentLikeRepository.remove).not.toHaveBeenCalled();
+      expect(commentRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw UserNotFoundException when user does not exist', async () => {
+      commentRepository.findOne.mockResolvedValue(mockComment);
+      userRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.unlikeComment(1, 999)).rejects.toThrow(
+        UserNotFoundException,
       );
     });
   });

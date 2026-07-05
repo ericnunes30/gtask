@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { OccupationNotFoundException } from '../exceptions/occupation-not-found.exception';
+import { DuplicateOccupationNameException } from '../exceptions/duplicate-occupation-name.exception';
+import { UserNotInOccupationException } from '../exceptions/user-not-in-occupation.exception';
+import { UserNotFoundException } from '../../user/exceptions/user-not-found.exception';
 import { Repository } from 'typeorm';
 import { OccupationService } from './occupation.service';
 import { Occupation } from '../entities/occupation.entity';
@@ -173,6 +176,138 @@ describe('OccupationService', () => {
 
       expect(occupationWithUser.users).toHaveLength(0);
       expect(occupationRepository.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('create error paths', () => {
+    it('should throw DuplicateOccupationNameException when name already exists', async () => {
+      occupationRepository.findOne.mockResolvedValue(mockOccupation);
+
+      const dto: CreateOccupationDto = {
+        name: 'Developer',
+      } as CreateOccupationDto;
+
+      await expect(service.create(dto)).rejects.toThrow(
+        DuplicateOccupationNameException,
+      );
+      expect(occupationRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findAll error paths', () => {
+    it('should rethrow when repository.find rejects with an Error', async () => {
+      const error = new Error('db connection lost');
+      occupationRepository.find.mockRejectedValue(error);
+
+      await expect(service.findAll()).rejects.toThrow('db connection lost');
+    });
+
+    it('should rethrow when repository.find rejects with a non-Error value', async () => {
+      occupationRepository.find.mockRejectedValue('string error');
+
+      await expect(service.findAll()).rejects.toThrow('string error');
+    });
+  });
+
+  describe('update error paths', () => {
+    it('should throw DuplicateOccupationNameException when renaming to existing name', async () => {
+      occupationRepository.findOne
+        .mockResolvedValueOnce(mockOccupation)
+        .mockResolvedValueOnce({
+          id: 5,
+          name: 'Senior Developer',
+        } as Occupation);
+
+      const dto: UpdateOccupationDto = {
+        name: 'Senior Developer',
+      } as UpdateOccupationDto;
+
+      await expect(service.update(1, dto)).rejects.toThrow(
+        DuplicateOccupationNameException,
+      );
+    });
+
+    it('should skip duplicate check when name is unchanged', async () => {
+      occupationRepository.findOne.mockResolvedValue(mockOccupation);
+      occupationRepository.save.mockResolvedValue(mockOccupation);
+
+      const dto: UpdateOccupationDto = {
+        name: 'Developer',
+      } as UpdateOccupationDto;
+
+      const result = await service.update(1, dto);
+
+      expect(occupationRepository.findOne).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(mockOccupation);
+    });
+
+    it('should skip duplicate check when name is not provided', async () => {
+      occupationRepository.findOne.mockResolvedValue(mockOccupation);
+      occupationRepository.save.mockResolvedValue(mockOccupation);
+
+      const dto: UpdateOccupationDto = {} as UpdateOccupationDto;
+
+      const result = await service.update(1, dto);
+
+      expect(occupationRepository.findOne).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(mockOccupation);
+    });
+  });
+
+  describe('addUserToOccupation error paths', () => {
+    it('should throw OccupationNotFoundException when occupation does not exist', async () => {
+      occupationRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.addUserToOccupation(999, 2)).rejects.toThrow(
+        OccupationNotFoundException,
+      );
+    });
+
+    it('should throw UserNotFoundException when user does not exist', async () => {
+      occupationRepository.findOne.mockResolvedValue(mockOccupation);
+      userRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.addUserToOccupation(1, 999)).rejects.toThrow(
+        UserNotFoundException,
+      );
+    });
+
+    it('should initialize users array when occupation.users is undefined', async () => {
+      const occupationWithoutUsers = {
+        ...mockOccupation,
+        users: undefined,
+      } as unknown as Occupation;
+      occupationRepository.findOne.mockResolvedValue(occupationWithoutUsers);
+      userRepository.findOne.mockResolvedValue({ id: 3 } as User);
+      occupationRepository.save.mockResolvedValue(occupationWithoutUsers);
+
+      const result = await service.addUserToOccupation(1, 3);
+
+      expect(result.users).toHaveLength(1);
+      expect(occupationRepository.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('removeUserFromOccupation error paths', () => {
+    it('should throw OccupationNotFoundException when occupation does not exist', async () => {
+      occupationRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.removeUserFromOccupation(999, 2)).rejects.toThrow(
+        OccupationNotFoundException,
+      );
+    });
+
+    it('should throw UserNotInOccupationException when user is not in occupation', async () => {
+      const occupationWithoutUser = {
+        ...mockOccupation,
+        users: [{ id: 5 } as User],
+      } as Occupation;
+      occupationRepository.findOne.mockResolvedValue(occupationWithoutUser);
+
+      await expect(service.removeUserFromOccupation(1, 999)).rejects.toThrow(
+        UserNotInOccupationException,
+      );
+      expect(occupationRepository.save).not.toHaveBeenCalled();
     });
   });
 });

@@ -103,6 +103,26 @@ describe('AuthService', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should return null when user has no password set', async () => {
+      userService.findByEmail.mockResolvedValue({ ...mockUser, password: '' });
+
+      const result = await service.validateUser('user@example.com', 'password');
+
+      expect(result).toBeNull();
+      expect(passwordVerificationFactory.getStrategy).not.toHaveBeenCalled();
+    });
+
+    it('should return null when password verification strategy throws', async () => {
+      userService.findByEmail.mockResolvedValue(mockUser);
+      passwordVerificationFactory.getStrategy.mockImplementation(() => {
+        throw new Error('strategy not found');
+      });
+
+      const result = await service.validateUser('user@example.com', 'password');
+
+      expect(result).toBeNull();
+    });
   });
 
   describe('login', () => {
@@ -145,6 +165,15 @@ describe('AuthService', () => {
       });
 
       await expect(service.refreshToken('invalid-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should throw UnauthorizedException when user not found during refresh', async () => {
+      jwtService.verify.mockReturnValue({ sub: 999 });
+      userService.findOne.mockResolvedValue(null);
+
+      await expect(service.refreshToken('valid-but-orphan')).rejects.toThrow(
         UnauthorizedException,
       );
     });

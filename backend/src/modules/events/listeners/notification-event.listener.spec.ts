@@ -376,4 +376,89 @@ describe('NotificationEventListener', () => {
       expect(notificationService.create).not.toHaveBeenCalled();
     });
   });
+
+  describe('handleEvent - enrich payload error path branches', () => {
+    type EventPayload = Record<string, unknown>;
+
+    const callHandleEvent = async (
+      payload: EventPayload,
+      getUsersToNotify: (p: EventPayload) => number[],
+    ): Promise<void> => {
+      const handleEvent = Reflect.get(listener, 'handleEvent') as (
+        eventName: string,
+        payload: EventPayload,
+        getUsersToNotify: (payload: EventPayload) => number[],
+      ) => Promise<void>;
+      await handleEvent.call(
+        listener,
+        'task.created',
+        payload,
+        getUsersToNotify,
+      );
+    };
+
+    it('should skip performer enrichment when no actor id is present in payload', async () => {
+      await callHandleEvent({}, () => [2]);
+
+      expect(userService.findOne).not.toHaveBeenCalled();
+      expect(notificationFactory.create).toHaveBeenCalledWith(
+        'task.created',
+        expect.not.objectContaining({ performer: expect.anything() }),
+      );
+      expect(notificationService.create).toHaveBeenCalled();
+      expect(toMock).toHaveBeenCalledWith('user_2');
+    });
+
+    it('should enrich payload using userId when createdBy and updatedBy are absent', async () => {
+      const actor = { id: 5, name: 'Alice', email: 'alice@example.com' };
+      userService.findOne.mockResolvedValueOnce(actor);
+
+      await callHandleEvent({ userId: 5 }, () => [2]);
+
+      expect(userService.findOne).toHaveBeenCalledWith(5);
+      expect(notificationFactory.create).toHaveBeenCalledWith(
+        'task.created',
+        expect.objectContaining({
+          userId: 5,
+          performer: { id: 5, name: 'Alice', email: 'alice@example.com' },
+        }),
+      );
+      expect(notificationService.create).toHaveBeenCalled();
+    });
+
+    it('should handle non-Error rejection during performer enrichment', async () => {
+      userService.findOne.mockRejectedValueOnce('network failure' as never);
+
+      const loggerWarnSpy = jest
+        .spyOn(
+          (listener as unknown as Record<string, unknown>)['logger'],
+          'warn',
+        )
+        .mockImplementation(() => {});
+
+      await expect(
+        callHandleEvent({ userId: 5 }, () => [2]),
+      ).resolves.not.toThrow();
+
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Could not enrich payload with performer'),
+      );
+      expect(notificationService.create).toHaveBeenCalled();
+
+      loggerWarnSpy.mockRestore();
+    });
+
+    it('should process notifications for multiple deduplicated recipients', async () => {
+      recipientResolver.getTaskCreatedNotificationRecipients.mockReturnValueOnce(
+        [2, 3, 2, 3],
+      );
+
+      const task = { id: 1, title: 'Multi Task' } as Task;
+      await listener.handleTaskCreatedEvent({ task, createdBy: 1 });
+
+      expect(notificationService.create).toHaveBeenCalledTimes(2);
+      expect(toMock).toHaveBeenCalledWith('user_2');
+      expect(toMock).toHaveBeenCalledWith('user_3');
+    });
+  });
 });

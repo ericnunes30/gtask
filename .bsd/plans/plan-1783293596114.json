@@ -9,56 +9,56 @@
     {
       "id": "T1",
       "desc": "T1",
-      "status": "in_progress",
+      "status": "done",
       "source": "spec",
       "dependencies": []
     },
     {
       "id": "T2",
       "desc": "JWT Auth Guard. Criar spec para jwt-auth.guard.ts (21%→100%). 4-5 testes: canActivate, handleRequest com erro/sem user/info. Esforço: ~1h.",
-      "status": "in_progress",
+      "status": "done",
       "source": "meta",
       "inserted_at": "2026-07-05"
     },
     {
       "id": "T3",
       "desc": "Find Test Data Command. Criar spec para find-test-data.command.ts (0%→100%). 2-3 testes: mock 3 repos. Esforço: ~0.5h.",
-      "status": "in_progress",
+      "status": "done",
       "source": "meta",
       "inserted_at": "2026-07-05"
     },
     {
       "id": "T4",
       "desc": "Controllers — Branches de Error Path (10 controllers). Estender/criar specs cobrindo error paths: notification(+31br), task(+12br), comment(+9br), auth(+9br), recurring-task(+5br), activity-log(+3br), occupation(+3br), project(+3br), role(+3br), user(+3br). Esforço: ~4h.",
-      "status": "in_progress",
+      "status": "done",
       "source": "meta",
       "inserted_at": "2026-07-05"
     },
     {
       "id": "T5",
       "desc": "Notification Strategies — Branches Restantes. Estender 3 specs: task-status-updated(+6br), task-created(+4br), comment-created(+3br). Esforço: ~1h.",
-      "status": "in_progress",
+      "status": "done",
       "source": "meta",
       "inserted_at": "2026-07-05"
     },
     {
       "id": "T6",
       "desc": "Helpers + Services Pequenos — Branches Restantes. Estender 8 specs: role.service(+7br), activity-log.listener(+6br), jwt.strategy(+3br), timer.service(+5br), local.strategy(+1br), activity-log.service(+3br), occupation-enhancer(+1br), task-comments.helper(+1br). Esforço: ~3h.",
-      "status": "in_progress",
+      "status": "done",
       "source": "meta",
       "inserted_at": "2026-07-05"
     },
     {
       "id": "T7",
       "desc": "Configurar collectCoverageFrom para ignorar index.ts. Adicionar !src/modules/notification/strategies/index.ts ao collectCoverageFrom no package.json. Esforço: ~0.25h.",
-      "status": "in_progress",
+      "status": "done",
       "source": "meta",
       "inserted_at": "2026-07-05"
     },
     {
       "id": "T8",
       "desc": "[BARREIRA] Validar Fase 1 — Rodar test:cov, verificar métricas (≥95% lines, ≥85% branches in-scope), quality gate N1 11/11, lint zero. Depende de: T1-T7.",
-      "status": "pending",
+      "status": "done",
       "source": "meta",
       "inserted_at": "2026-07-05"
     },

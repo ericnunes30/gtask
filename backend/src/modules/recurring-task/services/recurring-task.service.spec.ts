@@ -282,6 +282,65 @@ describe('RecurringTaskService', () => {
     });
   });
 
+  describe('create error paths', () => {
+    it('should log Error.stack and rethrow when save fails with Error', async () => {
+      const dto: CreateRecurringTaskDto = {
+        name: 'Failing Task',
+        schedule_type: ScheduleType.INTERVAL,
+        frequency_interval: '1 days',
+        projectId: 1,
+        templateData: {
+          title: 'Report',
+          description: 'Daily report',
+          priority: PriorityLevel.High,
+          assignee_ids: [1],
+          occupation_ids: [1, 2],
+        },
+      };
+
+      const mockRecurringTask = createMockRecurringTask();
+      repository.create.mockReturnValue(mockRecurringTask);
+      const saveError = new Error('Database down');
+      repository.save.mockRejectedValue(saveError);
+
+      const errorSpy = jest.spyOn(service['logger'], 'error');
+
+      await expect(service.create(dto, 1)).rejects.toThrow('Database down');
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Erro capturado no RecurringTaskService',
+        saveError.stack,
+      );
+    });
+
+    it('should log String(error) and rethrow when save fails with non-Error', async () => {
+      const dto: CreateRecurringTaskDto = {
+        name: 'Failing Task',
+        schedule_type: ScheduleType.INTERVAL,
+        frequency_interval: '1 days',
+        projectId: 1,
+        templateData: {
+          title: 'Report',
+          description: 'Daily report',
+          priority: PriorityLevel.High,
+          assignee_ids: [1],
+          occupation_ids: [1, 2],
+        },
+      };
+
+      const mockRecurringTask = createMockRecurringTask();
+      repository.create.mockReturnValue(mockRecurringTask);
+      repository.save.mockRejectedValue('unexpected string' as never);
+
+      const errorSpy = jest.spyOn(service['logger'], 'error');
+
+      await expect(service.create(dto, 1)).rejects.toBe('unexpected string');
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Erro capturado no RecurringTaskService',
+        'unexpected string',
+      );
+    });
+  });
+
   describe('remove', () => {
     it('should remove recurring task when found', async () => {
       const mockRecurringTask = createMockRecurringTask();
