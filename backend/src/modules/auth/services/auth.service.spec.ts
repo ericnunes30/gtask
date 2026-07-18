@@ -139,6 +139,18 @@ describe('AuthService', () => {
       expect(result.user).toEqual(expect.objectContaining({ id: mockUser.id }));
     });
 
+    it('should handle user without roles', async () => {
+      const userWithoutRoles = { ...mockUser, roles: undefined };
+      userService.findByEmail.mockResolvedValue(userWithoutRoles);
+
+      const result = await service.login({
+        email: 'user@example.com',
+        password: 'password',
+      });
+
+      expect(result.accessToken).toBe('signed-token');
+    });
+
     it('should throw UnauthorizedException when credentials are invalid', async () => {
       userService.findByEmail.mockResolvedValue(null);
 

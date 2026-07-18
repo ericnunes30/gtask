@@ -309,6 +309,29 @@ describe('EventsGateway', () => {
       logSpy.mockRestore();
     });
 
+    it('should disconnect unauthorized timer.pause', async () => {
+      const warnSpy = jest
+        .spyOn(gateway['logger'], 'warn')
+        .mockImplementation();
+      const mockDisconnect = jest.fn();
+      const mockEmit = jest.fn();
+      const client = {
+        id: 'client-11',
+        user: undefined,
+        emit: mockEmit,
+        disconnect: mockDisconnect,
+      } as unknown as Socket;
+
+      await gateway.handleTimerPause(client, { taskId: 11 });
+
+      expect(mockDisconnect).toHaveBeenCalled();
+      expect(mockEmit).toHaveBeenCalledWith('error', {
+        code: 'UNAUTHORIZED',
+        message: 'Not authenticated',
+      });
+      warnSpy.mockRestore();
+    });
+
     it('should emit error when timer pause fails', async () => {
       const errorSpy = jest
         .spyOn(gateway['logger'], 'error')
