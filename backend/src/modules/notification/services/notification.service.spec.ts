@@ -372,16 +372,16 @@ describe('NotificationService', () => {
 
       const typeQueryBuilder = {
         ...createMockQueryBuilder(),
-        getRawMany: jest.fn().mockResolvedValue([
-          { type: undefined, count: '5' },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ type: undefined, count: '5' }]),
       };
 
       const priorityQueryBuilder = {
         ...createMockQueryBuilder(),
-        getRawMany: jest.fn().mockResolvedValue([
-          { priority: undefined, count: '3' },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ priority: undefined, count: '3' }]),
       };
 
       repository.createQueryBuilder
