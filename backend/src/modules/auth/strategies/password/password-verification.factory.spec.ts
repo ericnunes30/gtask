@@ -35,6 +35,37 @@ describe('PasswordVerificationFactory', () => {
 
       expect(strategy).toBeInstanceOf(BcryptVerificationStrategy);
     });
+
+    it('should throw when no strategy can handle the hash (!strategy branch)', () => {
+      const scryptSpy = jest
+        .spyOn(ScryptVerificationStrategy.prototype, 'canHandle')
+        .mockReturnValue(false);
+      const bcryptSpy = jest
+        .spyOn(BcryptVerificationStrategy.prototype, 'canHandle')
+        .mockReturnValue(false);
+
+      expect(() => factory.getStrategy('unknown-hash')).toThrow(
+        'No password verification strategy found for hash',
+      );
+
+      scryptSpy.mockRestore();
+      bcryptSpy.mockRestore();
+    });
+
+    it('should include the truncated hash prefix in the error message', () => {
+      const scryptSpy = jest
+        .spyOn(ScryptVerificationStrategy.prototype, 'canHandle')
+        .mockReturnValue(false);
+      const bcryptSpy = jest
+        .spyOn(BcryptVerificationStrategy.prototype, 'canHandle')
+        .mockReturnValue(false);
+      const hash = 'abcdefghijklmnop';
+
+      expect(() => factory.getStrategy(hash)).toThrow(/abcdefghij/);
+
+      scryptSpy.mockRestore();
+      bcryptSpy.mockRestore();
+    });
   });
 });
 

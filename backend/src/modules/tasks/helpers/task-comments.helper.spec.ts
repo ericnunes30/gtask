@@ -67,6 +67,45 @@ describe('TaskCommentsHelper', () => {
       expect(result[0].replies[0].id).toBe(2);
       expect(result[0].replies[0].content).toBe('Reply');
     });
+
+    it('should not include orphan reply whose parent is not in the map', async () => {
+      const date = new Date();
+      const mockComments = [
+        {
+          id: 1,
+          parent_id: null,
+          user_id: 1,
+          content: 'Top',
+          created_at: date,
+          updated_at: date,
+          user: { id: 1, name: 'User', email: 'user@example.com' },
+          likes_count: 0,
+          replies: [],
+        },
+        {
+          id: 3,
+          parent_id: 999, // parent does not exist in map
+          user_id: 3,
+          content: 'Orphan',
+          created_at: date,
+          updated_at: date,
+          user: { id: 3, name: 'User3', email: 'user3@example.com' },
+          likes_count: 0,
+          replies: [],
+        },
+      ];
+
+      mockDataSource.query.mockResolvedValue(mockComments);
+
+      const result = await TaskCommentsHelper.fetchNestedComments(
+        mockDataSource,
+        1,
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(1);
+      expect(result[0].replies).toHaveLength(0);
+    });
   });
 
   describe('fetchActivityLogs', () => {

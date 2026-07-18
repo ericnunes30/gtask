@@ -127,4 +127,31 @@ describe('RoleController', () => {
       expect(roleService.remove).toHaveBeenCalledWith(1);
     });
   });
+
+  describe('Error paths and edge cases', () => {
+    it('should return 400 when role id is not numeric (GET /:id)', async () => {
+      await request(app.getHttpServer())
+        .get('/roles/abc')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(roleService.findOne).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when role id is not numeric (PUT /:id)', async () => {
+      await request(app.getHttpServer())
+        .put('/roles/abc')
+        .send({ name: 'x' })
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(roleService.update).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when role id is not numeric (DELETE /:id)', async () => {
+      await request(app.getHttpServer())
+        .delete('/roles/abc')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(roleService.remove).not.toHaveBeenCalled();
+    });
+  });
 });

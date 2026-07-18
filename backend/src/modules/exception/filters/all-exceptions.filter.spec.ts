@@ -4,7 +4,7 @@ import {
   HttpStatus,
   NotFoundException,
 } from '@nestjs/common';
-import { QueryFailedError } from 'typeorm';
+import { EntityNotFoundError, QueryFailedError } from 'typeorm';
 import { Request, Response } from 'express';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 
@@ -134,6 +134,88 @@ describe('AllExceptionsFilter', () => {
     filter.catch(new Error('Hidden error'), host);
 
     const body = (response.json as jest.Mock).mock.calls[0][0];
+    expect(body.stack).toBeUndefined();
+  });
+
+  it('should map QueryFailedError code 23503 to 400 Bad Request', () => {
+    const { host, response } = createMockHost();
+    const error = new QueryFailedError(
+      'INSERT ...',
+      [],
+      new Error('foreign key violation') as never,
+    );
+    (error.driverError as { code: string }).code = '23503';
+
+    filter.catch(error, host);
+
+    expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+    const body = (response.json as jest.Mock).mock.calls[0][0];
+    expect(body).toMatchObject({
+      success: false,
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'Bad Request',
+      code: 'BadRequestException',
+      message: 'Foreign key constraint violation',
+    });
+  });
+
+  it('should map QueryFailedError with unknown code to 500 fallback', () => {
+    const { host, response } = createMockHost();
+    const error = new QueryFailedError(
+      'UPDATE ...',
+      [],
+      new Error('timeout') as never,
+    );
+    (error.driverError as { code: string }).code = '08006';
+
+    filter.catch(error, host);
+
+    expect(response.status).toHaveBeenCalledWith(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+    const body = (response.json as jest.Mock).mock.calls[0][0];
+    expect(body).toMatchObject({
+      success: false,
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'Internal Server Error',
+      code: 'QueryFailedError',
+      message: 'Database error',
+    });
+  });
+
+  it('should map EntityNotFoundError to 404 Not Found', () => {
+    const { host, response } = createMockHost();
+    const error = new EntityNotFoundError('User', { id: 999 });
+
+    filter.catch(error, host);
+
+    expect(response.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
+    const body = (response.json as jest.Mock).mock.calls[0][0];
+    expect(body).toMatchObject({
+      success: false,
+      statusCode: HttpStatus.NOT_FOUND,
+      error: 'Not Found',
+      code: 'NotFoundException',
+      message: 'Resource not found',
+    });
+  });
+
+  it('should return generic 500 message for non-Error exception', () => {
+    const { host, response } = createMockHost();
+
+    filter.catch('a plain string thrown', host);
+
+    expect(response.status).toHaveBeenCalledWith(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+    const body = (response.json as jest.Mock).mock.calls[0][0];
+    expect(body).toMatchObject({
+      success: false,
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'Internal Server Error',
+      code: 'InternalServerErrorException',
+      message: 'Internal server error',
+    });
     expect(body.stack).toBeUndefined();
   });
 });

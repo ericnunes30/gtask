@@ -442,4 +442,50 @@ describe('UserService', () => {
       );
     });
   });
+
+  describe('assignRoles error paths', () => {
+    it('should throw UserNotFoundException when user does not exist', async () => {
+      userRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.assignRoles(999, [1])).rejects.toThrow(
+        UserNotFoundException,
+      );
+    });
+
+    it('should throw RoleNotFoundException when a role is missing', async () => {
+      userRepository.findOne.mockResolvedValue(mockUser);
+      roleRepository.find.mockResolvedValue([]);
+
+      await expect(service.assignRoles(1, [1, 2])).rejects.toThrow(
+        RoleNotFoundException,
+      );
+    });
+  });
+
+  describe('assignOccupations error paths', () => {
+    it('should throw UserNotFoundException when user does not exist', async () => {
+      userRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.assignOccupations(999, [1])).rejects.toThrow(
+        UserNotFoundException,
+      );
+    });
+
+    it('should throw OccupationNotFoundException when an occupation is missing', async () => {
+      userRepository.findOne.mockResolvedValue(mockUser);
+      occupationRepository.find.mockResolvedValue([]);
+
+      await expect(service.assignOccupations(1, [1, 2])).rejects.toThrow(
+        OccupationNotFoundException,
+      );
+    });
+  });
+
+  describe('remove error paths', () => {
+    it('should throw UserNotFoundException when user does not exist', async () => {
+      userRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.remove(999)).rejects.toThrow(UserNotFoundException);
+    });
+  });
 });

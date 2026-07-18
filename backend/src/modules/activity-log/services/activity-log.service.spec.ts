@@ -245,5 +245,45 @@ describe('ActivityLogService', () => {
         }),
       );
     });
+
+    it('should return all logs when no filters are provided (empty object)', async () => {
+      repository.find.mockResolvedValue([mockActivityLog]);
+
+      const result = await service.findAll({});
+
+      expect(repository.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {},
+          relations: ['user', 'task'],
+          order: { createdAt: 'DESC' },
+          skip: 0,
+          take: 20,
+        }),
+      );
+      expect(result).toEqual([mockActivityLog]);
+    });
+
+    it('should apply both taskId and userId filters together', async () => {
+      repository.find.mockResolvedValue([mockActivityLog]);
+
+      const filters: ActivityLogFilterOptions = { taskId: 1, userId: 2 };
+      await service.findAll(filters);
+
+      expect(repository.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ taskId: 1, userId: 2 }),
+        }),
+      );
+    });
+  });
+
+  describe('findByTaskId', () => {
+    it('should return empty array when no logs found for task', async () => {
+      repository.find.mockResolvedValue([]);
+
+      const result = await service.findByTaskId(999, 1, 20);
+
+      expect(result).toEqual([]);
+    });
   });
 });

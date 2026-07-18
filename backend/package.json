@@ -117,7 +117,8 @@
       "src/**/*.(t|j)s",
       "!src/**/*.d.ts",
       "!src/database/migrations/**/*.ts",
-      "!src/console.ts"
+      "!src/console.ts",
+      "!src/modules/notification/strategies/index.ts"
     ],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node"

@@ -125,6 +125,15 @@ describe('NotificationService', () => {
         'Invalid notification data',
       );
     });
+
+    it('should propagate errors and log them when repository.save fails', async () => {
+      repository.save.mockRejectedValue(new Error('db constraint'));
+
+      await expect(service.create(mockNotification)).rejects.toThrow(
+        'db constraint',
+      );
+      expect(debugLogger.logError).toHaveBeenCalled();
+    });
   });
 
   describe('findById', () => {
@@ -146,6 +155,30 @@ describe('NotificationService', () => {
       const result = await service.findById(999);
 
       expect(result).toBeNull();
+    });
+
+    it('should not add userId filter when not provided', async () => {
+      const qb = createMockQueryBuilder();
+      repository.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findById(1);
+
+      expect(qb.andWhere).not.toHaveBeenCalled();
+    });
+
+    it('should filter by userId when provided', async () => {
+      const entity = StructuredNotificationEntity.fromDomain(mockNotification);
+      const qb = createMockQueryBuilder();
+      qb.getOne = jest.fn().mockResolvedValue(entity);
+      repository.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.findById(1, 1);
+
+      expect(result?.userId).toBe(mockNotification.userId);
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'notification.userId = :userId',
+        { userId: 1 },
+      );
     });
   });
 
@@ -219,6 +252,15 @@ describe('NotificationService', () => {
       await expect(service.markAsRead(999, 1)).rejects.toThrow(
         NotificationNotFoundException,
       );
+    });
+
+    it('should propagate error when repository.update rejects', async () => {
+      repository.update.mockRejectedValue(new Error('db connection lost'));
+
+      await expect(service.markAsRead(1, 1)).rejects.toThrow(
+        'db connection lost',
+      );
+      expect(debugLogger.logNotificationEvent).not.toHaveBeenCalled();
     });
   });
 
@@ -324,6 +366,33 @@ describe('NotificationService', () => {
         MEDIUM: 4,
       });
     });
+
+    it('should handle rows with missing type/priority in stats', async () => {
+      repository.count.mockResolvedValueOnce(0).mockResolvedValueOnce(0);
+
+      const typeQueryBuilder = {
+        ...createMockQueryBuilder(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ type: undefined, count: '5' }]),
+      };
+
+      const priorityQueryBuilder = {
+        ...createMockQueryBuilder(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ priority: undefined, count: '3' }]),
+      };
+
+      repository.createQueryBuilder
+        .mockReturnValueOnce(typeQueryBuilder)
+        .mockReturnValueOnce(priorityQueryBuilder);
+
+      const result = await service.getUserStats(1);
+
+      expect(result.byType['']).toBe(5);
+      expect(result.byPriority['']).toBe(3);
+    });
   });
 
   describe('cleanupOldNotifications', () => {
@@ -341,6 +410,30 @@ describe('NotificationService', () => {
       expect(qb.andWhere).toHaveBeenCalledWith('isRead = true');
       expect(qb.execute).toHaveBeenCalled();
       expect(result).toBe(10);
+    });
+
+    it('should use default daysToKeep and return 0 when nothing affected', async () => {
+      const qb = createMockQueryBuilder();
+      qb.execute = jest.fn().mockResolvedValue({ affected: 0 });
+      repository.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.cleanupOldNotifications();
+
+      expect(qb.where).toHaveBeenCalledWith('createdAt < :cutoffDate', {
+        cutoffDate: expect.any(Date),
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('isRead = true');
+      expect(result).toBe(0);
+    });
+
+    it('should return 0 when affected is undefined', async () => {
+      const qb = createMockQueryBuilder();
+      qb.execute = jest.fn().mockResolvedValue({});
+      repository.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.cleanupOldNotifications();
+
+      expect(result).toBe(0);
     });
   });
 
@@ -361,6 +454,21 @@ describe('NotificationService', () => {
       expect(qb.where).toHaveBeenCalledWith('notification.userId = :userId', {
         userId: 1,
       });
+    });
+
+    it('should use default options when none provided', async () => {
+      const entity = StructuredNotificationEntity.fromDomain(mockNotification);
+      const qb = createMockQueryBuilder();
+      qb.getManyAndCount = jest.fn().mockResolvedValue([[entity], 1]);
+      repository.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.searchNotifications(1, 'term');
+
+      expect(result.items).toHaveLength(1);
+      expect(result.pageSize).toBe(20);
+      expect(result.page).toBe(1);
+      expect(qb.take).toHaveBeenCalledWith(20);
+      expect(qb.skip).toHaveBeenCalledWith(0);
     });
   });
 });

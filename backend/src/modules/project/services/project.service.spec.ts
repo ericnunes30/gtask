@@ -9,6 +9,9 @@ import { Occupation } from '../../occupation/entities/occupation.entity';
 import { Task } from '../../tasks/entities/task.entity';
 import { CreateProjectDto } from '../dto/create-project.dto';
 import { UpdateProjectDto } from '../dto/update-project.dto';
+import { ProjectNotFoundException } from '../exceptions/project-not-found.exception';
+import { RelatedUsersNotFoundException } from '../exceptions/related-users-not-found.exception';
+import { RelatedOccupationsNotFoundException } from '../exceptions/related-occupations-not-found.exception';
 
 type MockRepository<T> = jest.Mocked<Repository<T>>;
 
@@ -166,6 +169,145 @@ describe('ProjectService', () => {
 
       expect(taskRepository.delete).toHaveBeenCalledWith({ project_id: 1 });
       expect(projectRepository.remove).toHaveBeenCalledWith(projectWithTasks);
+    });
+
+    it('should skip task deletion when project has no tasks', async () => {
+      const projectWithoutTasks = {
+        ...mockProject,
+        tasks: [],
+      } as Project;
+      projectRepository.findOne.mockResolvedValue(projectWithoutTasks);
+      projectRepository.remove.mockResolvedValue(projectWithoutTasks);
+
+      await service.remove(1);
+
+      expect(taskRepository.delete).not.toHaveBeenCalled();
+      expect(projectRepository.remove).toHaveBeenCalledWith(
+        projectWithoutTasks,
+      );
+    });
+  });
+
+  describe('create error paths', () => {
+    it('should throw RelatedUsersNotFoundException when a user is missing', async () => {
+      projectRepository.create.mockReturnValue(mockProject);
+      projectRepository.save.mockResolvedValue(mockProject);
+      userRepository.find.mockResolvedValue([{ id: 1 } as User]);
+
+      const dto: CreateProjectDto = {
+        name: 'Project Alpha',
+        users: [1, 2],
+        teams: [],
+      } as CreateProjectDto;
+
+      await expect(service.create(dto)).rejects.toThrow(
+        RelatedUsersNotFoundException,
+      );
+    });
+
+    it('should throw RelatedOccupationsNotFoundException when an occupation is missing', async () => {
+      projectRepository.create.mockReturnValue(mockProject);
+      projectRepository.save.mockResolvedValue(mockProject);
+      occupationRepository.find.mockResolvedValue([]);
+
+      const dto: CreateProjectDto = {
+        name: 'Project Alpha',
+        users: [],
+        teams: [10],
+      } as CreateProjectDto;
+
+      await expect(service.create(dto)).rejects.toThrow(
+        RelatedOccupationsNotFoundException,
+      );
+    });
+  });
+
+  describe('findAll', () => {
+    it('should return all projects with relations', async () => {
+      projectRepository.find.mockResolvedValue([mockProject]);
+
+      const result = await service.findAll();
+
+      expect(result).toEqual([mockProject]);
+      expect(projectRepository.find).toHaveBeenCalledWith({
+        relations: [
+          'tasks',
+          'tasks.users',
+          'tasks.occupations',
+          'users',
+          'occupations',
+        ],
+      });
+    });
+  });
+
+  describe('update error paths', () => {
+    it('should throw RelatedUsersNotFoundException when a user is missing', async () => {
+      projectRepository.findOne.mockResolvedValue(mockProject);
+      userRepository.find.mockResolvedValue([]);
+
+      const dto: UpdateProjectDto = {
+        users: [1, 2],
+      } as UpdateProjectDto;
+
+      await expect(service.update(1, dto)).rejects.toThrow(
+        RelatedUsersNotFoundException,
+      );
+    });
+
+    it('should associate occupations when teams are provided', async () => {
+      const occupation = { id: 10 } as Occupation;
+      projectRepository.findOne.mockResolvedValue(mockProject);
+      occupationRepository.find.mockResolvedValue([occupation]);
+      projectRepository.save.mockResolvedValue(mockProject);
+
+      const dto: UpdateProjectDto = {
+        teams: [10],
+      } as UpdateProjectDto;
+
+      await service.update(1, dto);
+
+      expect(occupationRepository.find).toHaveBeenCalledWith({
+        where: { id: In([10]) },
+      });
+      expect(mockProject.occupations).toEqual([occupation]);
+    });
+
+    it('should clear occupations when empty teams array is provided', async () => {
+      projectRepository.findOne.mockResolvedValue(mockProject);
+      projectRepository.save.mockResolvedValue(mockProject);
+
+      const dto: UpdateProjectDto = {
+        teams: [],
+      } as UpdateProjectDto;
+
+      await service.update(1, dto);
+
+      expect(mockProject.occupations).toEqual([]);
+      expect(occupationRepository.find).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findProjectTasks', () => {
+    it('should return project tasks when project exists', async () => {
+      const tasks = [{ id: 1 } as Task, { id: 2 } as Task];
+      const projectWithTasks = {
+        ...mockProject,
+        tasks,
+      } as Project;
+      projectRepository.findOne.mockResolvedValue(projectWithTasks);
+
+      const result = await service.findProjectTasks(1);
+
+      expect(result).toEqual(tasks);
+    });
+
+    it('should throw ProjectNotFoundException when project does not exist', async () => {
+      projectRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findProjectTasks(999)).rejects.toThrow(
+        ProjectNotFoundException,
+      );
     });
   });
 });

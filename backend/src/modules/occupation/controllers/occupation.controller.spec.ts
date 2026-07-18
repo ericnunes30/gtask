@@ -163,4 +163,39 @@ describe('OccupationController', () => {
       );
     });
   });
+
+  describe('Error paths and edge cases', () => {
+    it('should return 400 when occupation id is not numeric (GET /:id)', async () => {
+      await request(app.getHttpServer())
+        .get('/occupations/abc')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(occupationService.findOne).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when occupation id is not numeric (DELETE /:id)', async () => {
+      await request(app.getHttpServer())
+        .delete('/occupations/abc')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(occupationService.remove).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when userId in body is not numeric (POST /:id/users)', async () => {
+      await request(app.getHttpServer())
+        .post('/occupations/1/users')
+        .send({ userId: 'not-a-number' })
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(occupationService.addUserToOccupation).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when userId path param is not numeric (DELETE /:id/users/:userId)', async () => {
+      await request(app.getHttpServer())
+        .delete('/occupations/1/users/abc')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      expect(occupationService.removeUserFromOccupation).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -222,4 +222,27 @@ describe('UserController', () => {
       expect(mockUserService.assignOccupations).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('Error paths and edge cases', () => {
+    it('should return 400 when user id is not numeric (GET /:id)', async () => {
+      await supertest(app.getHttpServer()).get('/users/abc').expect(400);
+
+      expect(mockUserService.findOne).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when user id is not numeric (DELETE /:id)', async () => {
+      await supertest(app.getHttpServer()).delete('/users/abc').expect(400);
+
+      expect(mockUserService.remove).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when user id is not numeric (POST /:id/assign-roles)', async () => {
+      await supertest(app.getHttpServer())
+        .post('/users/abc/assign-roles')
+        .send({ roleIds: [1] })
+        .expect(400);
+
+      expect(mockUserService.assignRoles).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -159,6 +159,32 @@ describe('EventsGateway', () => {
     });
   });
 
+  describe('bridgeTimerEvents with undefined server', () => {
+    it('should not throw when server is undefined and timer event is emitted', () => {
+      // Recreate gateway with undefined server
+      Object.defineProperty(gateway, 'server', {
+        value: undefined,
+        writable: true,
+        configurable: true,
+      });
+
+      // Get the handlers registered during construction
+      const handlers = mockEventEmitter.on.mock.calls;
+      const startedHandler = handlers.find(
+        (c) => c[0] === 'timer.started',
+      )?.[1];
+      const pausedHandler = handlers.find((c) => c[0] === 'timer.paused')?.[1];
+      const tickHandler = handlers.find((c) => c[0] === 'timer.tick')?.[1];
+
+      // Should not throw
+      expect(() => startedHandler({ taskId: 1, userId: 1 })).not.toThrow();
+      expect(() =>
+        pausedHandler({ taskId: 2, userId: 1, seconds: 10 }),
+      ).not.toThrow();
+      expect(() => tickHandler({ taskId: 3, seconds: 5 })).not.toThrow();
+    });
+  });
+
   describe('emit to room via timer events', () => {
     beforeEach(() => {
       roomEmitMock.mockClear();
@@ -307,6 +333,29 @@ describe('EventsGateway', () => {
 
       expect(mockTimerService.pause).toHaveBeenCalledWith(8, 9);
       logSpy.mockRestore();
+    });
+
+    it('should disconnect unauthorized timer.pause', async () => {
+      const warnSpy = jest
+        .spyOn(gateway['logger'], 'warn')
+        .mockImplementation();
+      const mockDisconnect = jest.fn();
+      const mockEmit = jest.fn();
+      const client = {
+        id: 'client-11',
+        user: undefined,
+        emit: mockEmit,
+        disconnect: mockDisconnect,
+      } as unknown as Socket;
+
+      await gateway.handleTimerPause(client, { taskId: 11 });
+
+      expect(mockDisconnect).toHaveBeenCalled();
+      expect(mockEmit).toHaveBeenCalledWith('error', {
+        code: 'UNAUTHORIZED',
+        message: 'Not authenticated',
+      });
+      warnSpy.mockRestore();
     });
 
     it('should emit error when timer pause fails', async () => {

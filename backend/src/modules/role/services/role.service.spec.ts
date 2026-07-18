@@ -60,6 +60,17 @@ describe('RoleService', () => {
       expect(result).toEqual(mockRole);
       expect(roleRepository.create).toHaveBeenCalledWith(dto);
     });
+
+    it('should throw DuplicateRoleNameException when name already exists', async () => {
+      roleRepository.findOne.mockResolvedValue(mockRole);
+
+      const dto: CreateRoleDto = { name: 'ADMIN' } as CreateRoleDto;
+
+      await expect(service.create(dto)).rejects.toThrow(
+        DuplicateRoleNameException,
+      );
+      expect(roleRepository.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('findAll', () => {
@@ -72,6 +83,13 @@ describe('RoleService', () => {
       expect(roleRepository.find).toHaveBeenCalledWith({
         relations: ['users'],
       });
+    });
+
+    it('should rethrow error when repository find fails', async () => {
+      const error = new Error('DB connection lost');
+      roleRepository.find.mockRejectedValue(error);
+
+      await expect(service.findAll()).rejects.toThrow('DB connection lost');
     });
   });
 
@@ -120,6 +138,27 @@ describe('RoleService', () => {
         DuplicateRoleNameException,
       );
     });
+
+    it('should skip duplicate check when name is unchanged', async () => {
+      roleRepository.findOne.mockResolvedValue(mockRole);
+      roleRepository.save.mockResolvedValue(mockRole);
+
+      const dto: UpdateRoleDto = { description: 'New desc' } as UpdateRoleDto;
+      const result = await service.update(1, dto);
+
+      expect(roleRepository.findOne).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(mockRole);
+    });
+
+    it('should throw RoleNotFoundException when updating non-existent role', async () => {
+      roleRepository.findOne.mockResolvedValue(null);
+
+      const dto: UpdateRoleDto = { name: 'UPDATED' } as UpdateRoleDto;
+
+      await expect(service.update(999, dto)).rejects.toThrow(
+        RoleNotFoundException,
+      );
+    });
   });
 
   describe('remove', () => {
@@ -129,6 +168,13 @@ describe('RoleService', () => {
       await service.remove(1);
 
       expect(roleRepository.remove).toHaveBeenCalledWith(mockRole);
+    });
+
+    it('should throw RoleNotFoundException when removing non-existent role', async () => {
+      roleRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.remove(999)).rejects.toThrow(RoleNotFoundException);
+      expect(roleRepository.remove).not.toHaveBeenCalled();
     });
   });
 });

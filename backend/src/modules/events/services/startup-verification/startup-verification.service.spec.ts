@@ -146,5 +146,59 @@ describe('StartupVerificationService', () => {
 
       expect(operation).toHaveBeenCalledTimes(3);
     });
+
+    it('should throw generic Error when maxRetries is 0 and lastError is undefined', async () => {
+      const operation = jest.fn().mockResolvedValue('never-called');
+
+      await expect(
+        service.executeWithRetry(operation, 'zero-retries-op', 0),
+      ).rejects.toThrow('zero-retries-op failed after 0 attempts');
+
+      expect(operation).not.toHaveBeenCalled();
+    });
+
+    it('should delay between retries using retryDelay * attempt', async () => {
+      const delaySpy = jest
+        .spyOn(
+          service as unknown as { delay: (ms: number) => Promise<void> },
+          'delay',
+        )
+        .mockResolvedValue(undefined);
+      const operation = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('fail-1'))
+        .mockRejectedValueOnce(new Error('fail-2'))
+        .mockRejectedValueOnce(new Error('fail-3'));
+
+      await expect(
+        service.executeWithRetry(operation, 'delayed-op', 3),
+      ).rejects.toThrow('fail-3');
+
+      expect(delaySpy).toHaveBeenNthCalledWith(1, 1000);
+      expect(delaySpy).toHaveBeenNthCalledWith(2, 2000);
+      expect(delaySpy).toHaveBeenCalledTimes(2);
+      delaySpy.mockRestore();
+    });
+
+    it('should not delay after the final failed attempt', async () => {
+      const delaySpy = jest
+        .spyOn(
+          service as unknown as { delay: (ms: number) => Promise<void> },
+          'delay',
+        )
+        .mockResolvedValue(undefined);
+      const operation = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('fail-1'))
+        .mockResolvedValueOnce('recovered');
+
+      const result = await service.executeWithRetry(operation, 'final-op', 3);
+
+      expect(result).toBe('recovered');
+      expect(operation).toHaveBeenCalledTimes(2);
+      expect(delaySpy).toHaveBeenCalledTimes(1);
+      expect(delaySpy).toHaveBeenCalledWith(1000);
+      delaySpy.mockRestore();
+    });
   });
 });

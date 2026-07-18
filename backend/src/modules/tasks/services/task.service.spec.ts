@@ -364,5 +364,259 @@ describe('TaskService', () => {
 
       expect(taskRepository.remove).toHaveBeenCalledWith(mockTask);
     });
+
+    it('should throw TaskNotFoundException when removing non-existent task', async () => {
+      taskRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.remove(999)).rejects.toThrow(TaskNotFoundException);
+    });
+  });
+
+  describe('updateTimer', () => {
+    it('should throw TaskNotFoundException when updating timer of non-existent task', async () => {
+      taskRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.updateTimer(999, 60)).rejects.toThrow(
+        TaskNotFoundException,
+      );
+    });
+  });
+
+  describe('create with timer default', () => {
+    it('should default timer to 0 when not provided', async () => {
+      taskRepository.create.mockImplementation(
+        (data) => ({ ...(data as object), id: 1 }) as Task,
+      );
+      taskRepository.save.mockResolvedValue(mockTask);
+
+      const dto: CreateTaskDto = {
+        title: 'Task without timer',
+        description: 'No timer provided',
+      } as CreateTaskDto;
+
+      await service.create(dto, 1);
+
+      expect(taskRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ timer: 0 }),
+      );
+    });
+
+    it('should not call save twice when no users/occupations provided', async () => {
+      taskRepository.create.mockImplementation(
+        (data) => ({ ...(data as object), id: 1 }) as Task,
+      );
+      taskRepository.save.mockResolvedValue(mockTask);
+
+      const dto: CreateTaskDto = {
+        title: 'Simple task',
+        description: 'No relations',
+      } as CreateTaskDto;
+
+      await service.create(dto, 1);
+
+      // Only 1 save call (the initial save, not the relations save)
+      expect(taskRepository.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('update - no status change', () => {
+    it('should not emit task.status.changed when status remains the same', async () => {
+      const currentTask = {
+        id: 1,
+        title: 'Task One',
+        description: 'Desc',
+        status: 'in_progress',
+        timer: 0,
+        users: [],
+        occupations: [],
+        project: { id: 100 } as Project,
+        reviewer: { id: 2 } as User,
+      } as Task;
+
+      const afterUpdate = {
+        ...currentTask,
+        title: 'Task One Updated',
+      } as Task;
+
+      taskRepository.findOne
+        .mockResolvedValueOnce(currentTask)
+        .mockResolvedValueOnce(afterUpdate)
+        .mockResolvedValueOnce(currentTask);
+
+      taskRepository.save.mockResolvedValue(afterUpdate);
+      jest
+        .spyOn(TaskCommentsHelper, 'fetchNestedComments')
+        .mockResolvedValue([]);
+      jest.spyOn(TaskCommentsHelper, 'fetchActivityLogs').mockResolvedValue([]);
+
+      await service.update(
+        1,
+        { title: 'Task One Updated' } as UpdateTaskDto,
+        5,
+      );
+
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+        'task.status.changed',
+        expect.anything(),
+      );
+    });
+
+    it('should exclude users/occupations from changedFields', async () => {
+      const currentTask = {
+        id: 1,
+        title: 'Task One',
+        description: 'Desc',
+        status: 'todo',
+        timer: 0,
+        users: [],
+        occupations: [],
+        project: { id: 100 } as Project,
+        reviewer: { id: 2 } as User,
+      } as Task;
+
+      const afterUpdate = {
+        ...currentTask,
+        users: [{ id: 1 } as User],
+      } as Task;
+
+      taskRepository.findOne
+        .mockResolvedValueOnce(currentTask)
+        .mockResolvedValueOnce(afterUpdate)
+        .mockResolvedValueOnce(currentTask);
+
+      const mockUserRepo = {
+        find: jest.fn().mockResolvedValue([{ id: 1 } as User]),
+      };
+      taskRepository.manager.getRepository = jest
+        .fn()
+        .mockReturnValueOnce(mockUserRepo);
+
+      taskRepository.save.mockResolvedValue(afterUpdate);
+      jest
+        .spyOn(TaskCommentsHelper, 'fetchNestedComments')
+        .mockResolvedValue([]);
+      jest.spyOn(TaskCommentsHelper, 'fetchActivityLogs').mockResolvedValue([]);
+
+      await service.update(1, { users: [1] } as UpdateTaskDto, 1);
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'task.updated',
+        expect.objectContaining({
+          changedFields: {},
+        }),
+      );
+    });
+
+    it('should not emit task.assignees.updated when users is not in dto', async () => {
+      const currentTask = {
+        id: 1,
+        title: 'Task One',
+        description: 'Desc',
+        status: 'todo',
+        timer: 0,
+        users: [],
+        occupations: [],
+        project: { id: 100 } as Project,
+        reviewer: { id: 2 } as User,
+      } as Task;
+
+      const afterUpdate = { ...currentTask, title: 'New' } as Task;
+
+      taskRepository.findOne
+        .mockResolvedValueOnce(currentTask)
+        .mockResolvedValueOnce(afterUpdate)
+        .mockResolvedValueOnce(currentTask);
+
+      taskRepository.save.mockResolvedValue(afterUpdate);
+      jest
+        .spyOn(TaskCommentsHelper, 'fetchNestedComments')
+        .mockResolvedValue([]);
+      jest.spyOn(TaskCommentsHelper, 'fetchActivityLogs').mockResolvedValue([]);
+
+      await service.update(1, { title: 'New' } as UpdateTaskDto, 1);
+
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+        'task.assignees.updated',
+        expect.anything(),
+      );
+    });
+  });
+
+  describe('update with applyUpdate branches', () => {
+    it('should not call validateEntityIds for users when userIds is empty array', async () => {
+      const currentTask = {
+        id: 1,
+        title: 'Task One',
+        description: 'Desc',
+        status: 'todo',
+        timer: 0,
+        users: [],
+        occupations: [],
+        project: { id: 100 } as Project,
+        reviewer: { id: 2 } as User,
+      } as Task;
+
+      const afterUpdate = { ...currentTask, title: 'New' } as Task;
+
+      taskRepository.findOne
+        .mockResolvedValueOnce(currentTask)
+        .mockResolvedValueOnce(afterUpdate)
+        .mockResolvedValueOnce(currentTask);
+
+      taskRepository.save.mockResolvedValue(afterUpdate);
+      jest
+        .spyOn(TaskCommentsHelper, 'fetchNestedComments')
+        .mockResolvedValue([]);
+      jest.spyOn(TaskCommentsHelper, 'fetchActivityLogs').mockResolvedValue([]);
+
+      const mockUserRepo = {
+        find: jest.fn(),
+      };
+      const mockOccupationRepo = {
+        find: jest.fn(),
+      };
+      taskRepository.manager.getRepository = jest
+        .fn()
+        .mockReturnValueOnce(mockUserRepo)
+        .mockReturnValueOnce(mockOccupationRepo);
+
+      await service.update(
+        1,
+        { title: 'New', users: [], occupations: [] } as UpdateTaskDto,
+        1,
+      );
+
+      expect(mockUserRepo.find).not.toHaveBeenCalled();
+      expect(mockOccupationRepo.find).not.toHaveBeenCalled();
+    });
+
+    it('should throw TaskNotFoundException from applyUpdate when task vanished', async () => {
+      const currentTask = {
+        id: 1,
+        title: 'Task One',
+        description: 'Desc',
+        status: 'todo',
+        timer: 0,
+        users: [],
+        occupations: [],
+        project: { id: 100 } as Project,
+        reviewer: { id: 2 } as User,
+      } as Task;
+
+      // First findOne (findOne in update) returns current task
+      // Second findOne (applyUpdate) returns null → throws
+      taskRepository.findOne
+        .mockResolvedValueOnce(currentTask)
+        .mockResolvedValueOnce(null);
+
+      jest
+        .spyOn(TaskCommentsHelper, 'fetchNestedComments')
+        .mockResolvedValue([]);
+      jest.spyOn(TaskCommentsHelper, 'fetchActivityLogs').mockResolvedValue([]);
+
+      await expect(
+        service.update(1, { title: 'New' } as UpdateTaskDto, 1),
+      ).rejects.toThrow(TaskNotFoundException);
+    });
   });
 });

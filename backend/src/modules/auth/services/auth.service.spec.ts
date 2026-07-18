@@ -103,6 +103,26 @@ describe('AuthService', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should return null when user has no password set', async () => {
+      userService.findByEmail.mockResolvedValue({ ...mockUser, password: '' });
+
+      const result = await service.validateUser('user@example.com', 'password');
+
+      expect(result).toBeNull();
+      expect(passwordVerificationFactory.getStrategy).not.toHaveBeenCalled();
+    });
+
+    it('should return null when password verification strategy throws', async () => {
+      userService.findByEmail.mockResolvedValue(mockUser);
+      passwordVerificationFactory.getStrategy.mockImplementation(() => {
+        throw new Error('strategy not found');
+      });
+
+      const result = await service.validateUser('user@example.com', 'password');
+
+      expect(result).toBeNull();
+    });
   });
 
   describe('login', () => {
@@ -117,6 +137,18 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('signed-token');
       expect(result.refreshToken).toBe('signed-token');
       expect(result.user).toEqual(expect.objectContaining({ id: mockUser.id }));
+    });
+
+    it('should handle user without roles', async () => {
+      const userWithoutRoles = { ...mockUser, roles: undefined };
+      userService.findByEmail.mockResolvedValue(userWithoutRoles);
+
+      const result = await service.login({
+        email: 'user@example.com',
+        password: 'password',
+      });
+
+      expect(result.accessToken).toBe('signed-token');
     });
 
     it('should throw UnauthorizedException when credentials are invalid', async () => {
@@ -145,6 +177,15 @@ describe('AuthService', () => {
       });
 
       await expect(service.refreshToken('invalid-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should throw UnauthorizedException when user not found during refresh', async () => {
+      jwtService.verify.mockReturnValue({ sub: 999 });
+      userService.findOne.mockResolvedValue(null);
+
+      await expect(service.refreshToken('valid-but-orphan')).rejects.toThrow(
         UnauthorizedException,
       );
     });
