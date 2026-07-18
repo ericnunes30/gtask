@@ -400,6 +400,23 @@ describe('TaskService', () => {
         expect.objectContaining({ timer: 0 }),
       );
     });
+
+    it('should not call save twice when no users/occupations provided', async () => {
+      taskRepository.create.mockImplementation(
+        (data) => ({ ...(data as object), id: 1 }) as Task,
+      );
+      taskRepository.save.mockResolvedValue(mockTask);
+
+      const dto: CreateTaskDto = {
+        title: 'Simple task',
+        description: 'No relations',
+      } as CreateTaskDto;
+
+      await service.create(dto, 1);
+
+      // Only 1 save call (the initial save, not the relations save)
+      expect(taskRepository.save).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('update - no status change', () => {
