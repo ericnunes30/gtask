@@ -12,7 +12,7 @@ import { AppModule } from '../src/app.module';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 import { AuthenticatedSocketAdapter } from '../src/modules/events/adapters/authenticated-socket.adapter';
 import { corsConfig } from '../src/config/cors.config';
-import { truncateTables } from './utils/db.utils';
+import { truncateTables, seedRoles } from './utils/db.utils';
 
 // Bypass ThrottlerGuard for E2E tests
 class BypassThrottlerGuard {
@@ -52,6 +52,7 @@ export async function bootstrapE2E(): Promise<E2EApp> {
 
   const dataSource = moduleFixture.get(DataSource);
   await truncateTables(dataSource);
+  await seedRoles(dataSource);
 
   return { app, dataSource };
 }
