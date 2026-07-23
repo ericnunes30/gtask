@@ -217,4 +217,15 @@ describe('Projects (e2e)', () => {
       expect(tasksResponse.body.data[0].project_id).toBe(projectId);
     });
   });
+
+  describe('GET /api/v1/projects/:id without token', () => {
+    it('should return 401 when no token provided', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/projects/1')
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(401);
+    });
+  });
 });
