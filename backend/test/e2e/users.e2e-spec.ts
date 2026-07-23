@@ -41,6 +41,18 @@ describe('Users (e2e)', () => {
       expect(response.body.data.email).toBe(payload.email);
       expect(response.body.data.id).toBeDefined();
     });
+
+    it('should return 400 for invalid email format', async () => {
+      const payload = { name: 'Test', email: 'invalid-email', password: '123' };
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(400);
+    });
   });
 
   describe('GET /api/v1/users', () => {
