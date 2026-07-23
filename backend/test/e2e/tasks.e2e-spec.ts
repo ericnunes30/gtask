@@ -459,4 +459,15 @@ describe('Tasks (e2e)', () => {
       expect(response.body.data.users.length).toBe(0);
     });
   });
+
+  describe('GET /api/v1/tasks/:id without token', () => {
+    it('should return 401 when no token provided', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/tasks/1')
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(401);
+    });
+  });
 });
