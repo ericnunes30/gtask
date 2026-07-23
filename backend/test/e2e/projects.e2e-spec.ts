@@ -96,7 +96,9 @@ describe('Projects (e2e)', () => {
       expect(response.body).toBeDefined();
       expect(response.body.success).toBe(false);
       expect(response.body.statusCode).toBe(404);
-      expect(response.body.message).toContain('Project with ID 99999 not found');
+      expect(response.body.message).toContain(
+        'Project with ID 99999 not found',
+      );
     });
   });
 

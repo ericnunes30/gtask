@@ -15,8 +15,6 @@ jest.mock('bcrypt', () => ({
 }));
 import * as bcrypt from 'bcrypt';
 
-/* eslint-disable sonarjs/no-hardcoded-passwords */
-
 type MockRepository<T> = jest.Mocked<Repository<T>>;
 
 function createMockRepository<T>(): MockRepository<T> {

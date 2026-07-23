@@ -2,7 +2,12 @@ import request from 'supertest';
 import { bootstrapE2E, E2EApp } from '../setup-e2e';
 import { teardownE2E } from '../teardown-e2e';
 import { loginAsAdmin } from '../utils/auth.utils';
-import { projectFactory, taskFactory, userFactory, occupationFactory } from '../utils/factory.utils';
+import {
+  projectFactory,
+  taskFactory,
+  userFactory,
+  occupationFactory,
+} from '../utils/factory.utils';
 import { PriorityLevel, Status } from '../../src/modules/tasks/entities/enums';
 
 describe('Tasks (e2e)', () => {
@@ -28,14 +33,16 @@ describe('Tasks (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         ...payload,
-        start_date: new Date(payload.start_date as Date).toISOString(),
-        end_date: new Date(payload.end_date as Date).toISOString(),
+        start_date: new Date(payload.start_date).toISOString(),
+        end_date: new Date(payload.end_date).toISOString(),
       })
       .expect(201);
     return response.body.data.id;
   }
 
-  async function createUser(overrides?: Record<string, unknown>): Promise<number> {
+  async function createUser(
+    overrides?: Record<string, unknown>,
+  ): Promise<number> {
     const payload = userFactory(overrides);
     const response = await request(e2e.app.getHttpServer())
       .post('/api/v1/users')
@@ -337,7 +344,10 @@ describe('Tasks (e2e)', () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
 
       // Clean up related activity logs due to FK constraint
-      await e2e.dataSource.query('DELETE FROM activity_logs WHERE task_id = $1', [taskId]);
+      await e2e.dataSource.query(
+        'DELETE FROM activity_logs WHERE task_id = $1',
+        [taskId],
+      );
 
       await request(e2e.app.getHttpServer())
         .delete(`/api/v1/tasks/${taskId}`)

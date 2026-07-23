@@ -27,8 +27,8 @@ describe('Comments (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         ...payload,
-        start_date: new Date(payload.start_date as Date).toISOString(),
-        end_date: new Date(payload.end_date as Date).toISOString(),
+        start_date: new Date(payload.start_date).toISOString(),
+        end_date: new Date(payload.end_date).toISOString(),
       })
       .expect(201);
     return response.body.data.id;
@@ -181,7 +181,9 @@ describe('Comments (e2e)', () => {
       expect(response.body).toBeDefined();
       expect(response.body.success).toBe(false);
       expect(response.body.statusCode).toBe(404);
-      expect(response.body.message).toContain('Comment with ID 99999 not found');
+      expect(response.body.message).toContain(
+        'Comment with ID 99999 not found',
+      );
     });
   });
 

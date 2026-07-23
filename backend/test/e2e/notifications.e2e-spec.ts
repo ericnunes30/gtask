@@ -2,7 +2,11 @@ import request from 'supertest';
 import { bootstrapE2E, E2EApp } from '../setup-e2e';
 import { teardownE2E } from '../teardown-e2e';
 import { loginAsAdmin, loginUser } from '../utils/auth.utils';
-import { projectFactory, taskFactory, userFactory } from '../utils/factory.utils';
+import {
+  projectFactory,
+  taskFactory,
+  userFactory,
+} from '../utils/factory.utils';
 
 describe('Notifications (e2e)', () => {
   let e2e: E2EApp;
@@ -21,7 +25,7 @@ describe('Notifications (e2e)', () => {
 
     // Create a regular user
     const userPayload = userFactory();
-    userPassword = userPayload.password as string;
+    userPassword = userPayload.password;
     const userResponse = await request(e2e.app.getHttpServer())
       .post('/api/v1/users')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -38,8 +42,8 @@ describe('Notifications (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         ...payload,
-        start_date: new Date(payload.start_date as Date).toISOString(),
-        end_date: new Date(payload.end_date as Date).toISOString(),
+        start_date: new Date(payload.start_date).toISOString(),
+        end_date: new Date(payload.end_date).toISOString(),
       })
       .expect(201);
 
@@ -193,7 +197,9 @@ describe('Notifications (e2e)', () => {
       expect(response.body).toBeDefined();
       expect(response.body.success).toBe(false);
       expect(response.body.statusCode).toBe(404);
-      expect(response.body.message).toContain('Notification with ID 99999 not found');
+      expect(response.body.message).toContain(
+        'Notification with ID 99999 not found',
+      );
     });
   });
 
@@ -265,7 +271,9 @@ describe('Notifications (e2e)', () => {
       expect(response.body).toBeDefined();
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
-      expect(response.body.data.message).toBe('Expired notifications cleaned up successfully');
+      expect(response.body.data.message).toBe(
+        'Expired notifications cleaned up successfully',
+      );
     });
   });
 
@@ -280,7 +288,9 @@ describe('Notifications (e2e)', () => {
       expect(response.body).toBeDefined();
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
-      expect(response.body.data.message).toBe('Old notifications cleaned up successfully');
+      expect(response.body.data.message).toBe(
+        'Old notifications cleaned up successfully',
+      );
       expect(typeof response.body.data.deletedCount).toBe('number');
     });
   });

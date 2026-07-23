@@ -1,4 +1,3 @@
-/* eslint-disable sonarjs/no-hardcoded-passwords */
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';

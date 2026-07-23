@@ -106,7 +106,9 @@ describe('Roles (e2e)', () => {
         .expect(201);
 
       const roleId = createResponse.body.data.id;
-      const updatedPayload = roleFactory({ description: 'Updated description' });
+      const updatedPayload = roleFactory({
+        description: 'Updated description',
+      });
 
       const response = await request(e2e.app.getHttpServer())
         .put(`/api/v1/roles/${roleId}`)
