@@ -28,8 +28,8 @@ describe('Activity Logs (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         ...payload,
-        start_date: new Date(payload.start_date as Date).toISOString(),
-        end_date: new Date(payload.end_date as Date).toISOString(),
+        start_date: new Date(payload.start_date).toISOString(),
+        end_date: new Date(payload.end_date).toISOString(),
       })
       .expect(201);
     return response.body.data.id;

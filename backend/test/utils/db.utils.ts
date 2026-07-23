@@ -12,8 +12,12 @@ export async function truncateTables(dataSource: DataSource): Promise<void> {
   );
 
   if (tables.length > 0) {
-    const tableNames = tables.map((t: { tablename: string }) => `"${t.tablename}"`).join(', ');
-    await queryRunner.query(`TRUNCATE TABLE ${tableNames} RESTART IDENTITY CASCADE;`);
+    const tableNames = tables
+      .map((t: { tablename: string }) => `"${t.tablename}"`)
+      .join(', ');
+    await queryRunner.query(
+      `TRUNCATE TABLE ${tableNames} RESTART IDENTITY CASCADE;`,
+    );
   }
 
   await queryRunner.release();
@@ -29,7 +33,9 @@ export async function seedRoles(dataSource: DataSource): Promise<Role[]> {
   return await roleRepository.save(created);
 }
 
-export async function seedOccupations(dataSource: DataSource): Promise<Occupation[]> {
+export async function seedOccupations(
+  dataSource: DataSource,
+): Promise<Occupation[]> {
   const occupationRepository = dataSource.getRepository(Occupation);
   const occupations = [
     { name: 'Developer' },

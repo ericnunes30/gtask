@@ -2,7 +2,11 @@ import request from 'supertest';
 import { bootstrapE2E, E2EApp } from '../setup-e2e';
 import { teardownE2E } from '../teardown-e2e';
 import { loginAsAdmin } from '../utils/auth.utils';
-import { userFactory, roleFactory, occupationFactory } from '../utils/factory.utils';
+import {
+  userFactory,
+  roleFactory,
+  occupationFactory,
+} from '../utils/factory.utils';
 
 describe('Users (e2e)', () => {
   let e2e: E2EApp;

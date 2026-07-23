@@ -424,6 +424,31 @@ const nivel2: Criterion[] = [
     },
   },
   {
+    id: '2.11',
+    nivel: 2,
+    nome: 'Testes E2E passam (jest e2e)',
+    run: () => {
+      const outFile = path.join(BACKEND_DIR, '.qg-e2e.json');
+      const r = run('npx jest --config ./test/jest-e2e.json --passWithNoTests --json --outputFile=' + outFile, { timeout: 300_000 });
+      let report: JestJsonReport = null;
+      try {
+        if (existsSync(outFile)) {
+          report = JSON.parse(readFileSync(outFile, 'utf8')) as unknown as JestJsonReport;
+          try { unlinkSync(outFile); } catch { /* noop */ }
+        }
+      } catch {
+        report = null;
+      }
+      const passed = report?.numPassedTests ?? 0;
+      const failed = report?.numFailedTests ?? 0;
+      return {
+        pass: r.exit === 0 && failed === 0,
+        measured: true,
+        detail: r.exit === 0 ? `${passed} teste(s) E2E passando` : `${failed} teste(s) E2E falhando`,
+      };
+    },
+  },
+  {
     id: '2.3',
     nivel: 2,
     nome: 'Cobertura minima de 20%',

@@ -178,8 +178,12 @@ describe('RecurringTasks (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(response.body.data.id).toBe(recurringTaskId);
       expect(response.body.data.name).toBe(updatedPayload.name);
-      expect(response.body.data.schedule_type).toBe(updatedPayload.schedule_type);
-      expect(response.body.data.frequency_cron).toBe(updatedPayload.frequency_cron);
+      expect(response.body.data.schedule_type).toBe(
+        updatedPayload.schedule_type,
+      );
+      expect(response.body.data.frequency_cron).toBe(
+        updatedPayload.frequency_cron,
+      );
       expect(response.body.data.is_active).toBe(updatedPayload.is_active);
     });
   });
