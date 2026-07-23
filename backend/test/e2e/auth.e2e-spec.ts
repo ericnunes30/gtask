@@ -94,6 +94,16 @@ describe('Auth (e2e)', () => {
 
       expect(profileResponse.body.data.email).toBe('admin@test.com');
     });
+
+    it('should return 401 for invalid refresh token', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/auth/refresh')
+        .send({ refreshToken: 'invalid-token-12345' })
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(401);
+    });
   });
 
   describe('GET /api/v1/auth/profile', () => {
