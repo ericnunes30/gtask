@@ -1,0 +1,287 @@
+import request from 'supertest';
+import { bootstrapE2E, E2EApp } from '../setup-e2e';
+import { teardownE2E } from '../teardown-e2e';
+import { loginAsAdmin, loginUser } from '../utils/auth.utils';
+import { projectFactory, taskFactory, userFactory } from '../utils/factory.utils';
+
+describe('Notifications (e2e)', () => {
+  let e2e: E2EApp;
+  let adminToken: string;
+  let userToken: string;
+  let userId: number;
+  let userEmail: string;
+  let userPassword: string;
+  let notificationId: number;
+  let secondNotificationId: number;
+
+  beforeAll(async () => {
+    e2e = await bootstrapE2E();
+    const login = await loginAsAdmin(e2e.app, e2e.dataSource);
+    adminToken = login.accessToken;
+
+    // Create a regular user
+    const userPayload = userFactory();
+    userPassword = userPayload.password as string;
+    const userResponse = await request(e2e.app.getHttpServer())
+      .post('/api/v1/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(userPayload)
+      .expect(201);
+
+    userId = userResponse.body.data.id;
+    userEmail = userResponse.body.data.email;
+
+    // Create a project
+    const payload = projectFactory();
+    const projectResponse = await request(e2e.app.getHttpServer())
+      .post('/api/v1/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        ...payload,
+        start_date: new Date(payload.start_date as Date).toISOString(),
+        end_date: new Date(payload.end_date as Date).toISOString(),
+      })
+      .expect(201);
+
+    const projectId = projectResponse.body.data.id;
+
+    // Create two tasks with the user assigned to generate notifications
+    const taskPayload1 = {
+      ...taskFactory({ project_id: projectId }),
+      start_date: new Date().toISOString(),
+      due_date: new Date(Date.now() + 86400000).toISOString(),
+      users: [userId],
+    };
+
+    await request(e2e.app.getHttpServer())
+      .post('/api/v1/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(taskPayload1)
+      .expect(201);
+
+    const taskPayload2 = {
+      ...taskFactory({ project_id: projectId }),
+      start_date: new Date().toISOString(),
+      due_date: new Date(Date.now() + 86400000).toISOString(),
+      users: [userId],
+    };
+
+    await request(e2e.app.getHttpServer())
+      .post('/api/v1/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(taskPayload2)
+      .expect(201);
+
+    // Wait for async event listeners to create notifications
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Login as the regular user
+    const userLogin = await loginUser(e2e.app, userEmail, userPassword);
+    userToken = userLogin.accessToken;
+
+    // Fetch notifications to store IDs for later tests
+    const notificationsResponse = await request(e2e.app.getHttpServer())
+      .get('/api/v1/notifications')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+
+    const items = notificationsResponse.body.data.items;
+    expect(items.length).toBeGreaterThanOrEqual(2);
+    notificationId = items[0].id;
+    secondNotificationId = items[1].id;
+  }, 30000);
+
+  afterAll(async () => {
+    if (e2e) {
+      await teardownE2E(e2e);
+    }
+  });
+
+  describe('GET /api/v1/notifications', () => {
+    it('should get user notifications', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/notifications')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+      expect(response.body.data.items.length).toBeGreaterThanOrEqual(2);
+      expect(response.body.data.total).toBeGreaterThanOrEqual(2);
+      expect(response.body.data.page).toBe(1);
+      expect(response.body.data.pageSize).toBeDefined();
+      expect(response.body.data.hasNext).toBeDefined();
+      expect(response.body.data.hasPrevious).toBeDefined();
+    });
+  });
+
+  describe('GET /api/v1/notifications/unread-count', () => {
+    it('should get unread count', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/notifications/unread-count')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(typeof response.body.data.count).toBe('number');
+      expect(response.body.data.count).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('GET /api/v1/notifications/stats', () => {
+    it('should get user stats', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/notifications/stats')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(typeof response.body.data.total).toBe('number');
+      expect(response.body.data.total).toBeGreaterThanOrEqual(2);
+      expect(typeof response.body.data.unread).toBe('number');
+      expect(response.body.data.unread).toBeGreaterThanOrEqual(2);
+      expect(typeof response.body.data.byType).toBe('object');
+      expect(typeof response.body.data.byPriority).toBe('object');
+    });
+  });
+
+  describe('GET /api/v1/notifications/search', () => {
+    it('should search notifications', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/notifications/search')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+      expect(response.body.data.total).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('GET /api/v1/notifications/:id', () => {
+    it('should get notification by id', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get(`/api/v1/notifications/${notificationId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.id).toBe(notificationId);
+      expect(response.body.data.type).toBeDefined();
+      expect(response.body.data.priority).toBeDefined();
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.metadata).toBeDefined();
+      expect(response.body.data.isRead).toBe(false);
+    });
+
+    it('should return 404 for non-existent notification', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/notifications/99999')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(404);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(404);
+      expect(response.body.message).toContain('Notification with ID 99999 not found');
+    });
+  });
+
+  describe('PATCH /api/v1/notifications/:id/read', () => {
+    it('should mark as read', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .put(`/api/v1/notifications/${notificationId}/read`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+
+      const getResponse = await request(e2e.app.getHttpServer())
+        .get(`/api/v1/notifications/${notificationId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(getResponse.body.data.isRead).toBe(true);
+    });
+  });
+
+  describe('PATCH /api/v1/notifications/read-all', () => {
+    it('should mark all as read', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .put('/api/v1/notifications/read-all')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+
+      const countResponse = await request(e2e.app.getHttpServer())
+        .get('/api/v1/notifications/unread-count')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(countResponse.body.data.count).toBe(0);
+    });
+  });
+
+  describe('DELETE /api/v1/notifications/:id', () => {
+    it('should delete notification', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .delete(`/api/v1/notifications/${secondNotificationId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+
+      const getResponse = await request(e2e.app.getHttpServer())
+        .get(`/api/v1/notifications/${secondNotificationId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(404);
+
+      expect(getResponse.body.success).toBe(false);
+      expect(getResponse.body.statusCode).toBe(404);
+    });
+  });
+
+  describe('POST /api/v1/notifications/cleanup-expired', () => {
+    it('should cleanup expired notifications', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/notifications/admin/cleanup')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.message).toBe('Expired notifications cleaned up successfully');
+    });
+  });
+
+  describe('POST /api/v1/notifications/cleanup-old', () => {
+    it('should cleanup old notifications', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/notifications/admin/cleanup-old')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ daysToKeep: 90 })
+        .expect(201);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.message).toBe('Old notifications cleaned up successfully');
+      expect(typeof response.body.data.deletedCount).toBe('number');
+    });
+  });
+});
