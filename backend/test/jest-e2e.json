@@ -6,5 +6,17 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "testEnvironment": "node",
-  "maxWorkers": 1
+  "maxWorkers": 1,
+  "collectCoverage": false,
+  "collectCoverageFrom": [
+    "src/**/*.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.e2e-spec.ts",
+    "!src/**/*.dto.ts",
+    "!src/**/*.entity.ts",
+    "!src/**/migrations/**",
+    "!src/**/database/**"
+  ],
+  "coverageDirectory": "./coverage-e2e",
+  "coverageReporters": ["text-summary", "json", "lcov"]
 }
