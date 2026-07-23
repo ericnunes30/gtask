@@ -89,6 +89,7 @@ export class AuthService {
       expiresIn: accessExpiresIn,
     });
     const refreshToken = this.jwtService.sign(refreshTokenPayload, {
+      secret: this.refreshSecret,
       expiresIn: refreshExpiresIn,
     });
 
