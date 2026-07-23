@@ -16,6 +16,5 @@ const exceptionProviders: Provider[] = [
 
 @Module({
   providers: exceptionProviders,
-  exports: exceptionProviders,
 })
 export class ExceptionModule {}
