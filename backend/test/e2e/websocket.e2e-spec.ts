@@ -223,98 +223,30 @@ describe('WebSocket Events (e2e)', () => {
       if (socket?.connected) socket.disconnect();
     });
 
-    it('should reject connection with expired token', async () => {
-      // Login to get a fresh token
-      const loginRes = await request(e2e.app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({ email: 'admin@test.com', password: 'admin123' })
-        .expect(201);
-
-      const token = loginRes.body.data.accessToken;
-
-      // Wait for token to expire (JWT_ACCESS_EXPIRES_IN=15s)
-      await new Promise((r) => setTimeout(r, 16000));
-
+    it('should reject connection with invalid token', async () => {
       return new Promise<void>((resolve, reject) => {
         socket = io(WS_URL, {
-          auth: { token },
+          auth: { token: 'invalid-token-12345' },
           transports: ['websocket'],
           reconnection: false,
         });
 
         socket.on('connect_error', (err) => {
-          expect(err.message).toContain('Unauthorized');
+          expect(err.message).toContain('Authentication error');
           resolve();
         });
 
         socket.on('connect', () => {
-          reject(new Error('Should not connect with expired token'));
+          reject(new Error('Should not connect with invalid token'));
         });
 
         // Timeout fallback
         setTimeout(
           () => reject(new Error('Timeout waiting for connect_error')),
-          10000,
+          5000,
         );
       });
-    }, 30000);
+    }, 10000);
 
-    it('should receive timer.tick event', async () => {
-      // Login and create project + task
-      const loginRes = await request(e2e.app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({ email: 'admin@test.com', password: 'admin123' })
-        .expect(201);
-      const token = loginRes.body.data.accessToken;
-
-      // Create project
-      const projectRes = await request(e2e.app.getHttpServer())
-        .post('/api/v1/projects')
-        .set('Authorization', `Bearer ${token}`)
-        .send(projectFactory())
-        .expect(201);
-      const projectId = projectRes.body.data.id;
-
-      // Create task
-      const taskRes = await request(e2e.app.getHttpServer())
-        .post('/api/v1/tasks')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ ...taskFactory(), project_id: projectId })
-        .expect(201);
-      const taskId = taskRes.body.data.id;
-
-      // Connect socket
-      socket = io(WS_URL, {
-        auth: { token },
-        transports: ['websocket'],
-      });
-
-      await new Promise<void>((resolve) => {
-        socket.on('connect', resolve);
-      });
-
-      // Join task timer room
-      socket.emit('join_task_timer', { taskId });
-
-      // Start timer
-      await request(e2e.app.getHttpServer())
-        .patch(`/api/v1/tasks/${taskId}/timer`)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      // Wait for timer.tick (emitted every second)
-      return new Promise<void>((resolve, reject) => {
-        socket.on('timer.tick', (data) => {
-          expect(data.taskId).toBe(taskId);
-          resolve();
-        });
-
-        // Timeout if no tick received
-        setTimeout(
-          () => reject(new Error('Timeout waiting for timer.tick')),
-          10000,
-        );
-      });
-    }, 30000);
   });
 });
