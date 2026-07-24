@@ -2,7 +2,7 @@ import request from 'supertest';
 import { bootstrapE2E, E2EApp } from '../setup-e2e';
 import { teardownE2E } from '../teardown-e2e';
 import { loginAsAdmin } from '../utils/auth.utils';
-import { occupationFactory } from '../utils/factory.utils';
+import { occupationFactory, userFactory } from '../utils/factory.utils';
 
 describe('Occupations (e2e)', () => {
   let e2e: E2EApp;
@@ -165,6 +165,37 @@ describe('Occupations (e2e)', () => {
         .send({ userId: 999999 })
         .expect(404);
 
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(404);
+    });
+  });
+
+  describe('DELETE /api/v1/occupations/:id/users/:userId', () => {
+    it('should return 404 when removing user not in occupation', async () => {
+      const occupationPayload = occupationFactory();
+      const occupationResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/occupations')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(occupationPayload)
+        .expect(201);
+
+      const occupationId = occupationResponse.body.data.id;
+
+      const userPayload = userFactory();
+      const userResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(userPayload)
+        .expect(201);
+
+      const userId = userResponse.body.data.id;
+
+      const response = await request(e2e.app.getHttpServer())
+        .delete(`/api/v1/occupations/${occupationId}/users/${userId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(404);
+
+      expect(response.body).toBeDefined();
       expect(response.body.success).toBe(false);
       expect(response.body.statusCode).toBe(404);
     });

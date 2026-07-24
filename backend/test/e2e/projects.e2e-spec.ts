@@ -162,10 +162,41 @@ describe('Projects (e2e)', () => {
       expect(getResponse.body.success).toBe(false);
       expect(getResponse.body.statusCode).toBe(404);
     });
+
+    it('should return 404 for non-existent project', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .delete('/api/v1/projects/99999')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(404);
+    });
   });
 
   describe('GET /api/v1/projects/:id/tasks', () => {
-    it('should return empty tasks initially, then with tasks', async () => {
+    it('should return empty array for project with no tasks', async () => {
+      const payload = projectFactory();
+      const createResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/projects')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(201);
+
+      const projectId = createResponse.body.data.id;
+
+      const response = await request(e2e.app.getHttpServer())
+        .get(`/api/v1/projects/${projectId}/tasks`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBe(0);
+    });
+
+    it('should return tasks after creating one', async () => {
       const payload = projectFactory();
       const createResponse = await request(e2e.app.getHttpServer())
         .post('/api/v1/projects')
