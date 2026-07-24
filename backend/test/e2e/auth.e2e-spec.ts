@@ -89,6 +89,16 @@ describe('Auth (e2e)', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.statusCode).toBe(422);
     });
+
+    it('should return 422 for empty body', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({})
+        .expect(422);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(422);
+    });
   });
 
   describe('POST /api/v1/auth/refresh', () => {
@@ -119,6 +129,16 @@ describe('Auth (e2e)', () => {
       const response = await request(e2e.app.getHttpServer())
         .post('/api/v1/auth/refresh')
         .send({ refreshToken: 'invalid-token-12345' })
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(401);
+    });
+
+    it('should return 401 for malformed refresh token', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/auth/refresh')
+        .send({ refreshToken: 'malformed.jwt.token' })
         .expect(401);
 
       expect(response.body.success).toBe(false);
