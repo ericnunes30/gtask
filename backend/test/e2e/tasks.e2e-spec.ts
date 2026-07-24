@@ -405,6 +405,17 @@ describe('Tasks (e2e)', () => {
       expect(response.body.data.id).toBe(taskId);
       expect(response.body.data.timer).toBe(timerPayload.timer);
     });
+
+    it('should return 404 for non-existent taskId', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .patch('/api/v1/tasks/999999/timer')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ timer: 3600 })
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(404);
+    });
   });
 
   describe('POST /api/v1/tasks/:id/assign-users', () => {
