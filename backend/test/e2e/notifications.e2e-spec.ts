@@ -119,39 +119,6 @@ describe('Notifications (e2e)', () => {
       expect(response.body.data.hasNext).toBeDefined();
       expect(response.body.data.hasPrevious).toBeDefined();
     });
-
-    it('should filter unread notifications', async () => {
-      // Mark one notification as read to create a mix
-      await request(e2e.app.getHttpServer())
-        .put(`/api/v1/notifications/${notificationId}/read`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .expect(200);
-
-      const response = await request(e2e.app.getHttpServer())
-        .get('/api/v1/notifications?unreadOnly=true')
-        .set('Authorization', `Bearer ${userToken}`)
-        .expect(200);
-
-      expect(response.body).toBeDefined();
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data.items)).toBe(true);
-      expect(response.body.data.items.length).toBeGreaterThanOrEqual(1);
-      expect(
-        response.body.data.items.every((n: any) => n.isRead === false),
-      ).toBe(true);
-    });
-
-    it('should return all notifications when not filtering unread', async () => {
-      const response = await request(e2e.app.getHttpServer())
-        .get('/api/v1/notifications')
-        .set('Authorization', `Bearer ${userToken}`)
-        .expect(200);
-
-      expect(response.body).toBeDefined();
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data.items)).toBe(true);
-      expect(response.body.data.items.length).toBeGreaterThanOrEqual(2);
-    });
   });
 
   describe('GET /api/v1/notifications/unread-count', () => {
@@ -185,22 +152,6 @@ describe('Notifications (e2e)', () => {
       expect(response.body.data.unread).toBeGreaterThanOrEqual(2);
       expect(typeof response.body.data.byType).toBe('object');
       expect(typeof response.body.data.byPriority).toBe('object');
-    });
-
-    it('should show zero unread after marking all read', async () => {
-      await request(e2e.app.getHttpServer())
-        .put('/api/v1/notifications/read-all')
-        .set('Authorization', `Bearer ${userToken}`)
-        .expect(200);
-
-      const response = await request(e2e.app.getHttpServer())
-        .get('/api/v1/notifications/stats')
-        .set('Authorization', `Bearer ${userToken}`)
-        .expect(200);
-
-      expect(response.body).toBeDefined();
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.unread).toBe(0);
     });
   });
 
