@@ -121,15 +121,15 @@ describe('Tasks (e2e)', () => {
       expect(response.body.data.occupations[0].id).toBe(occupationId);
     });
 
-    it('should return 400 for missing required fields', async () => {
+    it('should return 422 for missing required fields', async () => {
       const response = await request(e2e.app.getHttpServer())
         .post('/api/v1/tasks')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ description: 'Missing title' })
-        .expect(400);
+        .expect(422);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.statusCode).toBe(400);
+      expect(response.body.statusCode).toBe(422);
     });
   });
 

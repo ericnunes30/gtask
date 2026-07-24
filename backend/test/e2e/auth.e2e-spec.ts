@@ -70,24 +70,24 @@ describe('Auth (e2e)', () => {
       expect(response.body.statusCode).toBe(401);
     });
 
-    it('should return 400 for invalid email format', async () => {
+    it('should return 422 for invalid email format', async () => {
       const response = await request(e2e.app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({ email: 'not-an-email', password: '123456' })
-        .expect(400);
+        .expect(422);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.statusCode).toBe(400);
+      expect(response.body.statusCode).toBe(422);
     });
 
-    it('should return 400 for short password', async () => {
+    it('should return 422 for short password', async () => {
       const response = await request(e2e.app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({ email: 'test@test.com', password: '123' })
-        .expect(400);
+        .expect(422);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.statusCode).toBe(400);
+      expect(response.body.statusCode).toBe(422);
     });
   });
 
