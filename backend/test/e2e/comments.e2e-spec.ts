@@ -71,6 +71,17 @@ describe('Comments (e2e)', () => {
       expect(response.body.data.content).toBe(payload.content);
       expect(response.body.data.task_id).toBe(taskId);
     });
+
+    it('should return 422 without taskId', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/comments')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'No task id' })
+        .expect(422);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(422);
+    });
   });
 
   describe('GET /api/v1/comments', () => {
@@ -280,6 +291,46 @@ describe('Comments (e2e)', () => {
 
       expect(response.body).toBeDefined();
       expect(response.body.success).toBe(true);
+
+      const getResponse = await request(e2e.app.getHttpServer())
+        .get(`/api/v1/comments/${commentId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(getResponse.body.data.likesCount).toBe(1);
+    });
+
+    it('should be idempotent when liking twice', async () => {
+      const projectId = await createProject();
+      const taskId = await createTask(projectId);
+
+      const commentPayload = {
+        content: 'Like me twice',
+        task_id: taskId,
+      };
+
+      const createResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/comments')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(commentPayload)
+        .expect(201);
+
+      const commentId = createResponse.body.data.id;
+
+      // Like first time
+      await request(e2e.app.getHttpServer())
+        .post(`/api/v1/comments/${commentId}/like`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(201);
+
+      // Like second time
+      const secondResponse = await request(e2e.app.getHttpServer())
+        .post(`/api/v1/comments/${commentId}/like`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(201);
+
+      expect(secondResponse.body).toBeDefined();
+      expect(secondResponse.body.success).toBe(true);
 
       const getResponse = await request(e2e.app.getHttpServer())
         .get(`/api/v1/comments/${commentId}`)

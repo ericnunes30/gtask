@@ -40,6 +40,22 @@ describe('Projects (e2e)', () => {
       expect(response.body.data.status).toBe(payload.status);
       expect(response.body.data.priority).toBe(payload.priority);
     });
+
+    it('should return 422 for very long title', async () => {
+      const payload = {
+        ...projectFactory(),
+        title: 'a'.repeat(300),
+      };
+
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/projects')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(422);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(422);
+    });
   });
 
   describe('GET /api/v1/projects', () => {
@@ -60,6 +76,18 @@ describe('Projects (e2e)', () => {
       expect(response.body.success).toBe(true);
       expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.data.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should return empty array for non-matching search', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/projects?search=nonexistentxyz123')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBe(0);
     });
   });
 
@@ -161,6 +189,60 @@ describe('Projects (e2e)', () => {
 
       expect(getResponse.body.success).toBe(false);
       expect(getResponse.body.statusCode).toBe(404);
+    });
+
+    it('should delete a project that has tasks (cascade)', async () => {
+      const payload = projectFactory();
+      const createResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/projects')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(201);
+
+      const projectId = createResponse.body.data.id;
+
+      // Create a task for the project
+      const taskPayload = {
+        title: 'Cascade Task',
+        description: 'Task in project',
+        priority: PriorityLevel.Medium,
+        status: Status.ToDo,
+        project_id: projectId,
+        start_date: new Date().toISOString(),
+        due_date: new Date(Date.now() + 86400000).toISOString(),
+      };
+
+      const taskResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/tasks')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(taskPayload)
+        .expect(201);
+
+      const taskId = taskResponse.body.data.id;
+
+      // Delete the project
+      await request(e2e.app.getHttpServer())
+        .delete(`/api/v1/projects/${projectId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      // Verify project is gone
+      const getProjectResponse = await request(e2e.app.getHttpServer())
+        .get(`/api/v1/projects/${projectId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(404);
+
+      expect(getProjectResponse.body.success).toBe(false);
+      expect(getProjectResponse.body.statusCode).toBe(404);
+
+      // Verify task is also gone (cascade)
+      const getTaskResponse = await request(e2e.app.getHttpServer())
+        .get(`/api/v1/tasks/${taskId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(404);
+
+      expect(getTaskResponse.body.success).toBe(false);
+      expect(getTaskResponse.body.statusCode).toBe(404);
     });
   });
 

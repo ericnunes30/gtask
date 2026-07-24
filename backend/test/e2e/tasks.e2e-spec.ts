@@ -121,15 +121,35 @@ describe('Tasks (e2e)', () => {
       expect(response.body.data.occupations[0].id).toBe(occupationId);
     });
 
-    it('should return 400 for missing required fields', async () => {
+    it('should return 422 for missing required fields', async () => {
       const response = await request(e2e.app.getHttpServer())
         .post('/api/v1/tasks')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ description: 'Missing title' })
-        .expect(400);
+        .expect(422);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.statusCode).toBe(400);
+      expect(response.body.statusCode).toBe(422);
+    });
+
+    it('should return 422 when project_id is missing', async () => {
+      const payload = {
+        title: 'Task without project',
+        description: 'Missing project_id',
+        priority: PriorityLevel.Medium,
+        status: Status.ToDo,
+        start_date: new Date().toISOString(),
+        due_date: new Date(Date.now() + 86400000).toISOString(),
+      };
+
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/tasks')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(422);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(422);
     });
   });
 
@@ -209,6 +229,30 @@ describe('Tasks (e2e)', () => {
       expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.data.length).toBeGreaterThanOrEqual(1);
       expect(response.body.data[0].status).toBe(Status.ToDo);
+    });
+
+    it('should return empty array for non-existent project_id', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/tasks?project=99999')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBe(0);
+    });
+
+    it('should return empty array for invalid status', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/tasks?status=INVALID')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBe(0);
     });
   });
 
@@ -404,6 +448,18 @@ describe('Tasks (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(response.body.data.id).toBe(taskId);
       expect(response.body.data.timer).toBe(timerPayload.timer);
+    });
+
+    it('should return 404 for non-existent task', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .patch('/api/v1/tasks/99999/timer')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ timer: 3600 })
+        .expect(404);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(404);
     });
   });
 

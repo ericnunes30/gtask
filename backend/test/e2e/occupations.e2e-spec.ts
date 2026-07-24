@@ -121,6 +121,34 @@ describe('Occupations (e2e)', () => {
       expect(response.body.data.id).toBe(occupationId);
       expect(response.body.data.name).toBe(updatedPayload.name);
     });
+
+    it('should return 409 when updating to existing name', async () => {
+      const payload1 = occupationFactory();
+      const payload2 = occupationFactory();
+
+      const createResponse1 = await request(e2e.app.getHttpServer())
+        .post('/api/v1/occupations')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload1)
+        .expect(201);
+
+      await request(e2e.app.getHttpServer())
+        .post('/api/v1/occupations')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload2)
+        .expect(201);
+
+      const occupationId = createResponse1.body.data.id;
+
+      const response = await request(e2e.app.getHttpServer())
+        .put(`/api/v1/occupations/${occupationId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: payload2.name })
+        .expect(409);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(409);
+    });
   });
 
   describe('DELETE /api/v1/occupations/:id', () => {
@@ -146,6 +174,28 @@ describe('Occupations (e2e)', () => {
 
       expect(getResponse.body.success).toBe(false);
       expect(getResponse.body.statusCode).toBe(404);
+    });
+  });
+
+  describe('POST /api/v1/occupations/:id/users', () => {
+    it('should return 404 for invalid userId', async () => {
+      const payload = occupationFactory();
+      const createResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/occupations')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(201);
+
+      const occupationId = createResponse.body.data.id;
+
+      const response = await request(e2e.app.getHttpServer())
+        .post(`/api/v1/occupations/${occupationId}/users`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ userId: 99999 })
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(404);
     });
   });
 });

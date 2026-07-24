@@ -42,16 +42,34 @@ describe('Users (e2e)', () => {
       expect(response.body.data.id).toBeDefined();
     });
 
-    it('should return 400 for invalid email format', async () => {
+    it('should return 422 for invalid email format', async () => {
       const payload = { name: 'Test', email: 'invalid-email', password: '123' };
       const response = await request(e2e.app.getHttpServer())
         .post('/api/v1/users')
         .set('Authorization', `Bearer ${accessToken}`)
         .send(payload)
-        .expect(400);
+        .expect(422);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.statusCode).toBe(400);
+      expect(response.body.statusCode).toBe(422);
+    });
+
+    it('should return 409 for duplicate email', async () => {
+      const payload = userFactory();
+      await request(e2e.app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(201);
+
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(409);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(409);
     });
   });
 
@@ -136,6 +154,26 @@ describe('Users (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(response.body.data.id).toBe(userId);
       expect(response.body.data.name).toBe(updatedPayload.name);
+    });
+
+    it('should return 422 for invalid data', async () => {
+      const payload = userFactory();
+      const createResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(201);
+
+      const userId = createResponse.body.data.id;
+
+      const response = await request(e2e.app.getHttpServer())
+        .put(`/api/v1/users/${userId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ email: 'not-an-email' })
+        .expect(422);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(422);
     });
   });
 

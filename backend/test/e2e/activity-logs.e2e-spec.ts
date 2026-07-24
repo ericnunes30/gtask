@@ -118,6 +118,18 @@ describe('Activity Logs (e2e)', () => {
         ),
       ).toBe(true);
     });
+
+    it('should return empty array for non-existent taskId', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/activity-logs?taskId=99999')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBe(0);
+    });
   });
 
   describe('GET /api/v1/activity-logs/task/:taskId', () => {

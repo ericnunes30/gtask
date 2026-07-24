@@ -123,6 +123,34 @@ describe('Roles (e2e)', () => {
       expect(response.body.data.name).toBe(updatedPayload.name);
       expect(response.body.data.description).toBe(updatedPayload.description);
     });
+
+    it('should return 409 when updating to existing name', async () => {
+      const payload1 = roleFactory();
+      const payload2 = roleFactory();
+
+      const createResponse1 = await request(e2e.app.getHttpServer())
+        .post('/api/v1/roles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload1)
+        .expect(201);
+
+      await request(e2e.app.getHttpServer())
+        .post('/api/v1/roles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload2)
+        .expect(201);
+
+      const roleId = createResponse1.body.data.id;
+
+      const response = await request(e2e.app.getHttpServer())
+        .put(`/api/v1/roles/${roleId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: payload2.name })
+        .expect(409);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(409);
+    });
   });
 
   describe('DELETE /api/v1/roles/:id', () => {
