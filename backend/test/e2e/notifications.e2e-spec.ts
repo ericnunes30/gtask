@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { bootstrapE2E, E2EApp } from '../setup-e2e';
 import { teardownE2E } from '../teardown-e2e';
 import { loginAsAdmin, loginUser } from '../utils/auth.utils';
@@ -17,6 +18,7 @@ describe('Notifications (e2e)', () => {
   let userPassword: string;
   let notificationId: number;
   let secondNotificationId: number;
+  let projectId: number;
 
   beforeAll(async () => {
     e2e = await bootstrapE2E();
@@ -47,7 +49,7 @@ describe('Notifications (e2e)', () => {
       })
       .expect(201);
 
-    const projectId = projectResponse.body.data.id;
+    projectId = projectResponse.body.data.id;
 
     // Create two tasks with the user assigned to generate notifications
     const taskPayload1 = {
@@ -292,6 +294,142 @@ describe('Notifications (e2e)', () => {
         'Old notifications cleaned up successfully',
       );
       expect(typeof response.body.data.deletedCount).toBe('number');
+    });
+  });
+
+  describe('Notification factory branches', () => {
+    it('should create notification from task.status.updated event', async () => {
+      const taskPayload = {
+        ...taskFactory({ project_id: projectId }),
+        start_date: new Date().toISOString(),
+        due_date: new Date(Date.now() + 86400000).toISOString(),
+        users: [userId],
+        status: 'a_fazer',
+      };
+
+      const createResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/tasks')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(taskPayload)
+        .expect(201);
+
+      const newTaskId = createResponse.body.data.id;
+
+      await request(e2e.app.getHttpServer())
+        .put(`/api/v1/tasks/${newTaskId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'em_andamento' })
+        .expect(200);
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const notificationsResponse = await request(e2e.app.getHttpServer())
+        .get('/api/v1/notifications')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      const items = notificationsResponse.body.data.items;
+      const statusNotification = items.find(
+        (n: any) => n.type === 'task.status.changed',
+      );
+
+      expect(statusNotification).toBeDefined();
+      expect(statusNotification.data.oldStatus).toBeDefined();
+      expect(statusNotification.data.newStatus).toBeDefined();
+    });
+
+    it('should create notification from comment.created event', async () => {
+      const taskPayload = {
+        ...taskFactory({ project_id: projectId }),
+        start_date: new Date().toISOString(),
+        due_date: new Date(Date.now() + 86400000).toISOString(),
+        users: [userId],
+        status: 'a_fazer',
+      };
+
+      const createResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/tasks')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(taskPayload)
+        .expect(201);
+
+      const newTaskId = createResponse.body.data.id;
+
+      await request(e2e.app.getHttpServer())
+        .post('/api/v1/comments')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ content: 'Test comment for notification', task_id: newTaskId })
+        .expect(201);
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const notificationsResponse = await request(e2e.app.getHttpServer())
+        .get('/api/v1/notifications')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      const items = notificationsResponse.body.data.items;
+      const commentNotification = items.find(
+        (n: any) => n.type === 'comment.created',
+      );
+
+      expect(commentNotification).toBeDefined();
+      expect(commentNotification.data.commentSnippet).toBeDefined();
+    });
+
+    it('should handle invalid event gracefully', async () => {
+      const eventEmitter = e2e.app.get(EventEmitter2);
+
+      expect(() => {
+        eventEmitter.emit('task.status.changed', {
+          task: null,
+          oldStatus: null,
+          newStatus: null,
+          updatedBy: null,
+        });
+      }).not.toThrow();
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+  });
+
+  describe('Notification controller edge cases', () => {
+    it('should return 400 for invalid notification ID format', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/notifications/abc')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should return 404 for non-existent notification ID on mark as read', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .put('/api/v1/notifications/99999/read')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should mark as read an already-read notification', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .put(`/api/v1/notifications/${notificationId}/read`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should mark all notifications as read when none are unread', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .put('/api/v1/notifications/read-all')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
     });
   });
 });
