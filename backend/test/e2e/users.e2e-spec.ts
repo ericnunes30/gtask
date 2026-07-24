@@ -53,6 +53,18 @@ describe('Users (e2e)', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.statusCode).toBe(422);
     });
+
+    it('should return 409 for duplicate email', async () => {
+      const payload = { name: 'Duplicate', email: 'admin@test.com', password: 'password123' };
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(409);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(409);
+    });
   });
 
   describe('GET /api/v1/users', () => {
