@@ -121,6 +121,53 @@ describe('Occupations (e2e)', () => {
       expect(response.body.data.id).toBe(occupationId);
       expect(response.body.data.name).toBe(updatedPayload.name);
     });
+
+    it('should return 409 for duplicate name', async () => {
+      const firstPayload = occupationFactory();
+      const firstResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/occupations')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(firstPayload)
+        .expect(201);
+
+      const secondPayload = occupationFactory();
+      const secondResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/occupations')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(secondPayload)
+        .expect(201);
+
+      const response = await request(e2e.app.getHttpServer())
+        .put(`/api/v1/occupations/${secondResponse.body.data.id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: firstPayload.name })
+        .expect(409);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(409);
+    });
+  });
+
+  describe('POST /api/v1/occupations/:id/users', () => {
+    it('should return 404 for non-existent userId', async () => {
+      const payload = occupationFactory();
+      const createResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/occupations')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(201);
+
+      const occupationId = createResponse.body.data.id;
+
+      const response = await request(e2e.app.getHttpServer())
+        .post(`/api/v1/occupations/${occupationId}/users`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ userId: 999999 })
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(404);
+    });
   });
 
   describe('DELETE /api/v1/occupations/:id', () => {
