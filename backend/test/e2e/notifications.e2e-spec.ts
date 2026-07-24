@@ -614,7 +614,7 @@ describe('Notifications (e2e)', () => {
       expect(statusNotification.data.newStatus).toBe('concluido');
     });
 
-    it.skip('should create notification from task.updated event', async () => {
+    it('should create notification from task.updated event', async () => {
       // Skipped because the task service emits changedFields as a Record<string,
       // { oldValue, newValue }>, but TaskUpdatedStrategy.validate() expects an
       // array. This payload mismatch causes the factory to throw
