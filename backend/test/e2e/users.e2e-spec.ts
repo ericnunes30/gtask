@@ -123,6 +123,17 @@ describe('Users (e2e)', () => {
       expect(response.body.statusCode).toBe(404);
       expect(response.body.message).toContain('User with ID 99999 not found');
     });
+
+    it('should return 400 for invalid user ID format', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/users/abc')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(400);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(400);
+    });
   });
 
   describe('PUT /api/v1/users/:id', () => {

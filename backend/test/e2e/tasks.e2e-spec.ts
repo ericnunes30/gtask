@@ -131,6 +131,26 @@ describe('Tasks (e2e)', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.statusCode).toBe(422);
     });
+
+    it('should return 400 for related users not found', async () => {
+      const projectId = await createProject();
+      const payload = {
+        ...taskFactory({ project_id: projectId }),
+        start_date: new Date().toISOString(),
+        due_date: new Date(Date.now() + 86400000).toISOString(),
+        users: [99999],
+      };
+
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/tasks')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(400);
+      expect(response.body.details).toBeDefined();
+    });
   });
 
   describe('GET /api/v1/tasks', () => {
@@ -254,6 +274,17 @@ describe('Tasks (e2e)', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.statusCode).toBe(404);
       expect(response.body.message).toContain('Task with ID 99999 not found');
+    });
+
+    it('should return 400 for invalid task ID format', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/tasks/abc')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(400);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(400);
     });
   });
 

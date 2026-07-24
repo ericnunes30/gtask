@@ -8,6 +8,7 @@ import {
   taskFactory,
   userFactory,
 } from '../utils/factory.utils';
+import { NotificationFactory } from '../../src/modules/notification/factories/notification.factory';
 
 describe('Notifications (e2e)', () => {
   let e2e: E2EApp;
@@ -430,6 +431,112 @@ describe('Notifications (e2e)', () => {
 
       expect(response.body).toBeDefined();
       expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('Notification factory additional branches', () => {
+    it('should create task.updated notification via factory', async () => {
+      const factory = e2e.app.get(NotificationFactory);
+      const notification = factory.create('task.updated', {
+        task: { id: 1, title: 'Updated Task' },
+        updatedBy: userId,
+        changedFields: [
+          { field: 'title', oldValue: 'Old', newValue: 'New' },
+        ],
+      });
+
+      expect(notification).toBeDefined();
+      expect(notification.type).toBe('task.updated');
+      expect(notification.data.actorName).toBeDefined();
+      expect(notification.data.taskTitle).toBeDefined();
+      expect(Array.isArray(notification.data.changedFields)).toBe(true);
+    });
+
+    it('should create timer.started notification via factory', async () => {
+      const factory = e2e.app.get(NotificationFactory);
+      const notification = factory.create('timer.started', {
+        task: { id: 1, title: 'Timer Test Task' },
+        userId: userId,
+        duration: 300,
+      });
+
+      expect(notification).toBeDefined();
+      expect(notification.type).toBe('timer.started');
+      expect(notification.data.entityType).toBe('timer');
+      expect(notification.metadata.source).toBe('timer_system');
+    });
+
+    it('should validate notification structure correctly', async () => {
+      const factory = e2e.app.get(NotificationFactory);
+
+      expect(
+        factory.validateNotification({
+          userId: 1,
+          type: 'task.created',
+          priority: 'medium',
+          data: {
+            actorName: 'Admin',
+            taskTitle: 'Test',
+          },
+          metadata: { source: 'test' },
+        }),
+      ).toBe(true);
+
+      expect(
+        factory.validateNotification({
+          userId: 1,
+          type: 'task.status.changed',
+          priority: 'medium',
+          data: {
+            actorName: 'Admin',
+            taskTitle: 'Test',
+            oldStatus: 'todo',
+            newStatus: 'done',
+          },
+          metadata: { source: 'test' },
+        }),
+      ).toBe(true);
+
+      expect(
+        factory.validateNotification({
+          userId: 1,
+          type: 'task.updated',
+          priority: 'medium',
+          data: {
+            actorName: 'Admin',
+            taskTitle: 'Test',
+            changedFields: [
+              { field: 'title', oldValue: 'A', newValue: 'B' },
+            ],
+          },
+          metadata: { source: 'test' },
+        }),
+      ).toBe(true);
+    });
+
+    it('should reject invalid notification data', async () => {
+      const factory = e2e.app.get(NotificationFactory);
+
+      expect(factory.validateNotification({})).toBe(false);
+      expect(
+        factory.validateNotification({
+          userId: 1,
+          type: 'task.created',
+          priority: 'medium',
+          data: { invalid: true },
+          metadata: { source: 'test' },
+        }),
+      ).toBe(false);
+    });
+
+    it('should expose registered strategies', async () => {
+      const factory = e2e.app.get(NotificationFactory);
+      const events = factory.getRegisteredEvents();
+      expect(events.length).toBeGreaterThan(0);
+      expect(events).toContain('task.created');
+      expect(factory.hasStrategy('task.created')).toBe(true);
+      expect(factory.hasStrategy('nonexistent.event')).toBe(false);
+      expect(factory.validateRequiredEvents()).toBe(true);
     });
   });
 });
