@@ -123,6 +123,31 @@ describe('Roles (e2e)', () => {
       expect(response.body.data.name).toBe(updatedPayload.name);
       expect(response.body.data.description).toBe(updatedPayload.description);
     });
+
+    it('should return 409 for duplicate name', async () => {
+      const firstPayload = roleFactory();
+      const firstResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/roles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(firstPayload)
+        .expect(201);
+
+      const secondPayload = roleFactory();
+      const secondResponse = await request(e2e.app.getHttpServer())
+        .post('/api/v1/roles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(secondPayload)
+        .expect(201);
+
+      const response = await request(e2e.app.getHttpServer())
+        .put(`/api/v1/roles/${secondResponse.body.data.id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: firstPayload.name })
+        .expect(409);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(409);
+    });
   });
 
   describe('DELETE /api/v1/roles/:id', () => {
