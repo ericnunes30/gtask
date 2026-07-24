@@ -132,6 +132,46 @@ describe('Tasks (e2e)', () => {
       expect(response.body.statusCode).toBe(422);
     });
 
+    it('should return 422 for invalid enum values', async () => {
+      const projectId = await createProject();
+      const payload = {
+        title: 'Test task',
+        description: 'Test description',
+        priority: 'INVALID_PRIORITY',
+        status: 'INVALID_STATUS',
+        project_id: projectId,
+        start_date: new Date().toISOString(),
+        due_date: new Date(Date.now() + 86400000).toISOString(),
+      };
+
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/tasks')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(422);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(422);
+      expect(response.body.details).toBeDefined();
+    });
+
+    it('should return 400 for foreign key constraint violation', async () => {
+      const payload = {
+        ...taskFactory({ project_id: 99999 }),
+        start_date: new Date().toISOString(),
+        due_date: new Date(Date.now() + 86400000).toISOString(),
+      };
+
+      const response = await request(e2e.app.getHttpServer())
+        .post('/api/v1/tasks')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(payload)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(400);
+    });
+
     it('should return 400 for related users not found', async () => {
       const projectId = await createProject();
       const payload = {
@@ -229,6 +269,17 @@ describe('Tasks (e2e)', () => {
       expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.data.length).toBeGreaterThanOrEqual(1);
       expect(response.body.data[0].status).toBe(Status.ToDo);
+    });
+
+    it('should return 500 for invalid query parameter', async () => {
+      const response = await request(e2e.app.getHttpServer())
+        .get('/api/v1/tasks?status=INVALID_STATUS')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(500);
+
+      expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(false);
+      expect(response.body.statusCode).toBe(500);
     });
   });
 
