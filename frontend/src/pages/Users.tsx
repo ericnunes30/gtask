@@ -36,6 +36,7 @@ import { toast } from "@/components/ui/use-toast";
 import { User, Role, CreateUserRequest, UpdateUserRequest } from "@/common/types";
 import { useBackendServices } from '@/hooks/useBackendServices'
 import { useAssignOccupations } from '@/services/backend/users'
+import { useUserSocket } from '@/hooks/useUserSocket'
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -141,6 +142,9 @@ const Users = () => {
 
   const { mutateAsync: addUserToTeamMutate } = teamsService.useAddUserToTeam();
   const { mutateAsync: removeUserFromTeamMutate } = teamsService.useRemoveUserFromTeam();
+
+  // WebSocket para atualização em tempo real de usuários
+  useUserSocket();
 
   const {
     data: rolesQueryData,

@@ -43,6 +43,7 @@ export class EventsGateway
     this.bridgeTimerEvents();
     this.bridgeTaskEvents();
     this.bridgeProjectEvents();
+    this.bridgeUserEvents();
   }
 
   private isInitialized = false;
@@ -176,6 +177,47 @@ export class EventsGateway
         this.server?.to(`project_${payload.projectId}`).emit('project.deleted', payload);
       },
     );
+  }
+
+  private bridgeUserEvents(): void {
+    // Bridge user.created -> WebSocket
+    this.eventEmitter.on(
+      'user.created',
+      (payload: { user: { id: number } }) => {
+        this.logger.log(`Bridging user.created for user ${payload.user.id}`);
+        this.server?.to('users_all').emit('user.created', payload);
+      },
+    );
+
+    // Bridge user.updated -> WebSocket
+    this.eventEmitter.on(
+      'user.updated',
+      (payload: { user: { id: number } }) => {
+        this.logger.log(`Bridging user.updated for user ${payload.user.id}`);
+        this.server?.to('users_all').emit('user.updated', payload);
+      },
+    );
+
+    // Bridge user.deleted -> WebSocket
+    this.eventEmitter.on(
+      'user.deleted',
+      (payload: { userId: number }) => {
+        this.logger.log(`Bridging user.deleted for user ${payload.userId}`);
+        this.server?.to('users_all').emit('user.deleted', payload);
+      },
+    );
+  }
+
+  @SubscribeMessage('join-users-room')
+  handleJoinUsersRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining users room`);
+    void client.join('users_all');
+  }
+
+  @SubscribeMessage('leave-users-room')
+  handleLeaveUsersRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving users room`);
+    void client.leave('users_all');
   }
 
   @SubscribeMessage('join-projects-room')
