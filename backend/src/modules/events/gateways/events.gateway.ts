@@ -146,6 +146,28 @@ export class EventsGateway
         this.server?.to('tasks_all').emit('comment.created', payload);
       },
     );
+
+    // Bridge comment.updated -> WebSocket
+    this.eventEmitter.on(
+      'comment.updated',
+      (payload: { comment: { task?: { id: number; project?: { id: number } } } }) => {
+        const projectId = payload.comment.task?.project?.id;
+        if (projectId) {
+          this.logger.log(`Bridging comment.updated for project ${projectId}`);
+          this.server?.to(`project_${projectId}`).emit('comment.updated', payload);
+        }
+        this.server?.to('tasks_all').emit('comment.updated', payload);
+      },
+    );
+
+    // Bridge comment.deleted -> WebSocket
+    this.eventEmitter.on(
+      'comment.deleted',
+      (payload: { commentId: number; taskId?: number }) => {
+        this.logger.log(`Bridging comment.deleted for comment ${payload.commentId}`);
+        this.server?.to('tasks_all').emit('comment.deleted', payload);
+      },
+    );
   }
 
   private bridgeProjectEvents(): void {

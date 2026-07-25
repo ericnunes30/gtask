@@ -36,16 +36,28 @@ export const useTaskSocket = (projectId?: number) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     };
 
+    const handleCommentUpdated = () => {
+      queryClient.invalidateQueries({ queryKey: ['comments'] });
+    };
+
+    const handleCommentDeleted = () => {
+      queryClient.invalidateQueries({ queryKey: ['comments'] });
+    };
+
     socket.on('task.created', handleTaskCreated);
     socket.on('task.updated', handleTaskUpdated);
     socket.on('task.status.changed', handleTaskStatusChanged);
     socket.on('comment.created', handleCommentCreated);
+    socket.on('comment.updated', handleCommentUpdated);
+    socket.on('comment.deleted', handleCommentDeleted);
 
     return () => {
       socket.off('task.created', handleTaskCreated);
       socket.off('task.updated', handleTaskUpdated);
       socket.off('task.status.changed', handleTaskStatusChanged);
       socket.off('comment.created', handleCommentCreated);
+      socket.off('comment.updated', handleCommentUpdated);
+      socket.off('comment.deleted', handleCommentDeleted);
 
       if (projectId !== undefined) {
         socket.emit('leave-project-room', String(projectId));
