@@ -4,6 +4,66 @@ import { User } from '@/utils/commonTypes'
 import { toast } from 'sonner'
 import { api } from '@/services/backend/api'
 
+// ------------------------------------------------------------------
+// Module-level scheduler state (not persisted)
+// ------------------------------------------------------------------
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+let onTokensRefreshedCallback: (() => void) | null = null
+
+export function setOnTokensRefreshed(callback: (() => void) | null) {
+  onTokensRefreshedCallback = callback
+}
+
+function clearRefreshTimer() {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+function decodeJwtExp(token: string): { exp: number; iat?: number } | null {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return null
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const decoded =
+      typeof window !== 'undefined'
+        ? atob(base64)
+        : Buffer.from(base64, 'base64').toString('utf-8')
+    const parsed = JSON.parse(decoded)
+    if (parsed.exp) {
+      return { exp: Number(parsed.exp), iat: parsed.iat ? Number(parsed.iat) : undefined }
+    }
+  } catch {
+    // ignore malformed JWTs
+  }
+  return null
+}
+
+function scheduleTokenRefresh(token: string, refreshFn: () => Promise<boolean>) {
+  clearRefreshTimer()
+  const decoded = decodeJwtExp(token)
+  let refreshAt: number
+
+  if (decoded) {
+    if (decoded.iat) {
+      const lifetimeMs = (decoded.exp - decoded.iat) * 1000
+      refreshAt = decoded.iat * 1000 + lifetimeMs * 0.8
+    } else {
+      // 5 minutes before expiry
+      refreshAt = decoded.exp * 1000 - 5 * 60 * 1000
+    }
+  } else {
+    // fixed 5 minutes
+    refreshAt = Date.now() + 5 * 60 * 1000
+  }
+
+  const delay = Math.max(0, refreshAt - Date.now())
+  refreshTimer = setTimeout(() => {
+    refreshFn()
+  }, delay)
+}
+
 interface AuthState {
   // Estado
   user: User | null
@@ -65,6 +125,10 @@ export const useAuthStore = create<AuthState>()(
               // Atualizar axios
               api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`
 
+              // Agendar próximo refresh proativo
+              scheduleTokenRefresh(newAccessToken, get().refreshAuthToken)
+              onTokensRefreshedCallback?.()
+
               toast.success('Login realizado com sucesso!')
             } catch (error: any) {
               console.error('Erro ao fazer login:', error)
@@ -74,6 +138,7 @@ export const useAuthStore = create<AuthState>()(
           },
 
           logout: () => {
+            clearRefreshTimer()
             api.defaults.headers.common['Authorization'] = ''
             set({
               user: null,
@@ -108,18 +173,27 @@ export const useAuthStore = create<AuthState>()(
               }
 
               const newAccessToken = data.accessToken
+              const newRefreshToken = data.refreshToken
 
               // Atualizar store
               set({
                 accessToken: newAccessToken,
+                refreshToken: newRefreshToken ?? get().refreshToken,
                 isAuthenticated: true
               })
 
               // Atualizar localStorage
               localStorage.setItem('accessToken', newAccessToken)
+              if (newRefreshToken) {
+                localStorage.setItem('refreshToken', newRefreshToken)
+              }
 
               // Atualizar axios
               api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`
+
+              // Agendar próximo refresh proativo
+              scheduleTokenRefresh(newAccessToken, get().refreshAuthToken)
+              onTokensRefreshedCallback?.()
 
               return true
             } catch (error) {
@@ -148,6 +222,9 @@ export const useAuthStore = create<AuthState>()(
             localStorage.setItem('accessToken', accessToken)
             localStorage.setItem('refreshToken', refreshToken)
             api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
+
+            scheduleTokenRefresh(accessToken, get().refreshAuthToken)
+            onTokensRefreshedCallback?.()
           },
 
           setLoading: (loading: boolean) => {
@@ -169,6 +246,7 @@ export const useAuthStore = create<AuthState>()(
               })
 
               api.defaults.headers.common['Authorization'] = `Bearer ${storedAccessToken}`
+              scheduleTokenRefresh(storedAccessToken, get().refreshAuthToken)
             } else {
               set({ isLoading: false })
             }
