@@ -45,6 +45,8 @@ export class EventsGateway
     this.bridgeProjectEvents();
     this.bridgeUserEvents();
     this.bridgeOccupationEvents();
+    this.bridgeRoleEvents();
+    this.bridgeRecurringTaskEvents();
   }
 
   private isInitialized = false;
@@ -132,6 +134,21 @@ export class EventsGateway
           this.server?.to(`user_${assigneeId}`).emit('task.status.changed', payload);
         }
         this.server?.to('tasks_all').emit('task.status.changed', payload);
+      },
+    );
+
+    // Bridge task.assignees.updated -> WebSocket
+    this.eventEmitter.on(
+      'task.assignees.updated',
+      (payload: { taskId: number; projectId?: number; assigneeIds: number[] }) => {
+        this.logger.log(`Bridging task.assignees.updated for task ${payload.taskId}`);
+        if (payload.projectId) {
+          this.server?.to(`project_${payload.projectId}`).emit('task.assignees.updated', payload);
+        }
+        for (const userId of payload.assigneeIds) {
+          this.server?.to(`user_${userId}`).emit('task.assignees.updated', payload);
+        }
+        this.server?.to('tasks_all').emit('task.assignees.updated', payload);
       },
     );
 
@@ -278,6 +295,64 @@ export class EventsGateway
     );
   }
 
+  private bridgeRoleEvents(): void {
+    // Bridge role.created -> WebSocket
+    this.eventEmitter.on(
+      'role.created',
+      (payload: { role: { id: number } }) => {
+        this.logger.log(`Bridging role.created for role ${payload.role.id}`);
+        this.server?.to('roles_all').emit('role.created', payload);
+      },
+    );
+
+    // Bridge role.updated -> WebSocket
+    this.eventEmitter.on(
+      'role.updated',
+      (payload: { role: { id: number } }) => {
+        this.logger.log(`Bridging role.updated for role ${payload.role.id}`);
+        this.server?.to('roles_all').emit('role.updated', payload);
+      },
+    );
+
+    // Bridge role.deleted -> WebSocket
+    this.eventEmitter.on(
+      'role.deleted',
+      (payload: { roleId: number }) => {
+        this.logger.log(`Bridging role.deleted for role ${payload.roleId}`);
+        this.server?.to('roles_all').emit('role.deleted', payload);
+      },
+    );
+  }
+
+  private bridgeRecurringTaskEvents(): void {
+    // Bridge recurring-task.created -> WebSocket
+    this.eventEmitter.on(
+      'recurring-task.created',
+      (payload: { recurringTask: { id: number } }) => {
+        this.logger.log(`Bridging recurring-task.created for task ${payload.recurringTask.id}`);
+        this.server?.to('recurring_tasks_all').emit('recurring-task.created', payload);
+      },
+    );
+
+    // Bridge recurring-task.updated -> WebSocket
+    this.eventEmitter.on(
+      'recurring-task.updated',
+      (payload: { recurringTask: { id: number } }) => {
+        this.logger.log(`Bridging recurring-task.updated for task ${payload.recurringTask.id}`);
+        this.server?.to('recurring_tasks_all').emit('recurring-task.updated', payload);
+      },
+    );
+
+    // Bridge recurring-task.deleted -> WebSocket
+    this.eventEmitter.on(
+      'recurring-task.deleted',
+      (payload: { recurringTaskId: number }) => {
+        this.logger.log(`Bridging recurring-task.deleted for task ${payload.recurringTaskId}`);
+        this.server?.to('recurring_tasks_all').emit('recurring-task.deleted', payload);
+      },
+    );
+  }
+
   @SubscribeMessage('join-users-room')
   handleJoinUsersRoom(client: Socket) {
     this.logger.log(`Client ${client.id} joining users room`);
@@ -300,6 +375,30 @@ export class EventsGateway
   handleLeaveOccupationsRoom(client: Socket) {
     this.logger.log(`Client ${client.id} leaving occupations room`);
     void client.leave('occupations_all');
+  }
+
+  @SubscribeMessage('join-roles-room')
+  handleJoinRolesRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining roles room`);
+    void client.join('roles_all');
+  }
+
+  @SubscribeMessage('leave-roles-room')
+  handleLeaveRolesRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving roles room`);
+    void client.leave('roles_all');
+  }
+
+  @SubscribeMessage('join-recurring-tasks-room')
+  handleJoinRecurringTasksRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining recurring tasks room`);
+    void client.join('recurring_tasks_all');
+  }
+
+  @SubscribeMessage('leave-recurring-tasks-room')
+  handleLeaveRecurringTasksRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving recurring tasks room`);
+    void client.leave('recurring_tasks_all');
   }
 
   @SubscribeMessage('join-projects-room')

@@ -37,6 +37,7 @@ import { User, Role, CreateUserRequest, UpdateUserRequest } from "@/common/types
 import { useBackendServices } from '@/hooks/useBackendServices'
 import { useAssignOccupations } from '@/services/backend/users'
 import { useUserSocket } from '@/hooks/useUserSocket'
+import { useRoleSocket } from '@/hooks/useRoleSocket'
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -145,6 +146,9 @@ const Users = () => {
 
   // WebSocket para atualização em tempo real de usuários
   useUserSocket();
+
+  // WebSocket para atualização em tempo real de cargos/roles
+  useRoleSocket();
 
   const {
     data: rolesQueryData,

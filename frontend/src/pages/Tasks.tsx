@@ -32,6 +32,7 @@ import { TaskFormRef } from '@/components/forms/TaskForm';
 import { RecurringTasksList } from '@/components/recurring/RecurringTasksList';
 import { TaskFiltersSidebar, type TaskFiltersState } from '@/components/kanban/TaskFiltersSidebar';
 import { useTaskSocket } from '@/hooks/useTaskSocket';
+import { useRecurringTaskSocket } from '@/hooks/useRecurringTaskSocket';
 
 const Tasks = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -99,6 +100,9 @@ const Tasks = () => {
 
   // WebSocket: auto-refresh tasks when other users make changes
   useTaskSocket(projectId);
+
+  // WebSocket para atualização em tempo real de tarefas recorrentes
+  useRecurringTaskSocket();
 
   useEffect(() => {
     setRawTasks(tasksData);

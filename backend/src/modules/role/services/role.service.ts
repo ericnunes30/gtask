@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Role } from '../entities/role.entity';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
@@ -14,6 +15,7 @@ export class RoleService {
   constructor(
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(createRoleDto: CreateRoleDto): Promise<Role> {
@@ -25,7 +27,11 @@ export class RoleService {
       throw new DuplicateRoleNameException(createRoleDto.name);
     }
     const role = this.roleRepository.create(createRoleDto);
-    return await this.roleRepository.save(role);
+    const savedRole = await this.roleRepository.save(role);
+
+    this.eventEmitter.emit('role.created', { role: savedRole });
+
+    return savedRole;
   }
 
   async findAll(): Promise<Role[]> {
@@ -72,12 +78,18 @@ export class RoleService {
       }
     }
     Object.assign(role, updateRoleDto);
-    return await this.roleRepository.save(role);
+    const savedRole = await this.roleRepository.save(role);
+
+    this.eventEmitter.emit('role.updated', { role: savedRole });
+
+    return savedRole;
   }
 
   async remove(id: number): Promise<void> {
     this.logger.log(`Removing role with ID: ${id}`);
     const role = await this.findOne(id);
     await this.roleRepository.remove(role);
+
+    this.eventEmitter.emit('role.deleted', { roleId: id });
   }
 }

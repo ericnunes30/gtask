@@ -31,6 +31,11 @@ export const useTaskSocket = (projectId?: number) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     };
 
+    const handleTaskAssigneesUpdated = () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    };
+
     const handleCommentCreated = () => {
       queryClient.invalidateQueries({ queryKey: ['comments'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -47,6 +52,7 @@ export const useTaskSocket = (projectId?: number) => {
     socket.on('task.created', handleTaskCreated);
     socket.on('task.updated', handleTaskUpdated);
     socket.on('task.status.changed', handleTaskStatusChanged);
+    socket.on('task.assignees.updated', handleTaskAssigneesUpdated);
     socket.on('comment.created', handleCommentCreated);
     socket.on('comment.updated', handleCommentUpdated);
     socket.on('comment.deleted', handleCommentDeleted);
@@ -55,6 +61,7 @@ export const useTaskSocket = (projectId?: number) => {
       socket.off('task.created', handleTaskCreated);
       socket.off('task.updated', handleTaskUpdated);
       socket.off('task.status.changed', handleTaskStatusChanged);
+      socket.off('task.assignees.updated', handleTaskAssigneesUpdated);
       socket.off('comment.created', handleCommentCreated);
       socket.off('comment.updated', handleCommentUpdated);
       socket.off('comment.deleted', handleCommentDeleted);
