@@ -23,12 +23,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ProjectForm } from '@/components/forms/ProjectForm';
@@ -527,9 +521,6 @@ const Projects = () => {
               // Obter tarefas do projeto (já retorna uma cópia para evitar compartilhamento de referência)
               const projectTasksList = getProjectTasks(project.id);
 
-              // Calcular progresso usando a função dedicada
-              const progress = calculateProjectProgress(project.id);
-
               // Contagem de tarefas para este projeto específico
               const taskCount = projectTasksList.length;
 
@@ -542,69 +533,39 @@ const Projects = () => {
                   onClick={() => navigateToProject(project.id)}
                 >
                   <CardContent className="p-0">
-                    {/* Indicador visual de que o card é clicável */}
-                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ArrowRight className="h-5 w-5 text-primary" />
-                    </div>
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-medium text-lg">{project.title}</h3>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                      <div className="flex items-center gap-1">
+                        {!permissions.isMember && (
+                          <>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              onClick={(e) => e.stopPropagation()} // Evita que o clique propague para o card
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                editProject(project);
+                              }}
                             >
-                              <MoreHorizontal className="h-4 w-4" />
+                              <Edit className="h-4 w-4 text-muted-foreground hover:text-primary" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation(); // Evita que o clique propague para o card
-                              setSelectedProject(project as UIProject);
-                              openProject(project.id);
-                            }}>
-                              Ver Detalhes
-                            </DropdownMenuItem>
-                            {!permissions.isMember && (
-                              <>
-                                <DropdownMenuItem onClick={(e) => {
-                                  e.stopPropagation(); // Evita que o clique propague para o card
-                                  editProject(project);
-                                }}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Editar Projeto
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation(); // Evita que o clique propague para o card
-                                    deleteProject(project);
-                                  }}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Remover Projeto
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteProject(project);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </div>
-                      <div className="text-sm text-muted-foreground mb-2 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: project.description || 'Sem descrição.' }} />
-
-                      <div className="mb-4">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-xs text-muted-foreground">Progresso</span>
-                          <span className="text-xs font-medium">{progress}%</span>
-                        </div>
-                        <Progress
-                          value={progress}
-                          className="h-1.5"
-                          key={`progress-${project.id}-${taskCount}-${progress}`}
-                        />
                       </div>
+                      <div className="text-sm text-muted-foreground mb-3 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: project.description || 'Sem descrição.' }} />
 
                       <div className="flex items-center justify-between mb-4">
                         <Badge variant={
