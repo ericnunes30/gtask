@@ -19,6 +19,7 @@ import { Project } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
+import { useProjectModalStore } from '@/stores/projectModalStore';
 
 export const ProjectsList = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ export const ProjectsList = () => {
   // Hooks de autenticação e permissões
   const { user } = useAuth();
   const permissions = usePermissions();
+  const { openProject } = useProjectModalStore();
 
   const recentProjects = useMemo(() => {
     return [...projects]
@@ -59,9 +61,9 @@ export const ProjectsList = () => {
     return progress;
   };
 
-  // Função para navegar para a página de detalhes do projeto
+  // Função para abrir o popup de detalhes do projeto
   const navigateToProject = (projectId: number) => {
-    navigate(`/projects/${projectId}`);
+    openProject(projectId);
   };
 
   return (

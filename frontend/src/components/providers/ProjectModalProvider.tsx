@@ -1,5 +1,6 @@
 import React from 'react'
 import { useProjectModalStore } from '@/stores/projectModalStore'
+import { ProjectDetailsModal } from '@/components/modals/ProjectDetailsModal'
 
 interface ProjectModalProviderProps {
   children: React.ReactNode
@@ -12,11 +13,11 @@ export const ProjectModalProvider: React.FC<ProjectModalProviderProps> = ({ chil
     <>
       {children}
       {projectId !== null && (
-        <div>
-          {/* TODO: render ProjectViewModal here once component is ready */}
-          Modal placeholder for project {projectId} (open: {String(isOpen)})
-          <button onClick={close}>Close</button>
-        </div>
+        <ProjectDetailsModal
+          isOpen={isOpen}
+          onClose={close}
+          projectId={projectId}
+        />
       )}
     </>
   )

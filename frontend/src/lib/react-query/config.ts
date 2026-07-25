@@ -30,14 +30,13 @@ export const CACHE_STRATEGIES = {
     refetchOnReconnect: true,
   },
 
-  // Dados em tempo real - sempre atualizados
+  // Dados em tempo real - atualizados via WebSocket, sem polling HTTP
   REALTIME: {
     staleTime: 0, // Sempre fresh
     gcTime: 1000 * 60 * 5, // 5 minutos
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: 1000 * 30, // 30 segundos
   },
 
   // Dados de usuário - balanceado

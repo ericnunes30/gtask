@@ -29,7 +29,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ProjectForm } from '@/components/forms/ProjectForm';
@@ -42,6 +41,7 @@ import { useBackendServices } from '@/hooks/useBackendServices';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
+import { useProjectModalStore } from '@/stores/projectModalStore';
 import { Switch } from "@/components/ui/switch"; // Importar o componente Switch
 
 // Estendendo a interface Project para incluir campos adicionais usados na UI
@@ -56,7 +56,6 @@ interface UIProject extends Project {
 
 
 const Projects = () => {
-  const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [teams, setTeams] = useState([]);
@@ -70,6 +69,7 @@ const Projects = () => {
   const [projectTasksData, setProjectTasksData] = useState<Record<number, any[]>>({});
   const { user } = useAuth();
   const permissions = usePermissions();
+  const { openProject } = useProjectModalStore();
   const { projects: projectsService } = useBackendServices();
   const queryClient = useQueryClient();
   const [viewProjectId, setViewProjectId] = useState<number | null>(null);
@@ -372,12 +372,10 @@ const Projects = () => {
   };
 
   const navigateToProject = (projectId: number) => {
-    // Verificar se o usuário é um membro e se tem permissão para navegar para este projeto
+    // Verificar se o usuário é um membro e se tem permissão para visualizar este projeto
     if (permissions.isMember) {
-      // Tentar obter o ID do usuário do contexto de autenticação primeiro
       let userId = user?.id;
 
-      // Se não tiver o ID do usuário no contexto, tentar obter do localStorage
       if (!userId) {
         const userData = localStorage.getItem('user');
         if (userData) {
@@ -390,7 +388,6 @@ const Projects = () => {
         }
       }
 
-      // Verificar se o usuário está na lista de usuários do projeto
       if (userId) {
         const project = projects.find(p => p.id === projectId);
         if (project) {
@@ -400,7 +397,7 @@ const Projects = () => {
           );
 
           if (!userInProject) {
-            console.error(`Usuário ${userId} não tem permissão para navegar para o projeto ${projectId}`);
+            console.error(`Usuário ${userId} não tem permissão para visualizar o projeto ${projectId}`);
             toast.error('Você não tem permissão para acessar este projeto');
             return;
           }
@@ -408,7 +405,7 @@ const Projects = () => {
       }
     }
 
-    navigate(`/projects/${projectId}`);
+    openProject(projectId);
   };
 
   return (
@@ -562,7 +559,8 @@ const Projects = () => {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation(); // Evita que o clique propague para o card
-                              viewProject(project);
+                              setSelectedProject(project as UIProject);
+                              openProject(project.id);
                             }}>
                               Ver Detalhes
                             </DropdownMenuItem>
@@ -821,7 +819,7 @@ const Projects = () => {
                             variant="ghost"
                             size="sm"
                             className="h-7 text-xs"
-                            onClick={() => navigateToProject(selectedProject.id)}
+                            onClick={() => openProject(selectedProject.id)}
                           >
                             Ver Todos
                           </Button>
@@ -886,7 +884,7 @@ const Projects = () => {
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => navigateToProject(selectedProject.id)}
+                        onClick={() => openProject(selectedProject.id)}
                       >
                         Ver Todas
                       </Button>
@@ -945,7 +943,7 @@ const Projects = () => {
 
                 <Button
                   variant="outline"
-                  onClick={() => navigateToProject(selectedProject.id)}
+                  onClick={() => openProject(selectedProject.id)}
                 >
                   <ArrowRight className="h-4 w-4 mr-2" />
                   Abrir Projeto

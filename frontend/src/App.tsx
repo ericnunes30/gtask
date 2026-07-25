@@ -10,6 +10,7 @@ import { useSocketStore } from '@/stores/socketStore';
 import AppRoutes from "@/routes";
 import { AppInitializer } from '@/components/AppInitializer';
 import { TaskModalProvider } from '@/components/providers/TaskModalProvider';
+import { ProjectModalProvider } from '@/components/providers/ProjectModalProvider';
 
 import { useTimerSocket } from '@/hooks/useTimerSocket';
 import { usePreloadRoute } from '@/hooks/usePreloadRoute';
@@ -65,7 +66,6 @@ const AppWithLocation = () => {
     const timeouts = [
       setTimeout(() => import('@/pages/Teams'), 2000),
       setTimeout(() => import('@/pages/Users'), 2500),
-      setTimeout(() => import('@/pages/ProjectView'), 3000),
       setTimeout(() => import('@/pages/TaskDetails'), 3500)
     ];
 
@@ -88,11 +88,13 @@ const App = () => {
         <TooltipProvider>
           <AppInitializer>
             <TaskModalProvider>
-              <AuthInterceptorSetup />
-              <TimerSocketSetup />
-              <Toaster />
-              <Sonner />
-              <AppWithLocation />
+              <ProjectModalProvider>
+                <AuthInterceptorSetup />
+                <TimerSocketSetup />
+                <Toaster />
+                <Sonner />
+                <AppWithLocation />
+              </ProjectModalProvider>
             </TaskModalProvider>
           </AppInitializer>
         </TooltipProvider>

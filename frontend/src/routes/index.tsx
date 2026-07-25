@@ -6,7 +6,6 @@ import NotFound from '@/pages/NotFound';
 import ProtectedRoute from './ProtectedRoute';
 import {
   LazyProjectsPage,
-  LazyProjectViewPage,
   LazyTasksPage,
   LazyTeamsPage,
   LazyTaskDetailsPage,
@@ -32,14 +31,6 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
         <LazyProjectsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/projects/:projectId"
-        element={
-          <ProtectedRoute>
-        <LazyProjectViewPage />
           </ProtectedRoute>
         }
       />
