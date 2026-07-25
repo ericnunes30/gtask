@@ -153,6 +153,15 @@ export class TaskService {
       ...taskData
     } = updateTaskDto;
 
+    // Se o status mudou e não foi enviado order, o backend calcula automaticamente
+    if (
+      taskData.status &&
+      taskData.status !== task.status &&
+      (taskData.order === undefined || taskData.order === null)
+    ) {
+      taskData.order = await this.calculateOrderForStatus(taskData.status);
+    }
+
     Object.assign(task, taskData);
 
     if (userIds) {
@@ -172,6 +181,25 @@ export class TaskService {
     }
 
     return await this.taskRepository.save(task);
+  }
+
+  /**
+   * Calcula o order para uma tarefa ao mudar de status.
+   * Coloca a tarefa no final da coluna de destino.
+   * Backend é a fonte da verdade para ordenação.
+   */
+  private async calculateOrderForStatus(status: Status): Promise<number> {
+    const tasksInColumn = await this.taskRepository.find({
+      where: { status },
+      order: { order: 'DESC' },
+      take: 1,
+    });
+
+    if (tasksInColumn.length === 0 || tasksInColumn[0].order === null) {
+      return 1;
+    }
+
+    return (tasksInColumn[0].order || 0) + 1;
   }
 
   private getChangedFields(
