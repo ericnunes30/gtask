@@ -440,9 +440,7 @@ describe('Notifications (e2e)', () => {
       const notification = factory.create('task.updated', {
         task: { id: 1, title: 'Updated Task' },
         updatedBy: userId,
-        changedFields: [
-          { field: 'title', oldValue: 'Old', newValue: 'New' },
-        ],
+        changedFields: [{ field: 'title', oldValue: 'Old', newValue: 'New' }],
       });
 
       expect(notification).toBeDefined();
@@ -505,9 +503,7 @@ describe('Notifications (e2e)', () => {
           data: {
             actorName: 'Admin',
             taskTitle: 'Test',
-            changedFields: [
-              { field: 'title', oldValue: 'A', newValue: 'B' },
-            ],
+            changedFields: [{ field: 'title', oldValue: 'A', newValue: 'B' }],
           },
           metadata: { source: 'test' },
         }),

@@ -247,6 +247,5 @@ describe('WebSocket Events (e2e)', () => {
         );
       });
     }, 10000);
-
   });
 });

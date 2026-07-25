@@ -55,7 +55,11 @@ describe('Users (e2e)', () => {
     });
 
     it('should return 409 for duplicate email', async () => {
-      const payload = { name: 'Duplicate', email: 'admin@test.com', password: 'password123' };
+      const payload = {
+        name: 'Duplicate',
+        email: 'admin@test.com',
+        password: 'password123',
+      };
       const response = await request(e2e.app.getHttpServer())
         .post('/api/v1/users')
         .set('Authorization', `Bearer ${accessToken}`)

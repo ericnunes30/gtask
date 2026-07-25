@@ -48,13 +48,16 @@ export class TaskUpdatedStrategy extends BaseNotificationStrategy {
       newValue: unknown;
     }> = Array.isArray(changedFields)
       ? changedFields
-      : Object.entries(changedFields as Record<string, { oldValue: unknown; newValue: unknown }>).map(
-          ([field, values]) => ({
-            field,
-            oldValue: values.oldValue,
-            newValue: values.newValue,
-          }),
-        );
+      : Object.entries(
+          changedFields as Record<
+            string,
+            { oldValue: unknown; newValue: unknown }
+          >,
+        ).map(([field, values]) => ({
+          field,
+          oldValue: values.oldValue,
+          newValue: values.newValue,
+        }));
 
     const data = {
       actorName: performer?.name || 'Usuário desconhecido',
