@@ -34,7 +34,9 @@ export class OccupationService {
     const occupation = this.occupationRepository.create(createOccupationDto);
     const savedOccupation = await this.occupationRepository.save(occupation);
 
-    this.eventEmitter.emit('occupation.created', { occupation: savedOccupation });
+    this.eventEmitter.emit('occupation.created', {
+      occupation: savedOccupation,
+    });
 
     return savedOccupation;
   }
@@ -91,7 +93,9 @@ export class OccupationService {
     Object.assign(occupation, updateOccupationDto);
     const savedOccupation = await this.occupationRepository.save(occupation);
 
-    this.eventEmitter.emit('occupation.updated', { occupation: savedOccupation });
+    this.eventEmitter.emit('occupation.updated', {
+      occupation: savedOccupation,
+    });
 
     return savedOccupation;
   }
@@ -148,7 +152,10 @@ export class OccupationService {
 
     const savedOccupation = await this.occupationRepository.save(occupation);
 
-    this.eventEmitter.emit('occupation.user.added', { occupationId: occupationId, userId });
+    this.eventEmitter.emit('occupation.user.added', {
+      occupationId: occupationId,
+      userId,
+    });
 
     return savedOccupation;
   }

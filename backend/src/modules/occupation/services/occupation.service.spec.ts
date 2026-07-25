@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { OccupationNotFoundException } from '../exceptions/occupation-not-found.exception';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OccupationService } from './occupation.service';
 import { Occupation } from '../entities/occupation.entity';
 import { User } from '../../user/entities/user.entity';
@@ -46,6 +47,7 @@ describe('OccupationService', () => {
           useValue: occupationRepository,
         },
         { provide: getRepositoryToken(User), useValue: userRepository },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 

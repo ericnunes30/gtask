@@ -53,9 +53,12 @@ export class ProjectService {
     }
 
     // Salvar com as associações
-    const savedProjectWithAssociations = await this.projectRepository.save(savedProject);
+    const savedProjectWithAssociations =
+      await this.projectRepository.save(savedProject);
 
-    this.eventEmitter.emit('project.created', { project: savedProjectWithAssociations });
+    this.eventEmitter.emit('project.created', {
+      project: savedProjectWithAssociations,
+    });
 
     return savedProjectWithAssociations;
   }

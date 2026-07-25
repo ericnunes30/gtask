@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { RecurringTaskService } from './recurring-task.service';
 import { RecurringTask, ScheduleType } from '../entities/recurring-task.entity';
 import { OccupationEnhancer } from '../enhancers/occupation-enhancer';
@@ -69,6 +70,7 @@ describe('RecurringTaskService', () => {
         RecurringTaskService,
         { provide: getRepositoryToken(RecurringTask), useValue: repository },
         { provide: OccupationEnhancer, useValue: occupationEnhancer },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 

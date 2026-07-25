@@ -59,7 +59,9 @@ export class RecurringTaskService {
       const enhancedTask = await this.occupationEnhancer.enhance(savedTask);
       this.logger.log('Tarefa "melhorada" com sucesso.');
 
-      this.eventEmitter.emit('recurring-task.created', { recurringTask: enhancedTask });
+      this.eventEmitter.emit('recurring-task.created', {
+        recurringTask: enhancedTask,
+      });
 
       return enhancedTask;
     } catch (error: unknown) {
@@ -104,7 +106,9 @@ export class RecurringTaskService {
     const savedTask = await this.recurringTaskRepository.save(recurringTask);
     const enhancedTask = await this.occupationEnhancer.enhance(savedTask);
 
-    this.eventEmitter.emit('recurring-task.updated', { recurringTask: enhancedTask });
+    this.eventEmitter.emit('recurring-task.updated', {
+      recurringTask: enhancedTask,
+    });
 
     return enhancedTask;
   }

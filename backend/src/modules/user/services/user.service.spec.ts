@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken, getDataSourceToken } from '@nestjs/typeorm';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository, In } from 'typeorm';
 import { UserService } from './user.service';
 import { User } from '../entities/user.entity';
@@ -97,6 +98,7 @@ describe('UserService', () => {
           useValue: occupationRepository,
         },
         { provide: getDataSourceToken(), useValue: dataSourceMock },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 
