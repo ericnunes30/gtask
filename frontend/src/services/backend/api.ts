@@ -57,6 +57,12 @@ export function setupAuthInterceptor({
         const originalRequest = error.config;
         if (!originalRequest) return Promise.reject(error);
 
+        // Avoid interceptor loops on the refresh endpoint itself.
+        if (originalRequest.url === '/auth/refresh') {
+          logout();
+          return Promise.reject(error);
+        }
+
         if (!isRefreshing) {
           isRefreshing = true;
           try {
@@ -71,7 +77,7 @@ export function setupAuthInterceptor({
               if (onRefreshed && newAccessToken) {
                 onRefreshed(newAccessToken);
               }
-              return axios(originalRequest);
+              return api.request(originalRequest);
             } else {
               logout();
               return Promise.reject(error);
@@ -90,7 +96,7 @@ export function setupAuthInterceptor({
           failedRequestsQueue.push({ resolve, reject });
         }).then((token) => {
           originalRequest.headers.Authorization = `Bearer ${token}`;
-          return axios(originalRequest);
+          return api.request(originalRequest);
         });
       }
 
