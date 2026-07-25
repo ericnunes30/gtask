@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { ProjectsList } from '@/components/dashboard/ProjectsList';
-import { TasksList } from '@/components/dashboard/TasksList';
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
 import { TaskForm } from '@/components/forms/TaskForm';
 import { ProjectForm } from '@/components/forms/ProjectForm';
