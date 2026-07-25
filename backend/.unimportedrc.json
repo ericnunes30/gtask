@@ -9,20 +9,17 @@
     "**/*.spec.ts",
     "**/*.d.ts",
     "src/config/*.debug.ts",
-    "src/database/**",
-    "src/modules/whatsapp/**"
+    "src/database/**"
   ],
   "ignoreUnimported": [
     "src/database/data-source.ts",
     "src/database/migrations/*.ts",
     "src/config/cors.config.debug.ts",
-    "src/modules/user/dto/user-response.dto.ts",
-    "src/modules/whatsapp/**"
+    "src/modules/user/dto/user-response.dto.ts"
   ],
   "ignoreUnused": [
     "@nestjs/platform-express",
     "@nestjs/platform-socket.io",
-    "@nestjs/axios",
     "@types/luxon"
   ],
   "ignoreUnresolved": [

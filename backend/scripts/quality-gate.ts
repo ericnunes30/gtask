@@ -152,13 +152,6 @@ export default [
     files: ['src/commands/**', 'src/database/migrations/**'],
     rules: { 'no-console': 'off', 'max-lines': 'off' },
   },
-  // Modulo whatsapp: integracao futura (ver .docs/modules-status.md).
-  // N2.5 (max-lines) e N2.9 (complexity) nao aplicam ate o modulo
-  // ser promovido a feature ativa.
-  {
-    files: ['src/modules/whatsapp/**/*.ts'],
-    rules: { 'max-lines': 'off', 'complexity': 'off' },
-  },
   // Specs de teste: max-lines nao aplica (foco em cobertura, nao tamanho)
   {
     files: ['src/**/*.spec.ts'],
@@ -515,9 +508,8 @@ const nivel2: Criterion[] = [
     nome: 'Guards de autenticacao consistentes (JwtAuthGuard)',
     run: () => {
       // Excecoes: auth.controller (rotas publicas: login/register)
-      // e whatsapp (integracao futura - ver .docs/modules-status.md)
       const dirs = ['src/modules'];
-      const excluded = /(^|[\\/])auth[\\/]controllers[\\/]auth\.controller\.ts|(^|[\\/])modules[\\/]whatsapp[\\/]/;
+      const excluded = /(^|[\\/])auth[\\/]controllers[\\/]auth\\.controller\\.ts/;
       let totalGuards = 0;
       let jwtGuards = 0;
       const re = /@UseGuards\(/g;
@@ -538,7 +530,7 @@ const nivel2: Criterion[] = [
       return {
         pass: consistentes,
         measured: true,
-        detail: `${jwtGuards}/${totalGuards} @UseGuards sao JwtAuthGuard (excluindo auth.controller e whatsapp)`,
+        detail: `${jwtGuards}/${totalGuards} @UseGuards sao JwtAuthGuard (excluindo auth.controller)`,
       };
     },
   },
