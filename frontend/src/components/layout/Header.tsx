@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Menu, ChevronDown, LogOut, Moon, Search, Bell } from "lucide-react";
+import { Menu, ChevronDown, LogOut, Moon, Bell } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
@@ -64,14 +64,6 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
           <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden h-8 w-8 rounded-lg">
             <Menu className="h-5 w-5" />
           </Button>
-          
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/60 border border-border/50">
-            <Search className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Pesquisar...</span>
-            <kbd className="hidden lg:inline-flex h-4 items-center gap-1 rounded border bg-muted px-1 text-[10px] font-medium text-muted-foreground">
-              <span>Ctrl</span>+<span>K</span>
-            </kbd>
-          </div>
         </div>
 
         <div className="flex items-center gap-1">
