@@ -57,18 +57,24 @@ const Tasks = () => {
     const savedShowMyReviews = localStorage.getItem('showMyReviewsTasksPage');
     return savedShowMyReviews === 'true';
   });
+  const [showCancelled, setShowCancelled] = useState(() => {
+    const savedShowCancelled = localStorage.getItem('showCancelledTasksPage');
+    return savedShowCancelled === 'true';
+  });
   const taskFormRef = useRef<TaskFormRef>(null);
 
   // Estado consolidado de filtros para a sidebar
   const [sidebarFilters, setSidebarFilters] = useState<TaskFiltersState>(() => {
     const savedShowCompleted = localStorage.getItem('showCompletedTasksPage') === 'true';
     const savedShowMyReviews = localStorage.getItem('showMyReviewsTasksPage') === 'true';
+    const savedShowCancelled = localStorage.getItem('showCancelledTasksPage') === 'true';
     return {
       priorities: [],
       projectId: 'all',
       userId: 'all',
       showCompleted: savedShowCompleted,
       showMyReviews: savedShowMyReviews,
+      showCancelled: savedShowCancelled,
       searchTerm: '',
     };
   });
@@ -309,12 +315,12 @@ const Tasks = () => {
       tasksToFilter = tasksToFilter.filter(task => task.status !== 'concluido');
     }
 
-    // Hide canceled tasks for everyone
+    // Apply show cancelled filter
+    if (!showCancelled) {
+      tasksToFilter = tasksToFilter.filter(task => task.status !== 'cancelado');
+    }
+
     // Hide pending and waiting for client tasks only for non-admins
-    tasksToFilter = tasksToFilter.filter(
-      task => task.status !== 'cancelado'
-    );
-    // Only filter out pending/waiting for non-admins
     if (!permissions.isAdmin) {
       tasksToFilter = tasksToFilter.filter(
         task =>
@@ -345,7 +351,7 @@ const Tasks = () => {
     }
 
     return tasksToFilter;
-  }, [rawTasks, sidebarFilters, selectedProjectFilter, selectedPriorityFilter, selectedUserId, showCompleted, showMyReviews, isUserMember, currentUserIdAuth, permissions.isAdmin]);
+  }, [rawTasks, sidebarFilters, selectedProjectFilter, selectedPriorityFilter, selectedUserId, showCompleted, showCancelled, showMyReviews, isUserMember, currentUserIdAuth, permissions.isAdmin]);
 
   // Sincronizar sidebarFilters -> estados antigos (mantém lógica de filtragem intacta)
   useEffect(() => {
@@ -354,9 +360,11 @@ const Tasks = () => {
     setSelectedUserId(sidebarFilters.userId === 'all' ? null : sidebarFilters.userId);
     setShowCompleted(sidebarFilters.showCompleted);
     setShowMyReviews(sidebarFilters.showMyReviews);
+    setShowCancelled(sidebarFilters.showCancelled);
     // Persistir toggles no localStorage
     localStorage.setItem('showCompletedTasksPage', String(sidebarFilters.showCompleted));
     localStorage.setItem('showMyReviewsTasksPage', String(sidebarFilters.showMyReviews));
+    localStorage.setItem('showCancelledTasksPage', String(sidebarFilters.showCancelled));
   }, [sidebarFilters]);
 
   return (

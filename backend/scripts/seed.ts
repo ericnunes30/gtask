@@ -92,9 +92,10 @@ async function seed() {
   }
 
   // Associate ADMIN role to admin@teste.com if exists
+  let adminId = userIds[0];
   const adminRow = await qr.query('SELECT id FROM users WHERE email = $1', ['admin@teste.com']);
   if (adminRow.length > 0) {
-    const adminId = adminRow[0].id;
+    adminId = adminRow[0].id;
     const adminRoleId = roleMap['ADMIN'];
     if (adminRoleId) {
       await qr.query(
@@ -103,7 +104,9 @@ async function seed() {
         [adminId, adminRoleId],
       );
     }
-    userIds.unshift(adminId);
+    if (!userIds.includes(adminId)) {
+      userIds.unshift(adminId);
+    }
   }
   console.log('✅ Users seeded');
 
@@ -286,8 +289,8 @@ async function seed() {
       const assignee = projUserIds[i % projUserIds.length] || userIds[0];
 
       const insert = await qr.query(
-        `INSERT INTO tasks (title, description, priority, status, project_id, "order", start_date, due_date, timer, has_detailed_fields, created_at, updated_at)
-         VALUES ($1, $2, $3::tasks_priority_enum, $4::tasks_status_enum, $5, $6, NOW(), NOW() + INTERVAL '7 days', 0, false, NOW(), NOW())
+        `INSERT INTO tasks (title, description, priority, status, project_id, "order", start_date, due_date, timer, has_detailed_fields, task_reviewer_id, created_at, updated_at)
+         VALUES ($1, $2, $3::tasks_priority_enum, $4::tasks_status_enum, $5, $6, NOW(), NOW() + INTERVAL '7 days', 0, false, $7, NOW(), NOW())
          RETURNING id`,
         [
           `${template.title} - Projeto #${projectId}`,
@@ -296,6 +299,7 @@ async function seed() {
           template.status,
           projectId,
           i + 1,
+          adminId,
         ],
       );
       const tid = insert[0].id;
@@ -322,7 +326,118 @@ async function seed() {
   console.log(`✅ ${taskCount} tasks seeded`);
 
   // ============================================
-  // 7. SEED COMMENTS
+  // 7. SEED RECURRING TASKS
+  // ============================================
+  console.log('🔁 Seeding recurring tasks...');
+  const recurringData = [
+    {
+      name: 'Backup diário do banco de dados',
+      schedule_type: 'interval',
+      frequency_interval: '1 day',
+      frequency_cron: null,
+      next_days: '1 day',
+      template_title: 'Realizar backup do banco de dados',
+      template_desc: 'Executar backup completo do PostgreSQL e verificar integridade.',
+      template_priority: 'alta',
+    },
+    {
+      name: 'Reunião de stand-up semanal',
+      schedule_type: 'interval',
+      frequency_interval: '7 days',
+      frequency_cron: null,
+      next_days: '7 days',
+      template_title: 'Participar da reunião de stand-up',
+      template_desc: 'Sincronizar progresso, impedimentos e próximos passos com o time.',
+      template_priority: 'media',
+    },
+    {
+      name: 'Relatório mensal de performance',
+      schedule_type: 'interval',
+      frequency_interval: '30 days',
+      frequency_cron: null,
+      next_days: '30 days',
+      template_title: 'Gerar relatório de performance do sistema',
+      template_desc: 'Coletar métricas de CPU, memória, tempo de resposta e erros.',
+      template_priority: 'alta',
+    },
+    {
+      name: 'Revisão de segurança',
+      schedule_type: 'cron',
+      frequency_interval: null,
+      frequency_cron: '0 9 * * 1',
+      next_days: '7 days',
+      template_title: 'Realizar revisão de segurança da aplicação',
+      template_desc: 'Verificar vulnerabilidades, logs de acesso e atualizações de segurança.',
+      template_priority: 'urgente',
+    },
+    {
+      name: 'Atualização de dependências',
+      schedule_type: 'interval',
+      frequency_interval: '14 days',
+      frequency_cron: null,
+      next_days: '14 days',
+      template_title: 'Atualizar dependências do projeto',
+      template_desc: 'Verificar novas versões de pacotes npm e aplicar atualizações seguras.',
+      template_priority: 'media',
+    },
+    {
+      name: 'Limpeza de logs antigos',
+      schedule_type: 'interval',
+      frequency_interval: '1 day',
+      frequency_cron: null,
+      next_days: '1 day',
+      template_title: 'Limpar logs antigos do servidor',
+      template_desc: 'Remover arquivos de log com mais de 30 dias para liberar espaço em disco.',
+      template_priority: 'baixa',
+    },
+  ];
+
+  const recurringCount = 0;
+  for (let i = 0; i < recurringData.length; i++) {
+    const rt = recurringData[i];
+    const projectId = projectIds[i % projectIds.length];
+
+    // Get project users and occupations
+    const projUsers = await qr.query(
+      'SELECT user_id FROM projects_users WHERE project_id = $1',
+      [projectId],
+    );
+    const projOccs = await qr.query(
+      'SELECT occupation_id FROM occupations_projects WHERE project_id = $1',
+      [projectId],
+    );
+
+    const assigneeIds = projUsers.map((r: any) => r.user_id).slice(0, 2);
+    const occupationIds = projOccs.map((r: any) => r.occupation_id).slice(0, 2);
+
+    const templateData = {
+      title: rt.template_title,
+      description: rt.template_desc,
+      priority: rt.template_priority,
+      assignee_ids: assigneeIds,
+      occupation_ids: occupationIds,
+      task_reviewer_id: adminId,
+    };
+
+    await qr.query(
+      `INSERT INTO recurring_tasks (name, template_data, next_due_date, is_active, schedule_type, frequency_interval, frequency_cron, user_id, project_id, created_at, updated_at)
+       VALUES ($1, $2, NOW() + $3::interval, true, $4::recurring_tasks_schedule_type_enum, $5, $6, $7, $8, NOW(), NOW())`,
+      [
+        rt.name,
+        JSON.stringify(templateData),
+        rt.next_days,
+        rt.schedule_type,
+        rt.frequency_interval,
+        rt.frequency_cron,
+        adminId,
+        projectId,
+      ],
+    );
+  }
+  console.log(`✅ ${recurringData.length} recurring tasks seeded`);
+
+  // ============================================
+  // 8. SEED COMMENTS
   // ============================================
   console.log('💬 Seeding comments...');
   const commentTexts = [
