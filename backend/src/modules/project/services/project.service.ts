@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Project } from '../entities/project.entity';
 import { User } from '../../user/entities/user.entity';
 import { Occupation } from '../../occupation/entities/occupation.entity';
@@ -23,6 +24,7 @@ export class ProjectService {
     private occupationRepository: Repository<Occupation>,
     @InjectRepository(Task)
     private taskRepository: Repository<Task>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(createProjectDto: CreateProjectDto): Promise<Project> {
@@ -51,7 +53,11 @@ export class ProjectService {
     }
 
     // Salvar com as associações
-    return await this.projectRepository.save(savedProject);
+    const savedProjectWithAssociations = await this.projectRepository.save(savedProject);
+
+    this.eventEmitter.emit('project.created', { project: savedProjectWithAssociations });
+
+    return savedProjectWithAssociations;
   }
 
   async findAll(): Promise<Project[]> {
@@ -133,7 +139,11 @@ export class ProjectService {
           : [];
     }
 
-    return await this.projectRepository.save(project);
+    const updatedProject = await this.projectRepository.save(project);
+
+    this.eventEmitter.emit('project.updated', { project: updatedProject });
+
+    return updatedProject;
   }
 
   async remove(id: number): Promise<void> {
@@ -146,6 +156,8 @@ export class ProjectService {
     }
 
     await this.projectRepository.remove(project);
+
+    this.eventEmitter.emit('project.deleted', { projectId: id });
   }
 
   async findProjectTasks(id: number) {

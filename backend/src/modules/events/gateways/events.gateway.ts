@@ -42,6 +42,7 @@ export class EventsGateway
   ) {
     this.bridgeTimerEvents();
     this.bridgeTaskEvents();
+    this.bridgeProjectEvents();
   }
 
   private isInitialized = false;
@@ -144,6 +145,49 @@ export class EventsGateway
         this.server?.to('tasks_all').emit('comment.created', payload);
       },
     );
+  }
+
+  private bridgeProjectEvents(): void {
+    // Bridge project.created -> WebSocket
+    this.eventEmitter.on(
+      'project.created',
+      (payload: { project: { id: number } }) => {
+        this.logger.log(`Bridging project.created for project ${payload.project.id}`);
+        this.server?.to('projects_all').emit('project.created', payload);
+      },
+    );
+
+    // Bridge project.updated -> WebSocket
+    this.eventEmitter.on(
+      'project.updated',
+      (payload: { project: { id: number } }) => {
+        this.logger.log(`Bridging project.updated for project ${payload.project.id}`);
+        this.server?.to('projects_all').emit('project.updated', payload);
+        this.server?.to(`project_${payload.project.id}`).emit('project.updated', payload);
+      },
+    );
+
+    // Bridge project.deleted -> WebSocket
+    this.eventEmitter.on(
+      'project.deleted',
+      (payload: { projectId: number }) => {
+        this.logger.log(`Bridging project.deleted for project ${payload.projectId}`);
+        this.server?.to('projects_all').emit('project.deleted', payload);
+        this.server?.to(`project_${payload.projectId}`).emit('project.deleted', payload);
+      },
+    );
+  }
+
+  @SubscribeMessage('join-projects-room')
+  handleJoinProjectsRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining projects room`);
+    void client.join('projects_all');
+  }
+
+  @SubscribeMessage('leave-projects-room')
+  handleLeaveProjectsRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving projects room`);
+    void client.leave('projects_all');
   }
 
   @SubscribeMessage('join-project-room')

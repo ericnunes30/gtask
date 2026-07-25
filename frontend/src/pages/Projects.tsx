@@ -42,6 +42,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { useProjectModalStore } from '@/stores/projectModalStore';
+import { useProjectSocket } from '@/hooks/useProjectSocket';
 import { Switch } from "@/components/ui/switch"; // Importar o componente Switch
 
 // Estendendo a interface Project para incluir campos adicionais usados na UI
@@ -75,6 +76,9 @@ const Projects = () => {
   const [viewProjectId, setViewProjectId] = useState<number | null>(null);
   const { data: viewProjectData } = projectsService.useGetProject(viewProjectId as number, Boolean(viewProjectId));
   const { mutateAsync: deleteProjectMutation } = projectsService.useDeleteProject();
+
+  // WebSocket para atualização em tempo real de projetos
+  useProjectSocket();
 
   const { data, isLoading, isError } = projectsService.useGetProjects();
   const projects = data ?? [];
