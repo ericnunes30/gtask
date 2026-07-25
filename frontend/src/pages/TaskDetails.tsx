@@ -22,132 +22,80 @@ import { useBackendServices } from '@/hooks/useBackendServices';
 const TaskDetails = () => {
   const { taskId } = useParams();
   const navigate = useNavigate();
-  const [task, setTask] = useState<any>(null);
-  const [project, setProject] = useState<any>(null);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [comment, setComment] = useState('');
-  const [comments, setComments] = useState<any[]>([]);
+
+  const taskIdNum = taskId ? parseInt(taskId, 10) : NaN;
 
   // Hooks de autenticação e permissões
   const { user } = useAuth();
   const permissions = usePermissions();
 
+  // Backend services
+  const { tasks: tasksService, comments: commentsService, projects: projectsService } = useBackendServices();
+
+  const { data: task, isLoading: isLoadingTask, isError: isTaskError } = tasksService.useGetTask(taskIdNum);
+  const { mutateAsync: updateTask } = tasksService.useUpdateTask();
+  const { mutateAsync: deleteTask } = tasksService.useDeleteTask();
+
+  const { data: comments = [], isLoading: isLoadingComments } = commentsService.useGetCommentsByTask(taskIdNum);
+  const { mutateAsync: createComment, isPending: isCreatingComment } = commentsService.useCreateComment();
+
+  const { data: project } = projectsService.useGetProject(task?.project_id);
+
   useEffect(() => {
-    const storedTasks = localStorage.getItem('tasks');
-    if (storedTasks) {
-      const tasksArray = JSON.parse(storedTasks);
-      const foundTask = tasksArray.find((t: any) => t.id === taskId);
-
-      if (foundTask) {
-        setTask(foundTask);
-
-        const storedComments = localStorage.getItem(`comments_${taskId}`);
-        if (storedComments) {
-          const parsedComments = JSON.parse(storedComments);
-          setComments(parsedComments);
-        }
-
-        const storedProjects = localStorage.getItem('projects');
-        if (storedProjects) {
-          const projectsArray = JSON.parse(storedProjects);
-          const foundProject = projectsArray.find((p: any) => p.id === foundTask.project);
-          if (foundProject) {
-            setProject(foundProject);
-          }
-        }
-      } else {
-        navigate('/tasks');
-        toast({
-          title: 'Tarefa não encontrada',
-          description: 'A tarefa solicitada não existe ou foi removida.',
-          variant: 'destructive',
-        });
-      }
+    if (isTaskError || isNaN(taskIdNum)) {
+      navigate('/tasks');
+      toast({
+        title: 'Tarefa não encontrada',
+        description: 'A tarefa solicitada não existe ou foi removida.',
+        variant: 'destructive',
+      });
     }
-  }, [taskId, navigate]);
+  }, [isTaskError, taskIdNum, navigate]);
 
   const handleBackClick = () => {
     navigate('/tasks');
   };
 
-  const handleEditTask = (updatedTask: any) => {
-    const storedTasks = localStorage.getItem('tasks');
-    if (storedTasks) {
-      const tasksArray = JSON.parse(storedTasks);
-      const updatedTasks = tasksArray.map((t: any) => (t.id === taskId ? { ...t, ...updatedTask } : t));
-
-      localStorage.setItem('tasks', JSON.stringify(updatedTasks));
-
-      setTask({ ...task, ...updatedTask });
-      setIsEditSheetOpen(false);
-
-      toast({
-        title: 'Tarefa atualizada',
-        description: 'As alterações foram salvas com sucesso.',
-      });
-    }
+  const handleEditTask = async (updatedTask: any) => {
+    if (!task || isNaN(taskIdNum)) return;
+    await updateTask({ id: taskIdNum, data: updatedTask });
+    setIsEditSheetOpen(false);
+    toast({
+      title: 'Tarefa atualizada',
+      description: 'As alterações foram salvas com sucesso.',
+    });
   };
 
-  const handleDeleteTask = () => {
-    const storedTasks = localStorage.getItem('tasks');
-    if (storedTasks) {
-      const tasksArray = JSON.parse(storedTasks);
-      const filteredTasks = tasksArray.filter((t: any) => t.id !== taskId);
-
-      localStorage.setItem('tasks', JSON.stringify(filteredTasks));
-
-      localStorage.removeItem(`comments_${taskId}`);
-
-      navigate('/tasks');
-
-      toast({
-        title: 'Tarefa excluída',
-        description: 'A tarefa foi removida permanentemente.',
-      });
-    }
+  const handleDeleteTask = async () => {
+    if (isNaN(taskIdNum)) return;
+    await deleteTask(taskIdNum);
+    setIsDeleteDialogOpen(false);
+    navigate('/tasks');
+    toast({
+      title: 'Tarefa excluída',
+      description: 'A tarefa foi removida permanentemente.',
+    });
   };
 
-  const handleToggleComplete = () => {
-    if (!task) return;
-
-    const updatedTask = { ...task, completed: !task.completed };
-
-    const storedTasks = localStorage.getItem('tasks');
-    if (storedTasks) {
-      const tasksArray = JSON.parse(storedTasks);
-      const updatedTasks = tasksArray.map((t: any) => (t.id === taskId ? updatedTask : t));
-
-      localStorage.setItem('tasks', JSON.stringify(updatedTasks));
-
-      setTask(updatedTask);
-
-      toast({
-        title: updatedTask.completed ? 'Tarefa concluída' : 'Tarefa reaberta',
-        description: updatedTask.completed
-          ? 'A tarefa foi marcada como concluída.'
-          : 'A tarefa foi marcada como pendente.',
-      });
-    }
+  const handleToggleComplete = async () => {
+    if (!task || isNaN(taskIdNum)) return;
+    const newStatus = task.status === 'concluido' ? 'a_fazer' : 'concluido';
+    await updateTask({ id: taskIdNum, data: { status: newStatus } });
+    toast({
+      title: newStatus === 'concluido' ? 'Tarefa concluída' : 'Tarefa reaberta',
+      description: newStatus === 'concluido'
+        ? 'A tarefa foi marcada como concluída.'
+        : 'A tarefa foi marcada como pendente.',
+    });
   };
 
-  const handleAddComment = () => {
-    if (!comment.trim()) return;
-
-    const newComment = {
-      id: Date.now().toString(),
-      text: comment,
-      createdAt: new Date().toISOString(),
-      user: 'Usuário Atual',
-    };
-
-    const updatedComments = [...comments, newComment];
-
-    localStorage.setItem(`comments_${taskId}`, JSON.stringify(updatedComments));
-
-    setComments(updatedComments);
+  const handleAddComment = async () => {
+    if (!comment.trim() || isNaN(taskIdNum)) return;
+    await createComment({ content: comment, task_id: taskIdNum });
     setComment('');
-
     toast({
       title: 'Comentário adicionado',
       description: 'Seu comentário foi adicionado com sucesso.',
@@ -221,7 +169,7 @@ const TaskDetails = () => {
     };
   };
 
-  if (!task) {
+  if (isLoadingTask || !task) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-full">
@@ -231,8 +179,9 @@ const TaskDetails = () => {
     );
   }
 
+  const isCompleted = task.status === 'concluido';
   const priorityInfo = formatPriority(task.priority);
-  const dueDateStatus = task.dueDate ? getDueDateStatus(task.dueDate) : null;
+  const dueDateStatus = (task.dueDate || task.due_date) ? getDueDateStatus(task.dueDate || task.due_date) : null;
 
   return (
     <AppLayout>
@@ -331,11 +280,11 @@ const TaskDetails = () => {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <Checkbox id="task-complete" checked={task.completed} onCheckedChange={handleToggleComplete} />
-                    <CardTitle className={task.completed ? 'line-through text-muted-foreground' : ''}>{task.title}</CardTitle>
+                    <Checkbox id="task-complete" checked={isCompleted} onCheckedChange={handleToggleComplete} />
+                    <CardTitle className={isCompleted ? 'line-through text-muted-foreground' : ''}>{task.title}</CardTitle>
                   </div>
                   <CardDescription className="mt-2 text-muted-foreground">
-                    {project ? `Projeto: ${project.name}` : 'Sem projeto associado'}
+                    {project ? `Projeto: ${project.title || project.name}` : 'Sem projeto associado'}
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -363,19 +312,19 @@ const TaskDetails = () => {
                     <div className="space-y-2">
                       <div className="flex items-center text-sm">
                         <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>Criada em: {formatDate(task.createdAt)}</span>
+                        <span>Criada em: {formatDate(task.createdAt || task.created_at)}</span>
                       </div>
-                      {task.dueDate && (
+                      {(task.dueDate || task.due_date) && (
                         <div className="flex items-center text-sm">
                           <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <span>Prazo: {formatDate(task.dueDate)}</span>
+                          <span>Prazo: {formatDate(task.dueDate || task.due_date)}</span>
                         </div>
                       )}
                     </div>
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2">Status</h3>
-                    <Badge variant={task.completed ? 'default' : 'outline'}>{task.completed ? 'Concluída' : 'Pendente'}</Badge>
+                    <Badge variant={isCompleted ? 'default' : 'outline'}>{isCompleted ? 'Concluída' : 'Pendente'}</Badge>
                   </div>
                 </div>
               </div>
@@ -399,10 +348,10 @@ const TaskDetails = () => {
                   comments.map((c) => (
                     <div key={c.id} className="border rounded-md p-3">
                       <div className="flex justify-between items-start">
-                        <span className="font-medium">{c.user}</span>
+                        <span className="font-medium">{c.user?.name || 'Usuário'}</span>
                         <span className="text-xs text-muted-foreground">{formatDate(c.createdAt)}</span>
                       </div>
-                      <p className="text-sm mt-1">{c.text}</p>
+                      <p className="text-sm mt-1">{c.content}</p>
                     </div>
                   ))
                 ) : (
@@ -416,7 +365,7 @@ const TaskDetails = () => {
                   placeholder="Escreva um comentário"
                   className="min-h-[80px]"
                 />
-                <Button onClick={handleAddComment} className="self-end" disabled={!comment.trim()}>
+                <Button onClick={handleAddComment} className="self-end" disabled={!comment.trim() || isCreatingComment || isLoadingComments}>
                   Enviar
                 </Button>
               </div>
