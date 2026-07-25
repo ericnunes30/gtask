@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Team, User } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
+import { useOccupationSocket } from '@/hooks/useOccupationSocket';
 
 const TeamsPage = () => {
   const navigate = useNavigate();
@@ -55,6 +56,9 @@ const TeamsPage = () => {
   const { mutateAsync: createTeamMutate } = teamsService.useCreateTeam();
   const { mutateAsync: updateTeamMutate } = teamsService.useUpdateTeam();
   const { mutateAsync: deleteTeamMutate } = teamsService.useDeleteTeam();
+
+  // WebSocket para atualização em tempo real de equipes/ocupações
+  useOccupationSocket();
   const {
     data: usersQueryData,
     isLoading: usersLoading

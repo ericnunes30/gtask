@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Occupation } from '../entities/occupation.entity';
 import { User } from '../../user/entities/user.entity';
 import { CreateOccupationDto } from '../dto/create-occupation.dto';
@@ -19,6 +20,7 @@ export class OccupationService {
     private occupationRepository: Repository<Occupation>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(createOccupationDto: CreateOccupationDto): Promise<Occupation> {
@@ -30,7 +32,11 @@ export class OccupationService {
       throw new DuplicateOccupationNameException(createOccupationDto.name);
     }
     const occupation = this.occupationRepository.create(createOccupationDto);
-    return await this.occupationRepository.save(occupation);
+    const savedOccupation = await this.occupationRepository.save(occupation);
+
+    this.eventEmitter.emit('occupation.created', { occupation: savedOccupation });
+
+    return savedOccupation;
   }
 
   async findAll(): Promise<Occupation[]> {
@@ -83,13 +89,19 @@ export class OccupationService {
       }
     }
     Object.assign(occupation, updateOccupationDto);
-    return await this.occupationRepository.save(occupation);
+    const savedOccupation = await this.occupationRepository.save(occupation);
+
+    this.eventEmitter.emit('occupation.updated', { occupation: savedOccupation });
+
+    return savedOccupation;
   }
 
   async remove(id: number): Promise<void> {
     this.logger.log(`Removing occupation with ID: ${id}`);
     const occupation = await this.findOne(id);
     await this.occupationRepository.remove(occupation);
+
+    this.eventEmitter.emit('occupation.deleted', { occupationId: id });
   }
 
   async addUserToOccupation(
@@ -134,7 +146,11 @@ export class OccupationService {
     }
     occupation.users.push(user);
 
-    return await this.occupationRepository.save(occupation);
+    const savedOccupation = await this.occupationRepository.save(occupation);
+
+    this.eventEmitter.emit('occupation.user.added', { occupationId: occupationId, userId });
+
+    return savedOccupation;
   }
 
   async removeUserFromOccupation(
@@ -163,5 +179,7 @@ export class OccupationService {
     occupation.users.splice(userIndex, 1);
 
     await this.occupationRepository.save(occupation);
+
+    this.eventEmitter.emit('occupation.user.removed', { occupationId, userId });
   }
 }

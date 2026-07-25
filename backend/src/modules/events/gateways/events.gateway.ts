@@ -44,6 +44,7 @@ export class EventsGateway
     this.bridgeTaskEvents();
     this.bridgeProjectEvents();
     this.bridgeUserEvents();
+    this.bridgeOccupationEvents();
   }
 
   private isInitialized = false;
@@ -230,6 +231,53 @@ export class EventsGateway
     );
   }
 
+  private bridgeOccupationEvents(): void {
+    // Bridge occupation.created -> WebSocket
+    this.eventEmitter.on(
+      'occupation.created',
+      (payload: { occupation: { id: number } }) => {
+        this.logger.log(`Bridging occupation.created for occupation ${payload.occupation.id}`);
+        this.server?.to('occupations_all').emit('occupation.created', payload);
+      },
+    );
+
+    // Bridge occupation.updated -> WebSocket
+    this.eventEmitter.on(
+      'occupation.updated',
+      (payload: { occupation: { id: number } }) => {
+        this.logger.log(`Bridging occupation.updated for occupation ${payload.occupation.id}`);
+        this.server?.to('occupations_all').emit('occupation.updated', payload);
+      },
+    );
+
+    // Bridge occupation.deleted -> WebSocket
+    this.eventEmitter.on(
+      'occupation.deleted',
+      (payload: { occupationId: number }) => {
+        this.logger.log(`Bridging occupation.deleted for occupation ${payload.occupationId}`);
+        this.server?.to('occupations_all').emit('occupation.deleted', payload);
+      },
+    );
+
+    // Bridge occupation.user.added -> WebSocket
+    this.eventEmitter.on(
+      'occupation.user.added',
+      (payload: { occupationId: number; userId: number }) => {
+        this.logger.log(`Bridging occupation.user.added for occupation ${payload.occupationId}`);
+        this.server?.to('occupations_all').emit('occupation.user.added', payload);
+      },
+    );
+
+    // Bridge occupation.user.removed -> WebSocket
+    this.eventEmitter.on(
+      'occupation.user.removed',
+      (payload: { occupationId: number; userId: number }) => {
+        this.logger.log(`Bridging occupation.user.removed for occupation ${payload.occupationId}`);
+        this.server?.to('occupations_all').emit('occupation.user.removed', payload);
+      },
+    );
+  }
+
   @SubscribeMessage('join-users-room')
   handleJoinUsersRoom(client: Socket) {
     this.logger.log(`Client ${client.id} joining users room`);
@@ -240,6 +288,18 @@ export class EventsGateway
   handleLeaveUsersRoom(client: Socket) {
     this.logger.log(`Client ${client.id} leaving users room`);
     void client.leave('users_all');
+  }
+
+  @SubscribeMessage('join-occupations-room')
+  handleJoinOccupationsRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining occupations room`);
+    void client.join('occupations_all');
+  }
+
+  @SubscribeMessage('leave-occupations-room')
+  handleLeaveOccupationsRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving occupations room`);
+    void client.leave('occupations_all');
   }
 
   @SubscribeMessage('join-projects-room')
