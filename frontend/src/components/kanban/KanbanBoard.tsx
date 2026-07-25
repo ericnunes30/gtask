@@ -377,7 +377,7 @@ const SortableTaskCard = ({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? transition : 'none',
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 999 : 'auto',
   };
