@@ -272,14 +272,17 @@ const TeamsPage = () => {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Equipes</h1>
-            <p className="text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">Equipes</h1>
+              <Users className="h-5 w-5 text-primary/60" />
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Gerencie suas equipes e atribua usuários.
             </p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-1">
+              <Button className="gap-2 rounded-xl">
                 <PlusCircle className="h-4 w-4" />
                 Nova Equipe
               </Button>
@@ -371,7 +374,7 @@ const TeamsPage = () => {
         <div className="grid grid-cols-1 gap-6">
           {sortedTeams.length > 0 ? (
             sortedTeams.map((team) => (
-              <Card key={team.id} className="overflow-hidden">
+              <Card key={team.id} className="overflow-hidden border-0 shadow-sm rounded-2xl bg-white">
                 <CardContent className="p-0">
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-4">

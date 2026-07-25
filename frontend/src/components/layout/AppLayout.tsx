@@ -13,7 +13,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, contextualSideba
     return saved ? JSON.parse(saved) : false;
   });
 
-  // Salvar estado no localStorage sempre que mudar
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(sidebarCollapsed));
   }, [sidebarCollapsed]);
@@ -23,13 +22,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, contextualSideba
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-muted/30">
       <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
       {contextualSidebar}
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header toggleSidebar={toggleSidebar} />
-        <main className="flex-1 overflow-auto px-4 md:px-6 md:pb-0">
-          {children}
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="mx-auto max-w-7xl">
+            {children}
+          </div>
         </main>
       </div>
     </div>

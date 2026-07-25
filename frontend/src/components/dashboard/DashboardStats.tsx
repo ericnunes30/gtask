@@ -1,9 +1,65 @@
 
 import React, { useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BriefcaseIcon, CheckIcon, ListTodoIcon, ClockIcon } from 'lucide-react';
+import { Card, CardContent } from "@/components/ui/card";
+import { Briefcase, CheckCircle2, ListTodo, Clock, ArrowUpRight, TrendingUp } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBackendServices } from '@/hooks/useBackendServices';
+import { cn } from '@/utils/utils';
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  description: string;
+  icon: React.ElementType;
+  trend?: string;
+  loading?: boolean;
+  color?: string;
+}
+
+const StatCard = ({ title, value, description, icon: Icon, trend, loading, color = "primary" }: StatCardProps) => {
+  const colorClasses = {
+    primary: "bg-primary/10 text-primary",
+    emerald: "bg-emerald-500/10 text-emerald-600",
+    amber: "bg-amber-500/10 text-amber-600",
+    rose: "bg-rose-500/10 text-rose-600",
+  };
+
+  return (
+    <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-white">
+      <CardContent className="p-5">
+        {loading ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-8 rounded-lg" />
+            </div>
+            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">{title}</span>
+              <div className={cn("p-2 rounded-lg", colorClasses[color as keyof typeof colorClasses] || colorClasses.primary)}>
+                <Icon className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold tracking-tight">{value}</span>
+              {trend && (
+                <span className="text-xs font-medium text-emerald-600 flex items-center">
+                  <TrendingUp className="h-3 w-3 mr-0.5" />
+                  {trend}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 export const DashboardStats = () => {
   const { projects: projectsService, tasks: tasksService } = useBackendServices();
@@ -72,93 +128,38 @@ export const DashboardStats = () => {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Projetos Ativos</CardTitle>
-          <BriefcaseIcon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <>
-              <Skeleton className="h-8 w-16 mb-1" />
-              <Skeleton className="h-4 w-24" />
-            </>
-          ) : (
-            <>
-              <div className="text-2xl font-bold">{stats.activeProjects}</div>
-              <p className="text-xs text-muted-foreground">
-                +{stats.newProjects} novos neste mês
-              </p>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Tarefas Pendentes</CardTitle>
-          <ListTodoIcon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <>
-              <Skeleton className="h-8 w-16 mb-1" />
-              <Skeleton className="h-4 w-24" />
-            </>
-          ) : (
-            <>
-              <div className="text-2xl font-bold">{stats.pendingTasks}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.urgentTasks} com prioridade alta
-              </p>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Concluídas</CardTitle>
-          <CheckIcon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <>
-              <Skeleton className="h-8 w-16 mb-1" />
-              <Skeleton className="h-4 w-24" />
-            </>
-          ) : (
-            <>
-              <div className="text-2xl font-bold">{stats.completedTasks}</div>
-              <p className="text-xs text-muted-foreground">
-                +{stats.todayCompletedTasks} hoje
-              </p>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Horas Trabalhadas</CardTitle>
-          <ClockIcon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <>
-              <Skeleton className="h-8 w-16 mb-1" />
-              <Skeleton className="h-4 w-24" />
-            </>
-          ) : (
-            <>
-              <div className="text-2xl font-bold">{stats.totalHours}h</div>
-              <p className="text-xs text-muted-foreground">
-                +{stats.todayHours} desde ontem
-              </p>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <StatCard
+        title="Projetos Ativos"
+        value={stats.activeProjects}
+        description={`+${stats.newProjects} novos neste mês`}
+        icon={Briefcase}
+        loading={isLoading}
+        color="primary"
+      />
+      <StatCard
+        title="Tarefas Pendentes"
+        value={stats.pendingTasks}
+        description={`${stats.urgentTasks} com prioridade alta`}
+        icon={ListTodo}
+        loading={isLoading}
+        color="amber"
+      />
+      <StatCard
+        title="Concluídas"
+        value={stats.completedTasks}
+        description={`+${stats.todayCompletedTasks} hoje`}
+        icon={CheckCircle2}
+        loading={isLoading}
+        color="emerald"
+      />
+      <StatCard
+        title="Horas Trabalhadas"
+        value={`${stats.totalHours}h`}
+        description={`+${stats.todayHours} desde ontem`}
+        icon={Clock}
+        loading={isLoading}
+        color="rose"
+      />
     </div>
   );
 };

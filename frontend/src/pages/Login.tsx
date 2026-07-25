@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { toast } from 'sonner';
-import { AlertCircle, Info, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Info, Mail, Lock, Eye, EyeOff, LayoutDashboard } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -96,124 +96,130 @@ const Login = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Gerenciador de Projetos</CardTitle>
-          <CardDescription className="text-center">
-            Entre com suas credenciais para acessar o sistema
-          </CardDescription>
-        </CardHeader>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="w-full max-w-[420px] mx-4">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/10 mb-4">
+            <LayoutDashboard className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Manager Group</h1>
+          <p className="text-sm text-muted-foreground mt-1">Entre com suas credenciais para acessar</p>
+        </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <CardContent className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <div className="relative">
-                      <FormControl>
-                        <Input
-                          placeholder="seu@email.com"
-                          {...field}
-                          disabled={form.formState.isSubmitting}
-                        />
-                      </FormControl>
-                      <Mail className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <FormMessage />
-                  </FormItem>
+        <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+          <CardContent className="pt-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                {error && (
+                  <Alert variant="destructive" className="rounded-xl">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
                 )}
-              />
 
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Senha</FormLabel>
-                    <div className="relative">
-                      <FormControl>
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Sua senha"
-                          {...field}
-                          disabled={form.formState.isSubmitting}
-                        />
-                      </FormControl>
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex items-center justify-between">
                 <FormField
                   control={form.control}
-                  name="rememberMe"
+                  name="email"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Email</FormLabel>
                       <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <div className="relative">
+                          <Input
+                            placeholder="seu@email.com"
+                            className="h-11 rounded-xl pl-10"
+                            {...field}
+                            disabled={form.formState.isSubmitting}
+                          />
+                          <Mail className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
+                        </div>
                       </FormControl>
-                      <FormLabel className="text-sm font-medium">Lembrar-me</FormLabel>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="link" className="p-0 h-auto text-sm" type="button">
-                        Esqueceu a senha?
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Entre em contato com o administrador</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </CardContent>
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Senha</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Sua senha"
+                            className="h-11 rounded-xl pl-10 pr-10"
+                            {...field}
+                            disabled={form.formState.isSubmitting}
+                          />
+                          <Lock className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3.5 top-3 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <Separator />
+                <div className="flex items-center justify-between">
+                  <FormField
+                    control={form.control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="text-sm font-normal cursor-pointer">Lembrar-me</FormLabel>
+                      </FormItem>
+                    )}
+                  />
 
-            <CardFooter>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={form.formState.isSubmitting}
-              >
-                {form.formState.isSubmitting ? 'Entrando...' : 'Entrar'}
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
-      </Card>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="link" className="p-0 h-auto text-sm text-muted-foreground hover:text-primary" type="button">
+                          Esqueceu a senha?
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Entre em contato com o administrador</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-11 rounded-xl font-medium"
+                  disabled={form.formState.isSubmitting}
+                >
+                  {form.formState.isSubmitting ? 'Entrando...' : 'Entrar'}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+        
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          Sistema de gerenciamento de projetos e tarefas
+        </p>
+      </div>
     </div>
   );
 };

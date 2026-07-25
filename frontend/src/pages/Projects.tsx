@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PlusCircle, MoreHorizontal, Users, Calendar, ArrowRight, ClipboardList, AlertCircle, Edit, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Users, Calendar, ArrowRight, ClipboardList, AlertCircle, Edit, Pencil, Trash2, Search, Briefcase } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -411,17 +411,23 @@ const Projects = () => {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Projetos</h1>
-            <p className="text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">Projetos</h1>
+              <Briefcase className="h-5 w-5 text-primary/60" />
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Gerencie seus projetos e acompanhe o progresso.
             </p>
-            <Input
-              type="text"
-              placeholder="Buscar projetos..."
-              className="mt-4 max-w-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <div className="relative mt-3 max-w-sm">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Buscar projetos..."
+                className="pl-9 h-9 rounded-xl bg-muted/60 border-0"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <div className="flex items-center space-x-2">
@@ -435,7 +441,7 @@ const Projects = () => {
             {!permissions.isMember ? (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="gap-1">
+                  <Button className="gap-2 rounded-xl">
                     <PlusCircle className="h-4 w-4" />
                     Novo Projeto
                   </Button>
@@ -529,7 +535,7 @@ const Projects = () => {
               return (
                 <Card
                   key={project.id}
-                  className="overflow-hidden hover:shadow-md hover:border-primary/50 transition-all cursor-pointer relative group"
+                  className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer relative group bg-white rounded-2xl"
                   onClick={() => navigateToProject(project.id)}
                 >
                   <CardContent className="p-0">

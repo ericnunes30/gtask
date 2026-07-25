@@ -185,10 +185,10 @@ const TaskDetails = () => {
 
   return (
     <AppLayout>
-      <div className="container mx-auto py-6">
-        {/* Barra superior com ações, alinhado ao tema */}
-        <div className="flex items-center justify-between mb-4">
-          <Button variant="ghost" className="gap-1" onClick={handleBackClick}>
+      <div className="container mx-auto py-6 max-w-6xl">
+        {/* Barra superior com ações */}
+        <div className="flex items-center justify-between mb-6">
+          <Button variant="ghost" className="gap-2 rounded-xl text-muted-foreground hover:text-foreground" onClick={handleBackClick}>
             <ChevronLeft className="h-4 w-4" />
             Voltar
           </Button>
@@ -273,7 +273,7 @@ const TaskDetails = () => {
         </div>
 
         {/* Container dividido em 2 painéis, espelhando o modal */}
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden border-0 shadow-sm rounded-2xl">
           <div className="flex flex-col lg:flex-row h-full">
             {/* Painel esquerdo: detalhes */}
             <div className="lg:w-1/2 border-b lg:border-b-0 lg:border-r p-6">

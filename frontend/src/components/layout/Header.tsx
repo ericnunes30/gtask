@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Menu, ChevronDown, LogOut, Moon } from "lucide-react";
+import { Menu, ChevronDown, LogOut, Moon, Search, Bell } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
@@ -30,7 +30,6 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
     return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
   });
 
-  // Obter as iniciais do nome do usuário
   const userInitials = user?.name
     ? user.name
         .split(' ')
@@ -59,30 +58,46 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   };
 
   return (
-    <header className="py-3 px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center justify-between">
+    <header className="h-16 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20">
+      <div className="flex items-center justify-between h-full px-4 md:px-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden">
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden h-8 w-8 rounded-lg">
             <Menu className="h-5 w-5" />
           </Button>
+          
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/60 border border-border/50">
+            <Search className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Pesquisar...</span>
+            <kbd className="hidden lg:inline-flex h-4 items-center gap-1 rounded border bg-muted px-1 text-[10px] font-medium text-muted-foreground">
+              <span>Ctrl</span>+<span>K</span>
+            </kbd>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <NotificationIcon />
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg relative">
+            <Bell className="h-[18px] w-[18px] text-muted-foreground" />
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary"></span>
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 h-8 pl-1">
-                <Avatar className="h-7 w-7">
+              <Button variant="ghost" className="flex items-center gap-2 h-9 pl-2 pr-3 rounded-xl hover:bg-accent">
+                <Avatar className="h-7 w-7 ring-2 ring-border">
                   <AvatarImage src="" />
-                  <AvatarFallback className="text-xs bg-primary/10 text-primary">{userInitials}</AvatarFallback>
+                  <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">{userInitials}</AvatarFallback>
                 </Avatar>
                 <span className="font-medium text-sm hidden md:inline-block">{userName}</span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden md:block" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-medium">{userName}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
+                </div>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={(e) => e.preventDefault()}
@@ -98,7 +113,6 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
                 />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {/* Opções de perfil removidas conforme solicitado */}
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sair</span>

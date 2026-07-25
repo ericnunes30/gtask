@@ -644,15 +644,18 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Usuários</h1>
-            <p className="text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
+              <Users className="h-5 w-5 text-primary/60" />
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Gerencie usuários, permissões e equipes.
             </p>
           </div>
           {/* Diálogo para adicionar novo usuário */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-1">
+              <Button className="gap-2 rounded-xl">
                 <PlusCircle className="h-4 w-4" />
                 Novo Usuário
               </Button>
@@ -1082,7 +1085,7 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
           </Button>
         </div>
 
-        <div className="border rounded-lg overflow-hidden">
+        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
                <TableRow>
