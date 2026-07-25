@@ -63,18 +63,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       <nav className="flex-1 py-4 px-3 overflow-y-auto">
         <div className="space-y-1">
           <SidebarItem
-            icon={LayoutDashboard}
-            label="Dashboard"
-            href="/"
-            collapsed={collapsed}
-            active={isActive('/')}
-          />
-          <SidebarItem
             icon={Briefcase}
             label="Projetos"
-            href="/projects"
+            href="/"
             collapsed={collapsed}
-            active={isActive('/projects')}
+            active={isActive('/') || isActive('/projects')}
           />
           <SidebarItem
             icon={ListChecks}
