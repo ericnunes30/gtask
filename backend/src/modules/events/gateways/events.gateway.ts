@@ -41,6 +41,7 @@ export class EventsGateway
     private readonly notificationEventListener: NotificationEventListener,
   ) {
     this.bridgeTimerEvents();
+    this.bridgeTaskEvents();
   }
 
   private isInitialized = false;
@@ -81,6 +82,92 @@ export class EventsGateway
         this.server?.to(`task_${payload.taskId}`).emit('timer.tick', payload);
       },
     );
+  }
+
+  private bridgeTaskEvents(): void {
+    // Bridge task.created -> WebSocket
+    this.eventEmitter.on(
+      'task.created',
+      (payload: { task: { id: number; project?: { id: number } }; createdBy: number }) => {
+        const projectId = payload.task.project?.id;
+        if (projectId) {
+          this.logger.log(`Bridging task.created for project ${projectId}`);
+          this.server?.to(`project_${projectId}`).emit('task.created', payload);
+        }
+        this.server?.to('tasks_all').emit('task.created', payload);
+      },
+    );
+
+    // Bridge task.updated -> WebSocket
+    this.eventEmitter.on(
+      'task.updated',
+      (payload: { task: { id: number; project?: { id: number }; assignee?: { id: number } }; updatedBy: number; changedFields: Record<string, unknown> }) => {
+        const projectId = payload.task.project?.id;
+        const assigneeId = payload.task.assignee?.id;
+        if (projectId) {
+          this.logger.log(`Bridging task.updated for project ${projectId}`);
+          this.server?.to(`project_${projectId}`).emit('task.updated', payload);
+        }
+        if (assigneeId) {
+          this.server?.to(`user_${assigneeId}`).emit('task.updated', payload);
+        }
+        this.server?.to('tasks_all').emit('task.updated', payload);
+      },
+    );
+
+    // Bridge task.status.changed -> WebSocket
+    this.eventEmitter.on(
+      'task.status.changed',
+      (payload: { task: { id: number; project?: { id: number }; assignee?: { id: number } }; updatedBy: number; oldStatus: string; newStatus: string }) => {
+        const projectId = payload.task.project?.id;
+        const assigneeId = payload.task.assignee?.id;
+        if (projectId) {
+          this.logger.log(`Bridging task.status.changed for project ${projectId}`);
+          this.server?.to(`project_${projectId}`).emit('task.status.changed', payload);
+        }
+        if (assigneeId) {
+          this.server?.to(`user_${assigneeId}`).emit('task.status.changed', payload);
+        }
+        this.server?.to('tasks_all').emit('task.status.changed', payload);
+      },
+    );
+
+    // Bridge comment.created -> WebSocket
+    this.eventEmitter.on(
+      'comment.created',
+      (payload: { comment: { task?: { id: number; project?: { id: number } } }; createdBy: number }) => {
+        const projectId = payload.comment.task?.project?.id;
+        if (projectId) {
+          this.logger.log(`Bridging comment.created for project ${projectId}`);
+          this.server?.to(`project_${projectId}`).emit('comment.created', payload);
+        }
+        this.server?.to('tasks_all').emit('comment.created', payload);
+      },
+    );
+  }
+
+  @SubscribeMessage('join-project-room')
+  handleJoinProjectRoom(client: Socket, projectId: string) {
+    this.logger.log(`Client ${client.id} joining project room: ${projectId}`);
+    void client.join(`project_${projectId}`);
+  }
+
+  @SubscribeMessage('leave-project-room')
+  handleLeaveProjectRoom(client: Socket, projectId: string) {
+    this.logger.log(`Client ${client.id} leaving project room: ${projectId}`);
+    void client.leave(`project_${projectId}`);
+  }
+
+  @SubscribeMessage('join-tasks-room')
+  handleJoinTasksRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining tasks room`);
+    void client.join('tasks_all');
+  }
+
+  @SubscribeMessage('leave-tasks-room')
+  handleLeaveTasksRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving tasks room`);
+    void client.leave('tasks_all');
   }
 
   handleConnection(client: Socket, ..._args: unknown[]) {

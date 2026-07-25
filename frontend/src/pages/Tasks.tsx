@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 // ... outros imports
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ArrowLeft, AlertCircle, Repeat, RefreshCw } from 'lucide-react';
+import { PlusCircle, ArrowLeft, AlertCircle, Repeat } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
 import { KanbanTask } from '@/components/kanban/kanbanTypes';
@@ -31,6 +31,7 @@ import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { TaskFormRef } from '@/components/forms/TaskForm';
 import { RecurringTasksList } from '@/components/recurring/RecurringTasksList';
 import { TaskFiltersSidebar, type TaskFiltersState } from '@/components/kanban/TaskFiltersSidebar';
+import { useTaskSocket } from '@/hooks/useTaskSocket';
 
 const Tasks = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -55,7 +56,6 @@ const Tasks = () => {
     const savedShowMyReviews = localStorage.getItem('showMyReviewsTasksPage');
     return savedShowMyReviews === 'true';
   });
-  const [refreshing, setRefreshing] = useState(false);
   const taskFormRef = useRef<TaskFormRef>(null);
 
   // Estado consolidado de filtros para a sidebar
@@ -96,6 +96,9 @@ const Tasks = () => {
     isError,
     refetch,
   } = tasks.useGetTasks();
+
+  // WebSocket: auto-refresh tasks when other users make changes
+  useTaskSocket(projectId);
 
   useEffect(() => {
     setRawTasks(tasksData);
@@ -261,12 +264,6 @@ const Tasks = () => {
   const handleShowMyReviewsChange = (checked: boolean) => {
     setShowMyReviews(checked);
     localStorage.setItem('showMyReviewsTasksPage', String(checked));
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
   };
 
   // Memoized filtered tasks to avoid re-calculating on every render
@@ -485,16 +482,6 @@ const Tasks = () => {
                     </TabsList>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      title="Atualizar lista"
-                      onClick={handleRefresh}
-                      disabled={refreshing}
-                      className={refreshing ? "animate-spin" : ""}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
                     {permissions.can('task:create') && !permissions.isMember && (
                       <Button variant="outline" size="sm" className="gap-1" disabled={isLoading} onClick={() => setIsRecurringTasksDialogOpen(true)}>
                         <Repeat className="h-4 w-4" />

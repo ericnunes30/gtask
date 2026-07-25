@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, MoreHorizontal, Search, Pencil, Trash2, RefreshCw, Phone, CheckCircle, XCircle } from 'lucide-react';
+import { PlusCircle, Filter, MoreHorizontal, Search, Pencil, Trash2, Phone, CheckCircle, XCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -126,7 +126,6 @@ const Users = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dataLoading, setDataLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false); // Estado para controlar a atualização
   const [dataError, setDataError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -187,13 +186,6 @@ const Users = () => {
     is_active: true,
     whatsapp: '',
   });
-
-  // Função para atualizar manualmente a lista de usuários
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([refetch(), refetchRoles(), refetchOccupations()]);
-    setRefreshing(false);
-  };
 
   // Função para carregar dados (extraída para ser reutilizável)
   const fetchData = async (showLoadingIndicator = true) => {
@@ -1079,16 +1071,6 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
           </div>
           <Button variant="outline" size="icon" title="Filtrar">
             <Filter className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            title="Atualizar lista"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className={refreshing ? "animate-spin" : ""}
-          >
-            <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
 
