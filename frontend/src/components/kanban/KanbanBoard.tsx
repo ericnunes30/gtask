@@ -237,10 +237,12 @@ const TaskCard = ({
 
       {/* Título */}
       <h4 className="text-[13.5px] font-semibold text-foreground leading-snug mb-3">
-        {isTimerRunning && (
-          <Timer className="h-3.5 w-3.5 inline-block mr-1 text-green-500" />
-        )}
-        {task.title}
+        <span className="inline-flex items-center gap-1">
+          {isTimerRunning && (
+            <Timer className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+          )}
+          <span>{task.title}</span>
+        </span>
       </h4>
 
       {/* Footer: avatares, prioridade | comentários, timer */}
