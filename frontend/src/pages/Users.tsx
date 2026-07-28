@@ -7,8 +7,6 @@ import {
   Search,
   Pencil,
   Trash2,
-  Phone,
-  Calendar,
   AlertCircle,
   Filter,
 } from "lucide-react";
@@ -67,17 +65,6 @@ const getBadgeColorClass = (teamId: number) => {
     colorClasses[colorIndex] ||
     "bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-200"
   );
-};
-
-const formatWhatsApp = (whatsapp: string) => {
-  if (!whatsapp) return null;
-  const numbersOnly = whatsapp.replace(/\D/g, "");
-  if (numbersOnly.length === 11) {
-    return `(${numbersOnly.slice(0, 2)}) ${numbersOnly.slice(2, 7)}-${numbersOnly.slice(7)}`;
-  } else if (numbersOnly.length === 10) {
-    return `(${numbersOnly.slice(0, 2)}) ${numbersOnly.slice(2, 6)}-${numbersOnly.slice(6)}`;
-  }
-  return whatsapp;
 };
 
 const formatUserDate = (dateString: string | undefined): string => {
@@ -921,8 +908,8 @@ const UsersPage = () => {
                 key={user.id}
                 className="overflow-hidden border-0 shadow-sm rounded-2xl bg-white"
               >
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex justify-between items-start">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
                         <AvatarFallback className="text-sm">
@@ -963,105 +950,77 @@ const UsersPage = () => {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
                       <Switch
                         checked={user.is_active !== false}
                         onCheckedChange={(checked) =>
                           handleUpdateUserStatus(user.id, checked)
                         }
                       />
-                      <span
-                        className={`text-sm font-medium ${user.is_active !== false ? "text-green-600" : "text-gray-500"}`}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    {user.occupations && user.occupations.length > 0 ? (
+                      user.occupations.map((occ) => {
+                        const teamId = typeof occ === "number" ? occ : occ.id;
+                        const teamName =
+                          typeof occ === "number"
+                            ? (Array.isArray(occupationsQueryData)
+                                ? occupationsQueryData.find((o) => o.id === occ)
+                                    ?.name
+                                : null) || "Ocupação desconhecida"
+                            : occ.name;
+                        return (
+                          <Badge
+                            key={teamId}
+                            variant="outline"
+                            className={`rounded-full ${getBadgeColorClass(teamId)}`}
+                          >
+                            {teamName}
+                          </Badge>
+                        );
+                      })
+                    ) : user.occupation_id ||
+                      user.occupationId ||
+                      user.occupation ? (
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full ${getBadgeColorClass(
+                          user.occupation_id || user.occupationId,
+                        )}`}
                       >
-                        {user.is_active !== false ? "Ativo" : "Inativo"}
-                      </span>
-                    </div>
-                    {user.whatsapp ? (
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Phone className="h-3.5 w-3.5 text-green-600" />
-                        <span className="font-mono">
-                          {formatWhatsApp(user.whatsapp)}
-                        </span>
-                      </div>
+                        {getOccupationName(user)}
+                      </Badge>
                     ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
+                      <span className="text-sm text-muted-foreground">
+                        Sem equipe
+                      </span>
                     )}
-                  </div>
 
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">
-                      Equipes
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {user.occupations && user.occupations.length > 0 ? (
-                        user.occupations.map((occ) => {
-                          const teamId = typeof occ === "number" ? occ : occ.id;
-                          const teamName =
-                            typeof occ === "number"
-                              ? (Array.isArray(occupationsQueryData)
-                                  ? occupationsQueryData.find(
-                                      (o) => o.id === occ,
-                                    )?.name
-                                  : null) || "Ocupação desconhecida"
-                              : occ.name;
-                          return (
-                            <Badge
-                              key={teamId}
-                              variant="outline"
-                              className={`rounded-full ${getBadgeColorClass(teamId)}`}
-                            >
-                              {teamName}
-                            </Badge>
-                          );
-                        })
-                      ) : user.occupation_id ||
-                        user.occupationId ||
-                        user.occupation ? (
-                        <Badge
-                          variant="outline"
-                          className={`rounded-full ${getBadgeColorClass(user.occupation_id || user.occupationId)}`}
-                        >
-                          {getOccupationName(user)}
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          Sem equipe
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    <span className="text-muted-foreground">·</span>
 
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Permissão
-                      </div>
-                      {user.roles &&
-                      Array.isArray(user.roles) &&
-                      user.roles.length > 0 ? (
-                        <Badge
-                          variant="outline"
-                          className="rounded-full bg-violet-100 text-violet-800 hover:bg-violet-200 border-violet-200"
-                        >
-                          {typeof user.roles[0] === "number"
-                            ? getRoleName(user.roles[0])
-                            : user.roles[0].name ||
-                              `Função ${user.roles[0].id}`}
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          Sem permissão
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Calendar className="h-3.5 w-3.5" />
+                    {user.roles &&
+                    Array.isArray(user.roles) &&
+                    user.roles.length > 0 ? (
+                      <Badge
+                        variant="outline"
+                        className="rounded-full bg-violet-100 text-violet-800 hover:bg-violet-200 border-violet-200"
+                      >
+                        {typeof user.roles[0] === "number"
+                          ? getRoleName(user.roles[0])
+                          : user.roles[0].name || `Função ${user.roles[0].id}`}
+                      </Badge>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        Sem permissão
+                      </span>
+                    )}
+
+                    <span className="text-muted-foreground">·</span>
+
+                    <span className="text-xs text-muted-foreground">
                       {formatUserDate(user.created_at || user.createdAt)}
-                    </div>
+                    </span>
                   </div>
                 </CardContent>
               </Card>
