@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSocket } from '@/contexts/adapters/SocketContextAdapter';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -9,9 +9,14 @@ import { useQueryClient } from '@tanstack/react-query';
 export function useUserSocket() {
   const { socket, isConnected } = useSocket();
   const queryClient = useQueryClient();
+  const hasJoined = useRef(false);
 
   useEffect(() => {
     if (!socket || !isConnected) return;
+
+    // Protege contra múltiplos joins na mesma conexão
+    if (hasJoined.current) return;
+    hasJoined.current = true;
 
     // Entrar na room de usuários
     socket.emit('join-users-room');
@@ -39,6 +44,7 @@ export function useUserSocket() {
       socket.off('user.updated', handleUserUpdated);
       socket.off('user.deleted', handleUserDeleted);
       socket.emit('leave-users-room');
+      hasJoined.current = false;
     };
   }, [socket, isConnected, queryClient]);
 

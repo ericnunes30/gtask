@@ -1,8 +1,7 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, MoreHorizontal, Search, Pencil, Trash2, Phone, CheckCircle, XCircle } from 'lucide-react';
+import { PlusCircle, Users as UsersIcon, Search, Pencil, Trash2, Phone, Calendar, AlertCircle, Filter } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,14 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -31,568 +26,284 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { toast } from "@/components/ui/use-toast";
-import { User, Role, CreateUserRequest, UpdateUserRequest } from "@/common/types";
-import { useBackendServices } from '@/hooks/useBackendServices'
-import { useAssignOccupations } from '@/services/backend/users'
-import { useUserSocket } from '@/hooks/useUserSocket'
-import { useRoleSocket } from '@/hooks/useRoleSocket'
-import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
+import { User, CreateUserRequest, UpdateUserRequest } from "@/utils/commonTypes";
+import { useBackendServices } from '@/hooks/useBackendServices';
+import { useAssignOccupations } from '@/services/backend/users';
+import { useUserSocket } from '@/hooks/useUserSocket';
+import { useRoleSocket } from '@/hooks/useRoleSocket';
 
 // Mapeamento de equipes para cores
-const teamColorMap = {
-  1: 'destructive' as const,  // Desenvolvedor Frontend
-  2: 'default' as const,      // Desenvolvedor Backend
-  3: 'secondary' as const,    // Designer UI/UX
-  4: 'outline' as const,      // Gerente de Projetos
-  5: 'default' as const       // Analista de Qualidade
+const colorClasses: Record<number, string> = {
+  1: 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200',
+  2: 'bg-green-100 text-green-800 hover:bg-green-200 border-green-200',
+  3: 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-200',
+  4: 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200',
+  5: 'bg-rose-100 text-rose-800 hover:bg-rose-200 border-rose-200',
+  6: 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200 border-indigo-200',
+  7: 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200 border-cyan-200',
+  8: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200',
 };
 
-// Função para obter a classe de cor do badge baseado no ID da equipe
 const getBadgeColorClass = (teamId: number) => {
-  const colorClasses = {
-    1: 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200',
-    2: 'bg-green-100 text-green-800 hover:bg-green-200 border-green-200',
-    3: 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-200',
-    4: 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200',
-    5: 'bg-rose-100 text-rose-800 hover:bg-rose-200 border-rose-200',
-    6: 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200 border-indigo-200',
-    7: 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200 border-cyan-200',
-    8: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200',
-  };
-
-  // Se o ID da equipe existir no mapeamento, retorna a classe correspondente
-  // Caso contrário, usa um cálculo para distribuir as cores de forma cíclica
   const colorIndex = teamId ? (teamId % Object.keys(colorClasses).length) || teamId : 1;
   return colorClasses[colorIndex] || 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-200';
 };
 
-// Função para formatar número do WhatsApp
 const formatWhatsApp = (whatsapp: string) => {
   if (!whatsapp) return null;
-  
-  // Remove tudo que não é número
   const numbersOnly = whatsapp.replace(/\D/g, '');
-  
-  // Formata para (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
   if (numbersOnly.length === 11) {
     return `(${numbersOnly.slice(0, 2)}) ${numbersOnly.slice(2, 7)}-${numbersOnly.slice(7)}`;
   } else if (numbersOnly.length === 10) {
     return `(${numbersOnly.slice(0, 2)}) ${numbersOnly.slice(2, 6)}-${numbersOnly.slice(6)}`;
   }
-  
-  // Retorna o original se não conseguir formatar
   return whatsapp;
 };
 
-// Função para formatar data de forma segura
 const formatUserDate = (dateString: string | undefined): string => {
   if (!dateString) return 'Data não definida';
-  
   try {
-    // Verifica se é uma string válida
-    if (typeof dateString !== 'string') {
-      console.warn('formatUserDate: dateString não é string:', dateString);
-      return 'Data inválida';
-    }
-    
-    // Tenta criar a data
     const date = new Date(dateString);
-    
-    // Verifica se a data é válida
-    if (isNaN(date.getTime())) {
-      console.warn('formatUserDate: Data inválida:', dateString);
-      return 'Data inválida';
-    }
-    
-    // Verifica se é uma data muito antiga ou futura (possível erro)
+    if (isNaN(date.getTime())) return 'Data inválida';
     const year = date.getFullYear();
-    if (year < 1900 || year > 2100) {
-      console.warn('formatUserDate: Data fora do range esperado:', dateString, 'ano:', year);
-      return 'Data inválida';
-    }
-    
+    if (year < 1900 || year > 2100) return 'Data inválida';
     return date.toLocaleDateString('pt-BR');
-  } catch (error) {
-    console.error('formatUserDate: Erro ao formatar data:', dateString, error);
+  } catch {
     return 'Data inválida';
   }
 };
 
-const Users = () => {
+const emptyUserForm = {
+  name: '',
+  email: '',
+  password: '',
+  occupation_id: '',
+  occupations: [] as number[],
+  roles: [] as number[],
+  is_active: true,
+  whatsapp: '',
+};
+
+const UsersPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dataLoading, setDataLoading] = useState(true);
-  const [dataError, setDataError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [newUser, setNewUser] = useState(emptyUserForm);
 
-  const { users: usersService, roles: rolesService, occupations: occupationsService, teams: teamsService } = useBackendServices();
   const {
-    data: usersQueryData,
-    isLoading: usersLoading,
-    isError: usersIsError,
-    error: usersError,
-    refetch,
-  } = usersService.useGetUsers();
+    users: usersService,
+    roles: rolesService,
+    occupations: occupationsService,
+    teams: teamsService,
+  } = useBackendServices();
 
+  const { data: usersQueryData = [], isLoading: usersLoading, isError: usersIsError } = usersService.useGetUsers();
+  const { data: rolesQueryData = [] } = rolesService.useGetRoles();
+  const { data: occupationsQueryData = [] } = occupationsService.useGetOccupations();
+
+  const { mutateAsync: createUserMutate } = usersService.useCreateUser();
+  const { mutateAsync: updateUserMutate } = usersService.useUpdateUser();
+  const { mutateAsync: deleteUserMutate } = usersService.useDeleteUser();
+  const { mutateAsync: assignOccupationsMutate } = useAssignOccupations();
   const { mutateAsync: addUserToTeamMutate } = teamsService.useAddUserToTeam();
   const { mutateAsync: removeUserFromTeamMutate } = teamsService.useRemoveUserFromTeam();
 
-  // WebSocket para atualização em tempo real de usuários
   useUserSocket();
-
-  // WebSocket para atualização em tempo real de cargos/roles
   useRoleSocket();
 
-  const {
-    data: rolesQueryData,
-    isLoading: rolesLoading,
-    isError: rolesIsError,
-    error: rolesError,
-    refetch: refetchRoles,
-  } = rolesService.useGetRoles();
-  const {
-    data: occupationsQueryData,
-    isLoading: occupationsLoading,
-    isError: occupationsIsError,
-    error: occupationsError,
-    refetch: refetchOccupations,
-  } = occupationsService.useGetOccupations();
-  const error =
-    (usersIsError || rolesIsError || occupationsIsError
-      ? 'Não foi possível carregar os dados.'
-      : null);
-  const loading = usersLoading || rolesLoading || occupationsLoading;
-  const { mutateAsync: createUserMutate } = usersService.useCreateUser();
-  const { mutateAsync: updateUserMutate } = usersService.useUpdateUser();
-  const { mutate: deleteUserMutate } = usersService.useDeleteUser();
-  const { mutateAsync: assignOccupationsMutate } = useAssignOccupations();
-
-  // Formulário de novo usuário
-  const [newUser, setNewUser] = useState<{
-    name: string;
-    email: string;
-    password: string;
-    occupation_id: string;
-    occupations: number[];
-    roles: number[];
-    is_active: boolean;
-    whatsapp: string;
-  }>({
-    name: '',
-    email: '',
-    password: '',
-    occupation_id: '',
-    occupations: [],
-    roles: [],
-    is_active: true,
-    whatsapp: '',
-  });
-
-  // Função para carregar dados (extraída para ser reutilizável)
-  const fetchData = async (showLoadingIndicator = true) => {
-    if (showLoadingIndicator) {
-      setDataLoading(true);
-    }
-    setDataError(null);
-
-    try {
-      const [rolesRes, occupationsRes] = await Promise.all([
-        refetchRoles(),
-        refetchOccupations(),
-      ]);
-      const rolesData = rolesRes.data || [];
-      const occupationsData = occupationsRes.data || [];
-
-
-      return { users: [], roles: rolesData, occupations: occupationsData };
-    } catch (err) {
-      console.error('Erro ao carregar dados:', err);
-      setDataError('Não foi possível carregar os dados. Tente novamente mais tarde.');
-      return null;
-    } finally {
-      if (showLoadingIndicator) {
-        setDataLoading(false);
-      }
-    }
-  };
-
-  // Carregar dados iniciais
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-
-
-
-
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setNewUser(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleTeamChange = (value) => {
-    // Verificar se a ocupação existe na lista
-    const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id.toString() === value) : null;
-    if (!occupation) {
-      console.warn('Ocupação não encontrada na lista de ocupações disponíveis');
-    }
-
-    setNewUser(prev => ({ ...prev, occupation_id: value }));
-  };
-
-  const handleAddUser = async () => {
-    // Validação básica
-    if (!newUser.name || !newUser.email || !newUser.password) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Nome, email e senha são obrigatórios",
-      });
-      return;
-    }
-
-    try {
-      // Debug: verificar dados do formulário
-      console.log('Dados do formulário:', newUser);
-      console.log('Occupations selecionadas:', newUser.occupations);
-      
-      // Criar objeto de usuário básico para o backend-2
-      const userData = {
-        name: newUser.name,
-        email: newUser.email,
-        password: newUser.password,
-        is_active: newUser.is_active,
-        whatsapp: newUser.whatsapp || null,
-        occupationIds: newUser.occupations, // Adiciona occupationIds ao payload
-      };
-
-      console.log('Enviando dados do usuário:', userData);
-      const createdUser = await createUserMutate(userData);
-      console.log('Usuário criado:', createdUser);
-
-      // Depois de criar o usuário, tentar atribuir roles se houver
-      if (newUser.roles && newUser.roles.length > 0) {
-        try {
-          await usersService.userService.assignRoles(createdUser.id, newUser.roles);
-        } catch (roleError) {
-          console.error('Erro ao atribuir roles:', roleError);
-          toast({
-            variant: "destructive",
-            title: "Aviso",
-            description: "Usuário criado, mas houve erro ao atribuir nível de permissão.",
-          });
-        }
-      }
-
-      // Depois de criar o usuário, tentar atribuir occupations se houver
-      if (newUser.occupations && newUser.occupations.length > 0) {
-        console.log('Tentando atribuir occupations:', newUser.occupations);
-        try {
-          await assignOccupationsMutate({ userId: createdUser.id, occupationIds: newUser.occupations });
-          console.log('Occupations atribuídas com sucesso');
-        } catch (occupationError) {
-          console.error('Erro ao atribuir equipes:', occupationError);
-          toast({
-            variant: "destructive",
-            title: "Aviso",
-            description: "Usuário criado, mas houve erro ao atribuir equipes.",
-          });
-        }
-      } else {
-        console.log('Nenhuma occupation para atribuir');
-      }
-
-      // Resetar o formulário
-      setNewUser({
-        name: '',
-        email: '',
-        password: '',
-        occupation_id: '',
-        occupations: [],
-        roles: [],
-        is_active: true,
-        whatsapp: '',
-      });
-
-      setIsDialogOpen(false);
-
-toast({
-        title: "Usuário adicionado",
-        description: `${createdUser.data?.name || createdUser.name} foi adicionado com sucesso.`,
-      });
-
-      // Recarregar lista de usuários
-      await refetch();
-
-    } catch (err) {
-      console.error('Erro ao criar usuário:', err);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível criar o usuário. Tente novamente.",
-      });
-    }
-  };
-
-  // Função para iniciar a edição de um usuário
-  const handleEditUserStart = (user: User) => {
-    // Verificar se o usuário tem occupation_id
-    if (user.occupation_id) {
-      const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id === user.occupation_id) : null;
-      if (!occupation) {
-        console.warn('Ocupação não encontrada para o usuário em edição');
-      }
-    }
-
-    // Preparar as ocupações do usuário
-    let userOccupations: number[] = [];
-
-    // Se o usuário tem múltiplas ocupações
-    if (user.occupations && user.occupations.length > 0) {
-      userOccupations = user.occupations.map(occ => occ.id);
-    }
-    // Se o usuário tem apenas uma ocupação
-    else if (user.occupation_id || user.occupationId) {
-      const occupationId = user.occupation_id || user.occupationId;
-      if (occupationId) {
-        userOccupations = [occupationId];
-      }
-    }
-
-    // Preparar as roles do usuário
-    let userRoles: number[] = [];
-
-    // Se o usuário tem roles
-    if (user.roles && Array.isArray(user.roles)) {
-      // Se roles é um array de objetos com id
-      if (user.roles.length > 0 && typeof user.roles[0] === 'object' && 'id' in user.roles[0]) {
-        userRoles = user.roles.map(role => role.id);
-      }
-      // Se roles é um array de números
-      else if (user.roles.length > 0 && typeof user.roles[0] === 'number') {
-        userRoles = user.roles as number[];
-      }
-    }
-
-    setEditingUser(user);
-    const newUserData = {
-      name: user.name,
-      email: user.email,
-      password: '', // Não preenchemos a senha para edição
-      occupation_id: user.occupation_id ? user.occupation_id.toString() : '',
-      occupations: userOccupations,
-      roles: userRoles,
-      is_active: user.is_active ?? true,
-      whatsapp: user.whatsapp || '',
-    };
-
-    setNewUser(newUserData);
-    setIsEditDialogOpen(true);
-  };
-
-  // Função para salvar a edição de um usuário
-  const handleEditUserSave = async () => {
-    if (!editingUser || !newUser.name || !newUser.email) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Nome e email são obrigatórios",
-      });
-      return;
-    }
-
-    try {
-      // Criar objeto de usuário básico para o backend-2
-      const userData: any = {
-        name: newUser.name,
-        email: newUser.email,
-        is_active: newUser.is_active,
-        whatsapp: newUser.whatsapp || null,
-      };
-
-      // Adicionar senha se estiver definida
-      if (newUser.password && newUser.password.trim()) {
-        userData.password = newUser.password;
-      }
-
-      const updatedUser = await updateUserMutate({ id: editingUser.id, data: userData });
-      
-      // Debug: Verificar estrutura do updatedUser
-      // Depois de atualizar o usuário, tentar atribuir roles se houver
-      if (newUser.roles && newUser.roles.length > 0) {
-        try {
-          await usersService.userService.assignRoles(editingUser.id, newUser.roles);
-        } catch (roleError) {
-          console.error('Erro ao atribuir roles:', roleError);
-          toast({
-            variant: "destructive",
-            title: "Aviso", 
-            description: "Usuário atualizado, mas houve erro ao atribuir nível de permissão.",
-          });
-        }
-      }
-
-      const originalOccupationIds = editingUser.occupations?.map(o => o.id) || [];
-      const newOccupationIds = newUser.occupations || [];
-
-      const occupationsToAdd = newOccupationIds.filter(id => !originalOccupationIds.includes(id));
-      const occupationsToRemove = originalOccupationIds.filter(id => !newOccupationIds.includes(id));
-
-      await Promise.all([
-        ...occupationsToAdd.map(teamId => addUserToTeamMutate({ teamId, userId: editingUser.id })),
-        ...occupationsToRemove.map(teamId => removeUserFromTeamMutate({ teamId, userId: editingUser.id }))
-      ]);
-
-      // Verificar se updatedUser tem estrutura { data: {...} } ou é direto
-      const userName = updatedUser.data ? updatedUser.data.name : updatedUser.name;
-      
-      toast({
-        title: "Usuário atualizado",
-        description: `${userName || 'Usuário'} foi atualizado com sucesso.`,
-      });
-      
-      // Resetar o formulário
-      setNewUser({
-        name: '',
-        email: '',
-        password: '',
-        occupation_id: '',
-        occupations: [],
-        roles: [],
-        is_active: true,
-        whatsapp: '',
-      });
-      setEditingUser(null);
-      setIsEditDialogOpen(false);
-
-      // Recarregar lista de usuários
-      await refetch();
-
-    } catch (err) {
-      console.error('Erro ao atualizar usuário:', err);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível atualizar o usuário. Tente novamente.",
-      });
-    }
-  };
+  const filteredUsers = useMemo(() => {
+    if (!Array.isArray(usersQueryData)) return [];
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return usersQueryData;
+    return usersQueryData.filter(user =>
+      (user.name?.toLowerCase() || '').includes(term) ||
+      (user.email?.toLowerCase() || '').includes(term) ||
+      (user.whatsapp || '').toLowerCase().includes(term.replace(/\D/g, ''))
+    );
+  }, [usersQueryData, searchTerm]);
 
   const getOccupationName = (user: User) => {
-    // Se o usuário tem o objeto occupation completo, use-o diretamente
     if (user.occupation && user.occupation.name) {
       return user.occupation.name;
     }
-
-    // Caso contrário, tente encontrar a ocupação pelo ID
     const occupationId = user.occupationId || user.occupation_id;
     if (!occupationId) return 'Sem ocupação';
-
     const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id === occupationId) : null;
     return occupation ? occupation.name : 'Ocupação desconhecida';
   };
 
-  // Função para obter o nome da role pelo ID
   const getRoleName = (roleId: number) => {
     const role = Array.isArray(rolesQueryData) ? rolesQueryData.find(r => r.id === roleId) : null;
     return role ? role.name : `Função ${roleId}`;
   };
 
-  // Função para iniciar o processo de exclusão de um usuário
+  const resetForm = () => setNewUser(emptyUserForm);
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewUser(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.password) {
+      toast.error('Nome, email e senha são obrigatórios');
+      return;
+    }
+    try {
+      const userData: CreateUserRequest = {
+        name: newUser.name,
+        email: newUser.email,
+        password: newUser.password,
+        is_active: newUser.is_active,
+        whatsapp: newUser.whatsapp || undefined,
+        occupations: newUser.occupations,
+      };
+      const createdUser = await createUserMutate(userData);
+
+      if (newUser.roles && newUser.roles.length > 0) {
+        try {
+          await usersService.userService.assignRoles(createdUser.id, newUser.roles);
+        } catch {
+          toast.warning('Usuário criado, mas houve erro ao atribuir nível de permissão.');
+        }
+      }
+
+      if (newUser.occupations && newUser.occupations.length > 0) {
+        try {
+          await assignOccupationsMutate({ userId: createdUser.id, occupationIds: newUser.occupations });
+        } catch {
+          toast.warning('Usuário criado, mas houve erro ao atribuir equipes.');
+        }
+      }
+
+      resetForm();
+      setIsDialogOpen(false);
+      toast.success(`${createdUser.name || 'Usuário'} foi adicionado com sucesso.`);
+    } catch {
+      toast.error('Não foi possível criar o usuário. Tente novamente.');
+    }
+  };
+
+  const handleEditUserStart = (user: User) => {
+    let userOccupations: number[] = [];
+    if (user.occupations && user.occupations.length > 0) {
+      userOccupations = user.occupations.map(occ => (typeof occ === 'number' ? occ : occ.id));
+    } else if (user.occupation_id || user.occupationId) {
+      const occupationId = user.occupation_id || user.occupationId;
+      if (occupationId) userOccupations = [occupationId];
+    }
+
+    let userRoles: number[] = [];
+    if (user.roles && Array.isArray(user.roles)) {
+      if (user.roles.length > 0 && typeof user.roles[0] === 'object' && 'id' in user.roles[0]) {
+        userRoles = user.roles.map(role => (role as { id: number }).id);
+      } else if (user.roles.length > 0 && typeof user.roles[0] === 'number') {
+        userRoles = user.roles as number[];
+      }
+    }
+
+    setEditingUser(user);
+    setNewUser({
+      name: user.name,
+      email: user.email,
+      password: '',
+      occupation_id: user.occupation_id ? String(user.occupation_id) : '',
+      occupations: userOccupations,
+      roles: userRoles,
+      is_active: user.is_active ?? true,
+      whatsapp: user.whatsapp || '',
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditUserSave = async () => {
+    if (!editingUser || !newUser.name || !newUser.email) {
+      toast.error('Nome e email são obrigatórios');
+      return;
+    }
+    try {
+      const userData: UpdateUserRequest = {
+        name: newUser.name,
+        email: newUser.email,
+        is_active: newUser.is_active,
+        whatsapp: newUser.whatsapp || undefined,
+      };
+      if (newUser.password && newUser.password.trim()) {
+        userData.password = newUser.password;
+      }
+      const updatedUser = await updateUserMutate({ id: editingUser.id, data: userData });
+
+      if (newUser.roles && newUser.roles.length > 0) {
+        try {
+          await usersService.userService.assignRoles(editingUser.id, newUser.roles);
+        } catch {
+          toast.warning('Usuário atualizado, mas houve erro ao atribuir nível de permissão.');
+        }
+      }
+
+      const originalOccupationIds = editingUser.occupations?.map(o => (typeof o === 'number' ? o : o.id)) || [];
+      const newOccupationIds = newUser.occupations || [];
+      const occupationsToAdd = newOccupationIds.filter(id => !originalOccupationIds.includes(id));
+      const occupationsToRemove = originalOccupationIds.filter(id => !newOccupationIds.includes(id));
+
+      await Promise.all([
+        ...occupationsToAdd.map(teamId => addUserToTeamMutate({ teamId, userId: editingUser.id })),
+        ...occupationsToRemove.map(teamId => removeUserFromTeamMutate({ teamId, userId: editingUser.id })),
+      ]);
+
+      resetForm();
+      setEditingUser(null);
+      setIsEditDialogOpen(false);
+      toast.success(`${updatedUser.name || 'Usuário'} foi atualizado com sucesso.`);
+    } catch {
+      toast.error('Não foi possível atualizar o usuário. Tente novamente.');
+    }
+  };
+
   const handleDeleteUser = (user: User) => {
     setUserToDelete(user);
     setIsDeleteDialogOpen(true);
   };
 
-  // Função para confirmar e executar a exclusão de um usuário
   const handleDeleteUserConfirm = async () => {
     if (!userToDelete) return;
-
     try {
-      await deleteUserMutate(userToDelete.id);
-
-      // Guardar o nome do usuário antes de limpar o estado
+      deleteUserMutate(userToDelete.id);
       const deletedUserName = userToDelete.name;
-
-      // Fechar o diálogo e limpar o usuário selecionado
       setIsDeleteDialogOpen(false);
       setUserToDelete(null);
-
-      toast({
-        title: "Usuário removido",
-        description: `${deletedUserName} foi removido com sucesso.`,
-      });
-
-    } catch (err) {
-      console.error('Erro ao excluir usuário:', err);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível excluir o usuário. Tente novamente.",
-      });
+      toast.success(`${deletedUserName} foi removido com sucesso.`);
+    } catch {
+      toast.error('Não foi possível excluir o usuário. Tente novamente.');
     }
   };
 
-  // Função para atualizar o status do usuário
   const handleUpdateUserStatus = async (userId: number, isActive: boolean) => {
     try {
-      // Encontrar o usuário na lista para obter os dados atuais
       const user = Array.isArray(usersQueryData) ? usersQueryData.find(u => u.id === userId) : null;
       if (!user) {
-        toast({
-          variant: "destructive",
-          title: "Erro",
-          description: "Usuário não encontrado.",
-        });
+        toast.error('Usuário não encontrado.');
         return;
       }
-
-      // Atualizar apenas o campo is_active
-      const updatedUser = await updateUserMutate({ 
-        id: userId, 
-        data: { 
+      await updateUserMutate({
+        id: userId,
+        data: {
           is_active: isActive,
           name: user.name,
           email: user.email,
-          // Manter os outros campos inalterados
-        } 
+        },
       });
-
-      toast({
-        title: "Status atualizado",
-        description: `Status do usuário ${user.name} foi atualizado com sucesso.`,
-      });
-
-      // Recarregar lista de usuários
-      await refetch();
-    } catch (err) {
-      console.error('Erro ao atualizar status do usuário:', err);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível atualizar o status do usuário. Tente novamente.",
-      });
+      toast.success(`Status do usuário ${user.name} foi atualizado com sucesso.`);
+    } catch {
+      toast.error('Não foi possível atualizar o status do usuário. Tente novamente.');
     }
   };
 
-// Filtragem dos usuários
-const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user =>
-  user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  (user.whatsapp && user.whatsapp.toLowerCase().includes(searchTerm.toLowerCase().replace(/\D/g, '')))
-  ) : [];
-
-  // Debug logs removidos para evitar poluição do console
-
-  // Renderizar tela de carregamento
-  if (loading) {
+  if (usersLoading) {
     return (
       <AppLayout>
         <div className="flex flex-col gap-6">
@@ -603,36 +314,26 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
             </div>
             <Skeleton className="h-10 w-32" />
           </div>
-
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                 <TableRow>
-                   <TableHead className="w-[250px]"><Skeleton className="h-4 w-20" /></TableHead>
-                   <TableHead><Skeleton className="h-4 w-20" /></TableHead>
-                   <TableHead className="w-[80px]"><Skeleton className="h-4 w-16" /></TableHead>
-                   <TableHead className="whitespace-nowrap"><Skeleton className="h-4 w-32" /></TableHead>
-                  <TableHead><Skeleton className="h-4 w-20" /></TableHead>
-                  <TableHead><Skeleton className="h-4 w-20" /></TableHead>
-                  <TableHead><Skeleton className="h-4 w-20" /></TableHead>
-                  <TableHead className="text-right"><Skeleton className="h-4 w-20" /></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                  {Array.from({ length: 5 }).map((_, index) => (
-                   <TableRow key={index}>
-                     <TableCell><Skeleton className="h-8 w-40" /></TableCell>
-                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-<TableCell className="whitespace-nowrap"><Skeleton className="h-4 w-12" /></TableCell>
-                   <TableCell className="whitespace-nowrap"><Skeleton className="h-4 w-32" /></TableCell>
-                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
-                   </TableRow>
-                 ))}
-              </TableBody>
-            </Table>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="overflow-hidden border-0 shadow-sm rounded-2xl">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-3/4" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-6 w-16" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </AppLayout>
@@ -646,13 +347,12 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
-              <Users className="h-5 w-5 text-primary/60" />
+              <UsersIcon className="h-5 w-5 text-primary/60" />
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">
               Gerencie usuários, permissões e equipes.
             </p>
           </div>
-          {/* Diálogo para adicionar novo usuário */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2 rounded-xl">
@@ -669,140 +369,65 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Nome
-                  </Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={newUser.name}
-                    onChange={handleFormChange}
-                    className="col-span-3"
-                    placeholder="Nome completo"
-                  />
+                  <Label htmlFor="name" className="text-right">Nome</Label>
+                  <Input id="name" name="name" value={newUser.name} onChange={handleFormChange} className="col-span-3" placeholder="Nome completo" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={newUser.email}
-                    onChange={handleFormChange}
-                    className="col-span-3"
-                    placeholder="email@exemplo.com"
-                  />
+                  <Label htmlFor="email" className="text-right">Email</Label>
+                  <Input id="email" name="email" type="email" value={newUser.email} onChange={handleFormChange} className="col-span-3" placeholder="email@exemplo.com" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="password" className="text-right">
-                    Senha
-                  </Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={newUser.password}
-                    onChange={handleFormChange}
-                    className="col-span-3"
-                    placeholder="Senha"
-                  />
+                  <Label htmlFor="password" className="text-right">Senha</Label>
+                  <Input id="password" name="password" type="password" value={newUser.password} onChange={handleFormChange} className="col-span-3" placeholder="Senha" />
                 </div>
                 <div className="grid grid-cols-4 items-start gap-4">
-                  <Label htmlFor="occupation" className="text-right pt-2">
-                    Equipes
-                  </Label>
+                  <Label htmlFor="occupation" className="text-right pt-2">Equipes</Label>
                   <div className="col-span-3">
-                    <Select
-                      value=""
-                      onValueChange={(value) => {
-                        const occupationId = parseInt(value);
-                        if (!newUser.occupations.includes(occupationId)) {
-                          setNewUser(prev => ({
-                            ...prev,
-                            occupations: [...prev.occupations, occupationId]
-                          }));
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Adicionar equipe" />
-                      </SelectTrigger>
+                    <Select value="" onValueChange={(value) => {
+                      const occupationId = parseInt(value);
+                      if (!newUser.occupations.includes(occupationId)) {
+                        setNewUser(prev => ({ ...prev, occupations: [...prev.occupations, occupationId] }));
+                      }
+                    }}>
+                      <SelectTrigger><SelectValue placeholder="Adicionar equipe" /></SelectTrigger>
                       <SelectContent>
-                        {Array.isArray(occupationsQueryData) ? occupationsQueryData.map((occupation) => (
-                          <SelectItem key={occupation.id} value={occupation.id.toString()}>
-                            {occupation.name}
-                          </SelectItem>
+                        {Array.isArray(occupationsQueryData) ? occupationsQueryData.map(occupation => (
+                          <SelectItem key={occupation.id} value={occupation.id.toString()}>{occupation.name}</SelectItem>
                         )) : null}
                       </SelectContent>
                     </Select>
-
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {newUser.occupations.map((occupationId) => {
-                        const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find((o) => o.id === occupationId) : null;
+                      {newUser.occupations.map(occupationId => {
+                        const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id === occupationId) : null;
                         return (
-                          <div
-                            key={occupationId}
-                            className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm"
-                          >
+                          <div key={occupationId} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm">
                             {occupation ? occupation.name : `Equipe ${occupationId}`}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewUser(prev => ({
-                                  ...prev,
-                                  occupations: prev.occupations.filter((id) => id !== occupationId)
-                                }));
-                              }}
-                              className="text-secondary-foreground/70 hover:text-secondary-foreground"
-                            >
-                              ×
-                            </button>
+                            <button type="button" onClick={() => setNewUser(prev => ({ ...prev, occupations: prev.occupations.filter(id => id !== occupationId) }))} className="text-secondary-foreground/70 hover:text-secondary-foreground">×</button>
                           </div>
                         );
                       })}
                     </div>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-4 items-start gap-4">
-                  <Label htmlFor="roles" className="text-right pt-2">
-                    Nível de Permissão
-                  </Label>
+                  <Label htmlFor="roles" className="text-right pt-2">Nível de Permissão</Label>
                   <div className="col-span-3">
-                    <Select
-                      value={newUser.roles.length > 0 ? newUser.roles[0].toString() : ""}
-                      onValueChange={(value) => {
-                        const roleId = parseInt(value);
-                        setNewUser(prev => ({
-                          ...prev,
-                          roles: [roleId] // Substitui o array inteiro por um único ID
-                        }));
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecionar nível de permissão" />
-                      </SelectTrigger>
+                    <Select value={newUser.roles.length > 0 ? newUser.roles[0].toString() : ""} onValueChange={(value) => {
+                      const roleId = parseInt(value);
+                      setNewUser(prev => ({ ...prev, roles: [roleId] }));
+                    }}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar nível de permissão" /></SelectTrigger>
                       <SelectContent>
-                        {Array.isArray(rolesQueryData) ? rolesQueryData.map((role) => (
-                          <SelectItem key={role.id} value={role.id.toString()}>
-                            {role.name}
-                          </SelectItem>
+                        {Array.isArray(rolesQueryData) ? rolesQueryData.map(role => (
+                          <SelectItem key={role.id} value={role.id.toString()}>{role.name}</SelectItem>
                         )) : null}
                       </SelectContent>
                     </Select>
-
                     {newUser.roles.length > 0 && (
                       <div className="mt-2">
-                        <div className="text-sm text-muted-foreground">
-                          Nível de permissão selecionado:
-                        </div>
+                        <div className="text-sm text-muted-foreground">Nível de permissão selecionado:</div>
                         <div className="mt-1">
-                          <Badge
-                            variant="outline"
-                            className="rounded-full bg-violet-100 text-violet-800 hover:bg-violet-200 border-violet-200"
-                          >
+                          <Badge variant="outline" className="rounded-full bg-violet-100 text-violet-800 hover:bg-violet-200 border-violet-200">
                             {getRoleName(newUser.roles[0])}
                           </Badge>
                         </div>
@@ -810,37 +435,16 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
                     )}
                   </div>
                 </div>
-
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="is_active" className="text-right">
-                    Ativo
-                  </Label>
+                  <Label htmlFor="is_active" className="text-right">Ativo</Label>
                   <div className="col-span-3 flex items-center space-x-2">
-                    <Switch
-                      id="is_active"
-                      checked={newUser.is_active}
-                      onCheckedChange={(checked) => {
-                        setNewUser(prev => ({ ...prev, is_active: checked }));
-                      }}
-                    />
-                    <Label htmlFor="is_active" className="text-sm">
-                      {newUser.is_active ? 'Usuário ativo' : 'Usuário inativo'}
-                    </Label>
+                    <Switch id="is_active" checked={newUser.is_active} onCheckedChange={(checked) => setNewUser(prev => ({ ...prev, is_active: checked }))} />
+                    <Label htmlFor="is_active" className="text-sm">{newUser.is_active ? 'Usuário ativo' : 'Usuário inativo'}</Label>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="whatsapp" className="text-right">
-                    WhatsApp
-                  </Label>
-                  <Input
-                    id="whatsapp"
-                    name="whatsapp"
-                    value={newUser.whatsapp}
-                    onChange={handleFormChange}
-                    className="col-span-3"
-                    placeholder="(00) 00000-0000"
-                  />
+                  <Label htmlFor="whatsapp" className="text-right">WhatsApp</Label>
+                  <Input id="whatsapp" name="whatsapp" value={newUser.whatsapp} onChange={handleFormChange} className="col-span-3" placeholder="(00) 00000-0000" />
                 </div>
               </div>
               <DialogFooter>
@@ -849,7 +453,6 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
             </DialogContent>
           </Dialog>
 
-          {/* Diálogo para editar usuário */}
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -860,140 +463,65 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-name" className="text-right">
-                    Nome
-                  </Label>
-                  <Input
-                    id="edit-name"
-                    name="name"
-                    value={newUser.name}
-                    onChange={handleFormChange}
-                    className="col-span-3"
-                    placeholder="Nome completo"
-                  />
+                  <Label htmlFor="edit-name" className="text-right">Nome</Label>
+                  <Input id="edit-name" name="name" value={newUser.name} onChange={handleFormChange} className="col-span-3" placeholder="Nome completo" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-email" className="text-right">
-                    Email
-                  </Label>
-                  <Input
-                    id="edit-email"
-                    name="email"
-                    type="email"
-                    value={newUser.email}
-                    onChange={handleFormChange}
-                    className="col-span-3"
-                    placeholder="email@exemplo.com"
-                  />
+                  <Label htmlFor="edit-email" className="text-right">Email</Label>
+                  <Input id="edit-email" name="email" type="email" value={newUser.email} onChange={handleFormChange} className="col-span-3" placeholder="email@exemplo.com" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-password" className="text-right">
-                    Senha
-                  </Label>
-                  <Input
-                    id="edit-password"
-                    name="password"
-                    type="password"
-                    value={newUser.password}
-                    onChange={handleFormChange}
-                    className="col-span-3"
-                    placeholder="Deixe em branco para manter a senha atual"
-                  />
+                  <Label htmlFor="edit-password" className="text-right">Senha</Label>
+                  <Input id="edit-password" name="password" type="password" value={newUser.password} onChange={handleFormChange} className="col-span-3" placeholder="Deixe em branco para manter a senha atual" />
                 </div>
                 <div className="grid grid-cols-4 items-start gap-4">
-                  <Label htmlFor="edit-occupation" className="text-right pt-2">
-                    Equipes
-                  </Label>
+                  <Label htmlFor="edit-occupation" className="text-right pt-2">Equipes</Label>
                   <div className="col-span-3">
-                    <Select
-                      value=""
-                      onValueChange={(value) => {
-                        const occupationId = parseInt(value);
-                        if (!newUser.occupations.includes(occupationId)) {
-                          setNewUser(prev => ({
-                            ...prev,
-                            occupations: [...prev.occupations, occupationId]
-                          }));
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Adicionar equipe" />
-                      </SelectTrigger>
+                    <Select value="" onValueChange={(value) => {
+                      const occupationId = parseInt(value);
+                      if (!newUser.occupations.includes(occupationId)) {
+                        setNewUser(prev => ({ ...prev, occupations: [...prev.occupations, occupationId] }));
+                      }
+                    }}>
+                      <SelectTrigger><SelectValue placeholder="Adicionar equipe" /></SelectTrigger>
                       <SelectContent>
-                        {Array.isArray(occupationsQueryData) ? occupationsQueryData.map((occupation) => (
-                          <SelectItem key={occupation.id} value={occupation.id.toString()}>
-                            {occupation.name}
-                          </SelectItem>
+                        {Array.isArray(occupationsQueryData) ? occupationsQueryData.map(occupation => (
+                          <SelectItem key={occupation.id} value={occupation.id.toString()}>{occupation.name}</SelectItem>
                         )) : null}
                       </SelectContent>
                     </Select>
-
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {newUser.occupations.map((occupationId) => {
-                        const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find((o) => o.id === occupationId) : null;
+                      {newUser.occupations.map(occupationId => {
+                        const occupation = Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id === occupationId) : null;
                         return (
-                          <div
-                            key={occupationId}
-                            className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm"
-                          >
+                          <div key={occupationId} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm">
                             {occupation ? occupation.name : `Equipe ${occupationId}`}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewUser(prev => ({
-                                  ...prev,
-                                  occupations: prev.occupations.filter((id) => id !== occupationId)
-                                }));
-                              }}
-                              className="text-secondary-foreground/70 hover:text-secondary-foreground"
-                            >
-                              ×
-                            </button>
+                            <button type="button" onClick={() => setNewUser(prev => ({ ...prev, occupations: prev.occupations.filter(id => id !== occupationId) }))} className="text-secondary-foreground/70 hover:text-secondary-foreground">×</button>
                           </div>
                         );
                       })}
                     </div>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-4 items-start gap-4">
-                  <Label htmlFor="edit-roles" className="text-right pt-2">
-                    Nível de Permissão
-                  </Label>
+                  <Label htmlFor="edit-roles" className="text-right pt-2">Nível de Permissão</Label>
                   <div className="col-span-3">
-                    <Select
-                      value={newUser.roles.length > 0 ? newUser.roles[0].toString() : ""}
-                      onValueChange={(value) => {
-                        const roleId = parseInt(value);
-                        setNewUser(prev => ({
-                          ...prev,
-                          roles: [roleId] // Substitui o array inteiro por um único ID
-                        }));
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecionar nível de permissão" />
-                      </SelectTrigger>
+                    <Select value={newUser.roles.length > 0 ? newUser.roles[0].toString() : ""} onValueChange={(value) => {
+                      const roleId = parseInt(value);
+                      setNewUser(prev => ({ ...prev, roles: [roleId] }));
+                    }}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar nível de permissão" /></SelectTrigger>
                       <SelectContent>
-                        {Array.isArray(rolesQueryData) ? rolesQueryData.map((role) => (
-                          <SelectItem key={role.id} value={role.id.toString()}>
-                            {role.name}
-                          </SelectItem>
+                        {Array.isArray(rolesQueryData) ? rolesQueryData.map(role => (
+                          <SelectItem key={role.id} value={role.id.toString()}>{role.name}</SelectItem>
                         )) : null}
                       </SelectContent>
                     </Select>
-
                     {newUser.roles.length > 0 && (
                       <div className="mt-2">
-                        <div className="text-sm text-muted-foreground">
-                          Nível de permissão selecionado:
-                        </div>
+                        <div className="text-sm text-muted-foreground">Nível de permissão selecionado:</div>
                         <div className="mt-1">
-                          <Badge
-                            variant="outline"
-                            className="rounded-full bg-violet-100 text-violet-800 hover:bg-violet-200 border-violet-200"
-                          >
+                          <Badge variant="outline" className="rounded-full bg-violet-100 text-violet-800 hover:bg-violet-200 border-violet-200">
                             {getRoleName(newUser.roles[0])}
                           </Badge>
                         </div>
@@ -1001,37 +529,16 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
                     )}
                   </div>
                 </div>
-
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-is_active" className="text-right">
-                    Ativo
-                  </Label>
+                  <Label htmlFor="edit-is_active" className="text-right">Ativo</Label>
                   <div className="col-span-3 flex items-center space-x-2">
-                    <Switch
-                      id="edit-is_active"
-                      checked={newUser.is_active}
-                      onCheckedChange={(checked) => {
-                        setNewUser(prev => ({ ...prev, is_active: checked }));
-                      }}
-                    />
-                    <Label htmlFor="edit-is_active" className="text-sm">
-                      {newUser.is_active ? 'Usuário ativo' : 'Usuário inativo'}
-                    </Label>
+                    <Switch id="edit-is_active" checked={newUser.is_active} onCheckedChange={(checked) => setNewUser(prev => ({ ...prev, is_active: checked }))} />
+                    <Label htmlFor="edit-is_active" className="text-sm">{newUser.is_active ? 'Usuário ativo' : 'Usuário inativo'}</Label>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-whatsapp" className="text-right">
-                    WhatsApp
-                  </Label>
-                  <Input
-                    id="edit-whatsapp"
-                    name="whatsapp"
-                    value={newUser.whatsapp}
-                    onChange={handleFormChange}
-                    className="col-span-3"
-                    placeholder="(00) 00000-0000"
-                  />
+                  <Label htmlFor="edit-whatsapp" className="text-right">WhatsApp</Label>
+                  <Input id="edit-whatsapp" name="whatsapp" value={newUser.whatsapp} onChange={handleFormChange} className="col-span-3" placeholder="(00) 00000-0000" />
                 </div>
               </div>
               <DialogFooter>
@@ -1041,7 +548,6 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
             </DialogContent>
           </Dialog>
 
-          {/* Diálogo para confirmar exclusão de usuário */}
           <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -1063,10 +569,10 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
           </Dialog>
         </div>
 
-        {error && (
+        {usersIsError && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>Não foi possível carregar os usuários.</AlertDescription>
           </Alert>
         )}
 
@@ -1085,140 +591,114 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
           </Button>
         </div>
 
-        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader>
-               <TableRow>
-                <TableHead className="whitespace-nowrap">Nome</TableHead>
-                <TableHead className="whitespace-nowrap">Email</TableHead>
-                <TableHead className="whitespace-nowrap">Status</TableHead>
-                <TableHead className="whitespace-nowrap">WhatsApp</TableHead>
-                <TableHead className="whitespace-nowrap">Equipes</TableHead>
-                <TableHead className="whitespace-nowrap">Nível de Permissão</TableHead>
-                <TableHead className="whitespace-nowrap">Data de Cadastro</TableHead>
-                <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Avatar>
-<AvatarFallback>
-                            {user.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'ND'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>{user.name || 'Nome não definido'}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredUsers.length > 0 ? (
+            filteredUsers.map((user) => (
+              <Card key={user.id} className="overflow-hidden border-0 shadow-sm rounded-2xl bg-white">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="text-sm">
+                          {user.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="font-semibold text-base leading-tight">{user.name || 'Nome não definido'}</h3>
+                        <p className="text-sm text-muted-foreground">{user.email || 'Email não definido'}</p>
                       </div>
-                    </TableCell>
-                    <TableCell>{user.email || 'Email não definido'}</TableCell>
-                     <TableCell className="whitespace-nowrap">
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEditUserStart(user)} title="Editar usuário">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user)} title="Remover usuário" className="text-red-500 hover:text-red-700 hover:bg-red-100">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       <Switch
                         checked={user.is_active !== false}
-                        onCheckedChange={(checked) => {
-                          // Função para atualizar o status do usuário
-                          handleUpdateUserStatus(user.id, checked);
-                        }}
-                        className={user.is_active !== false 
-                          ? "bg-green-500 data-[state=checked]:bg-green-500" 
-                          : "bg-gray-300"}
+                        onCheckedChange={(checked) => handleUpdateUserStatus(user.id, checked)}
                       />
-                     </TableCell>
-                     <TableCell className="whitespace-nowrap">
-                      {user.whatsapp ? (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-3 w-3 text-green-600" />
-                          <span className="text-sm font-mono">{formatWhatsApp(user.whatsapp)}</span>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {user.occupations && user.occupations.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {user.occupations.map(occ => {
-                            const teamId = typeof occ === 'number' ? occ : occ.id;
-                            const teamName = typeof occ === 'number' ? (Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id === occ)?.name : null) || 'Ocupação desconhecida' : occ.name;
-                            const badgeColor = getBadgeColorClass(teamId);
+                      <span className={`text-sm font-medium ${user.is_active !== false ? 'text-green-600' : 'text-gray-500'}`}>
+                        {user.is_active !== false ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </div>
+                    {user.whatsapp ? (
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Phone className="h-3.5 w-3.5 text-green-600" />
+                        <span className="font-mono">{formatWhatsApp(user.whatsapp)}</span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
+                  </div>
 
-                            return (
-                              <Badge
-                                key={teamId}
-                                variant="outline"
-                                className={`rounded-full ${badgeColor}`}
-                              >
-                                {teamName}
-                              </Badge>
-                            );
-                          })}
-                        </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Equipes</div>
+                    <div className="flex flex-wrap gap-1">
+                      {user.occupations && user.occupations.length > 0 ? (
+                        user.occupations.map(occ => {
+                          const teamId = typeof occ === 'number' ? occ : occ.id;
+                          const teamName = typeof occ === 'number' ? (Array.isArray(occupationsQueryData) ? occupationsQueryData.find(o => o.id === occ)?.name : null) || 'Ocupação desconhecida' : occ.name;
+                          return (
+                            <Badge key={teamId} variant="outline" className={`rounded-full ${getBadgeColorClass(teamId)}`}>
+                              {teamName}
+                            </Badge>
+                          );
+                        })
                       ) : (user.occupation_id || user.occupationId || user.occupation) ? (
-                        <Badge
-                          variant="outline"
-                          className={`rounded-full ${getBadgeColorClass(user.occupation_id || user.occupationId)}`}
-                        >
+                        <Badge variant="outline" className={`rounded-full ${getBadgeColorClass(user.occupation_id || user.occupationId)}`}>
                           {getOccupationName(user)}
                         </Badge>
                       ) : (
                         <span className="text-sm text-muted-foreground">Sem equipe</span>
                       )}
-                    </TableCell>
-                    <TableCell>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Permissão</div>
                       {user.roles && Array.isArray(user.roles) && user.roles.length > 0 ? (
-                        <Badge
-                          variant="outline"
-                          className="rounded-full bg-violet-100 text-violet-800 hover:bg-violet-200 border-violet-200"
-                        >
-                          {typeof user.roles[0] === 'number'
-                            ? getRoleName(user.roles[0])
-                            : user.roles[0].name || `Função ${user.roles[0].id}`}
+                        <Badge variant="outline" className="rounded-full bg-violet-100 text-violet-800 hover:bg-violet-200 border-violet-200">
+                          {typeof user.roles[0] === 'number' ? getRoleName(user.roles[0]) : user.roles[0].name || `Função ${user.roles[0].id}`}
                         </Badge>
                       ) : (
                         <span className="text-sm text-muted-foreground">Sem permissão</span>
                       )}
-                    </TableCell>
-                    <TableCell>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5" />
                       {formatUserDate(user.created_at || user.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditUserStart(user)}
-                          title="Editar usuário"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteUser(user)}
-                          title="Remover usuário"
-                          className="text-red-500 hover:text-red-700 hover:bg-red-100"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center">
-                    Nenhum usuário encontrado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card className="col-span-full">
+              <CardContent className="p-6 text-center">
+                <UsersIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Nenhum Usuário Encontrado</h3>
+                <p className="text-muted-foreground mb-4">
+                  Comece criando um novo usuário para sua equipe.
+                </p>
+                <Button className="gap-1" onClick={() => setIsDialogOpen(true)}>
+                  <PlusCircle className="h-4 w-4" />
+                  Criar Novo Usuário
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </AppLayout>
   );
 };
 
-export default Users;
+export default UsersPage;
