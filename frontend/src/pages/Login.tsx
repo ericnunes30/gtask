@@ -1,16 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
-import { toast } from 'sonner';
-import { AlertCircle, Info, Mail, Lock, Eye, EyeOff, LayoutDashboard } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Skeleton } from '@/components/ui/skeleton';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/contexts/adapters/AuthContextAdapter";
+import { toast } from "sonner";
+import {
+  AlertCircle,
+  Info,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  LayoutDashboard,
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Form,
   FormControl,
@@ -19,18 +39,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
+} from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 
 // Definir o esquema de validação com Zod
 const loginSchema = z.object({
-  email: z.string()
-    .min(1, { message: 'O email é obrigatório' })
-    .email({ message: 'Email inválido' }),
-  password: z.string()
-    .min(1, { message: 'A senha é obrigatória' }),
+  email: z
+    .string()
+    .min(1, { message: "O email é obrigatório" })
+    .email({ message: "Email inválido" }),
+  password: z.string().min(1, { message: "A senha é obrigatória" }),
   rememberMe: z.boolean().optional().default(false),
 });
 
@@ -47,8 +67,8 @@ const Login = () => {
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
       rememberMe: false,
     },
   });
@@ -56,7 +76,7 @@ const Login = () => {
   // Redireciona para a página inicial se já estiver autenticado
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      const from = location.state?.from?.pathname || '/';
+      const from = location.state?.from?.pathname || "/";
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate, location]);
@@ -69,13 +89,13 @@ const Login = () => {
       // O redirecionamento é feito no contexto de autenticação
       if (values.rememberMe) {
         // Aqui poderia implementar a lógica para lembrar o usuário
-        localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem("rememberMe", "true");
       }
     } catch (error: any) {
-      console.error('Erro ao fazer login:', error);
+      console.error("Erro ao fazer login:", error);
       setError(
         error.response?.data?.message ||
-        'Erro ao fazer login. Verifique suas credenciais.'
+          "Erro ao fazer login. Verifique suas credenciais.",
       );
     }
   };
@@ -102,14 +122,21 @@ const Login = () => {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/10 mb-4">
             <LayoutDashboard className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Manager Group</h1>
-          <p className="text-sm text-muted-foreground mt-1">Entre com suas credenciais para acessar</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            GTask
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Entre com suas credenciais para acessar
+          </p>
         </div>
 
         <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
           <CardContent className="pt-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 {error && (
                   <Alert variant="destructive" className="rounded-xl">
                     <AlertCircle className="h-4 w-4" />
@@ -122,7 +149,9 @@ const Login = () => {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Email</FormLabel>
+                      <FormLabel className="text-sm font-medium">
+                        Email
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
@@ -144,7 +173,9 @@ const Login = () => {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Senha</FormLabel>
+                      <FormLabel className="text-sm font-medium">
+                        Senha
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
@@ -185,7 +216,9 @@ const Login = () => {
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
-                        <FormLabel className="text-sm font-normal cursor-pointer">Lembrar-me</FormLabel>
+                        <FormLabel className="text-sm font-normal cursor-pointer">
+                          Lembrar-me
+                        </FormLabel>
                       </FormItem>
                     )}
                   />
@@ -193,7 +226,11 @@ const Login = () => {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="link" className="p-0 h-auto text-sm text-muted-foreground hover:text-primary" type="button">
+                        <Button
+                          variant="link"
+                          className="p-0 h-auto text-sm text-muted-foreground hover:text-primary"
+                          type="button"
+                        >
                           Esqueceu a senha?
                         </Button>
                       </TooltipTrigger>
@@ -209,13 +246,13 @@ const Login = () => {
                   className="w-full h-11 rounded-xl font-medium"
                   disabled={form.formState.isSubmitting}
                 >
-                  {form.formState.isSubmitting ? 'Entrando...' : 'Entrar'}
+                  {form.formState.isSubmitting ? "Entrando..." : "Entrar"}
                 </Button>
               </form>
             </Form>
           </CardContent>
         </Card>
-        
+
         <p className="text-center text-xs text-muted-foreground mt-6">
           Sistema de gerenciamento de projetos e tarefas
         </p>
