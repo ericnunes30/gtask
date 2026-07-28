@@ -18,6 +18,9 @@ export class TaskUpdatedStrategy extends BaseNotificationStrategy {
 
   validate(payload: NotificationPayload): boolean {
     const p = payload as Partial<TaskUpdatedPayloadShape>;
+    const hasValidChangedFields =
+      !!p.changedFields &&
+      (Array.isArray(p.changedFields) || typeof p.changedFields === 'object');
     return (
       !!p &&
       !!p.task &&
@@ -25,7 +28,7 @@ export class TaskUpdatedStrategy extends BaseNotificationStrategy {
       !!p.task.title &&
       !!p.updatedBy &&
       typeof p.updatedBy === 'number' &&
-      Array.isArray(p.changedFields)
+      hasValidChangedFields
     );
   }
 
@@ -39,11 +42,28 @@ export class TaskUpdatedStrategy extends BaseNotificationStrategy {
 
     const { task, updatedBy, performer, changedFields } = p;
 
+    const changedFieldsArray: Array<{
+      field: string;
+      oldValue: unknown;
+      newValue: unknown;
+    }> = Array.isArray(changedFields)
+      ? changedFields
+      : Object.entries(
+          changedFields as Record<
+            string,
+            { oldValue: unknown; newValue: unknown }
+          >,
+        ).map(([field, values]) => ({
+          field,
+          oldValue: values.oldValue,
+          newValue: values.newValue,
+        }));
+
     const data = {
       actorName: performer?.name || 'Usuário desconhecido',
       taskTitle: task.title,
       taskId: task.id,
-      changedFields: changedFields.map((field) => ({
+      changedFields: changedFieldsArray.map((field) => ({
         field: field.field,
         oldValue: field.oldValue,
         newValue: field.newValue,

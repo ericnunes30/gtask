@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { RecurringTask } from '../entities/recurring-task.entity';
 import { CreateRecurringTaskDto } from '../dto/create-recurring-task.dto';
 import { UpdateRecurringTaskDto } from '../dto/update-recurring-task.dto';
@@ -14,6 +15,7 @@ export class RecurringTaskService {
     @InjectRepository(RecurringTask)
     private recurringTaskRepository: Repository<RecurringTask>,
     private occupationEnhancer: OccupationEnhancer,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async findAll(): Promise<RecurringTask[]> {
@@ -56,6 +58,11 @@ export class RecurringTaskService {
 
       const enhancedTask = await this.occupationEnhancer.enhance(savedTask);
       this.logger.log('Tarefa "melhorada" com sucesso.');
+
+      this.eventEmitter.emit('recurring-task.created', {
+        recurringTask: enhancedTask,
+      });
+
       return enhancedTask;
     } catch (error: unknown) {
       this.logger.error(
@@ -97,7 +104,13 @@ export class RecurringTaskService {
     this.applyUpdate(recurringTask, updateRecurringTaskDto);
 
     const savedTask = await this.recurringTaskRepository.save(recurringTask);
-    return await this.occupationEnhancer.enhance(savedTask);
+    const enhancedTask = await this.occupationEnhancer.enhance(savedTask);
+
+    this.eventEmitter.emit('recurring-task.updated', {
+      recurringTask: enhancedTask,
+    });
+
+    return enhancedTask;
   }
 
   private applyUpdate(task: RecurringTask, dto: UpdateRecurringTaskDto): void {
@@ -132,5 +145,7 @@ export class RecurringTaskService {
   async remove(id: number): Promise<void> {
     const recurringTask = await this.findOne(id);
     await this.recurringTaskRepository.remove(recurringTask);
+
+    this.eventEmitter.emit('recurring-task.deleted', { recurringTaskId: id });
   }
 }

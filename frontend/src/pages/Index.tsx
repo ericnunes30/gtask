@@ -6,7 +6,7 @@ import { ProjectsList } from '@/components/dashboard/ProjectsList';
 import { TasksList } from '@/components/dashboard/TasksList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Sparkles, ListTodo, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
@@ -15,15 +15,19 @@ const Index = () => {
   return (
     <AppLayout>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        {/* Header Section */}
+        <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+              <Sparkles className="h-5 w-5 text-primary/60" />
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Bem-vindo ao seu painel de gerenciamento de projetos e tarefas.
             </p>
           </div>
           <Button
-            className="gap-1"
+            className="gap-2 rounded-xl shadow-sm"
             onClick={() => navigate('/projects')}
           >
             <PlusCircle className="h-4 w-4" />
@@ -34,29 +38,44 @@ const Index = () => {
         <DashboardStats />
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList>
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="tasks">Minhas Tarefas</TabsTrigger>
-            <TabsTrigger value="projects">Meus Projetos</TabsTrigger>
+          <TabsList className="bg-muted/60 p-1 rounded-xl">
+            <TabsTrigger value="overview" className="rounded-lg text-xs">Visão Geral</TabsTrigger>
+            <TabsTrigger value="tasks" className="rounded-lg text-xs">Minhas Tarefas</TabsTrigger>
+            <TabsTrigger value="projects" className="rounded-lg text-xs">Meus Projetos</TabsTrigger>
           </TabsList>
-          <TabsContent value="overview" className="mt-6">
-            <div className="grid gap-6 md:grid-cols-3">
-              <ProjectsList />
-              <TasksList />
+          
+          <TabsContent value="overview" className="mt-4">
+            <div className="grid gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <ProjectsList />
+              </div>
+              <div>
+                <TasksList />
+              </div>
             </div>
           </TabsContent>
-          <TabsContent value="tasks" className="mt-6">
-            <h2 className="text-xl font-semibold mb-4">Minhas Tarefas</h2>
-            <p className="text-muted-foreground mb-6">Visualize e gerencie todas as suas tarefas pendentes.</p>
-            <div className="border rounded-lg p-6">
-              <p className="text-center text-muted-foreground">Conteúdo de tarefas será implementado em breve.</p>
+          
+          <TabsContent value="tasks" className="mt-4">
+            <div className="bg-white rounded-2xl border shadow-sm p-8">
+              <div className="text-center">
+                <ListTodo className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-muted-foreground">Minhas Tarefas</h3>
+                <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
+                  Visualize e gerencie todas as suas tarefas pendentes.
+                </p>
+              </div>
             </div>
           </TabsContent>
-          <TabsContent value="projects" className="mt-6">
-            <h2 className="text-xl font-semibold mb-4">Meus Projetos</h2>
-            <p className="text-muted-foreground mb-6">Acompanhe todos os projetos que você está participando.</p>
-            <div className="border rounded-lg p-6">
-              <p className="text-center text-muted-foreground">Conteúdo de projetos será implementado em breve.</p>
+          
+          <TabsContent value="projects" className="mt-4">
+            <div className="bg-white rounded-2xl border shadow-sm p-8">
+              <div className="text-center">
+                <Briefcase className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-muted-foreground">Meus Projetos</h3>
+                <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
+                  Acompanhe todos os projetos que você está participando.
+                </p>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

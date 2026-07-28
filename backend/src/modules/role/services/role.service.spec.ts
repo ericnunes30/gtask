@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { RoleService } from './role.service';
 import { Role } from '../entities/role.entity';
 import { CreateRoleDto } from '../dto/create-role.dto';
@@ -39,6 +40,7 @@ describe('RoleService', () => {
       providers: [
         RoleService,
         { provide: getRepositoryToken(Role), useValue: roleRepository },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 

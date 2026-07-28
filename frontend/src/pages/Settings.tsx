@@ -32,6 +32,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/components/ui/use-toast";
 import { Switch } from "@/components/ui/switch";
+import { User, Bell, Palette, Shield } from "lucide-react";
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 
@@ -164,31 +165,52 @@ const Settings = () => {
 
   return (
     <AppLayout>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 max-w-4xl">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Gerencie suas configurações de conta e preferências.
           </p>
         </div>
         
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="w-full md:w-auto">
-            <TabsTrigger value="profile">Perfil</TabsTrigger>
-            <TabsTrigger value="appearance">Aparência</TabsTrigger>
+          <TabsList className="bg-muted/60 p-1 rounded-xl w-full md:w-auto">
+            <TabsTrigger value="profile" className="rounded-lg gap-2">
+              <User className="h-3.5 w-3.5" />
+              Perfil
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="rounded-lg gap-2">
+              <Bell className="h-3.5 w-3.5" />
+              Notificações
+            </TabsTrigger>
+            <TabsTrigger value="appearance" className="rounded-lg gap-2">
+              <Palette className="h-3.5 w-3.5" />
+              Aparência
+            </TabsTrigger>
+            <TabsTrigger value="security" className="rounded-lg gap-2">
+              <Shield className="h-3.5 w-3.5" />
+              Segurança
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="profile" className="space-y-6">
-            <Card>
+          <TabsContent value="profile" className="space-y-4 mt-4">
+            <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle>Perfil</CardTitle>
-                <CardDescription>
-                  Atualize seus dados de perfil e informações de conta.
-                </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Perfil</CardTitle>
+                    <CardDescription>
+                      Atualize seus dados de perfil e informações de conta.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(onSubmit)} className="space-y-6">
+                  <form onSubmit={profileForm.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
                       control={profileForm.control}
                       name="name"
@@ -196,7 +218,7 @@ const Settings = () => {
                         <FormItem>
                           <FormLabel>Nome</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input {...field} className="h-10 rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -210,27 +232,103 @@ const Settings = () => {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input {...field} className="h-10 rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    <Button type="submit">Salvar alterações</Button>
+                    <Button type="submit" className="rounded-xl">Salvar alterações</Button>
                   </form>
                 </Form>
               </CardContent>
             </Card>
-
-            <Card>
+          </TabsContent>
+          
+          <TabsContent value="notifications" className="space-y-4 mt-4">
+            <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle>Alterar Senha</CardTitle>
-                <CardDescription>Atualize sua senha de acesso.</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Bell className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Notificações</CardTitle>
+                    <CardDescription>Configure como você deseja receber notificações.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between py-2">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Notificações por Email</p>
+                    <p className="text-xs text-muted-foreground">Receba atualizações e lembretes por email.</p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Notificações no Navegador</p>
+                    <p className="text-xs text-muted-foreground">Receba notificações enquanto estiver usando o sistema.</p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Lembretes de Tarefas</p>
+                    <p className="text-xs text-muted-foreground">Receba lembretes sobre tarefas próximas do prazo.</p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="appearance" className="space-y-4 mt-4">
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Palette className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Aparência</CardTitle>
+                    <CardDescription>Personalize a aparência da interface.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between py-2">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Modo Escuro</p>
+                    <p className="text-xs text-muted-foreground">Ative o modo escuro para reduzir o cansaço visual.</p>
+                  </div>
+                  <Switch
+                    checked={isDarkMode}
+                    onCheckedChange={handleDarkModeToggle}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="security" className="space-y-4 mt-4">
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Shield className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Alterar Senha</CardTitle>
+                    <CardDescription>Atualize sua senha de acesso.</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Form {...passwordForm}>
-                  <form onSubmit={passwordForm.handleSubmit(onSubmitPassword)} className="space-y-6">
+                  <form onSubmit={passwordForm.handleSubmit(onSubmitPassword)} className="space-y-4">
                     <FormField
                       control={passwordForm.control}
                       name="currentPassword"
@@ -238,7 +336,7 @@ const Settings = () => {
                         <FormItem>
                           <FormLabel>Senha Atual</FormLabel>
                           <FormControl>
-                            <Input type="password" {...field} />
+                            <Input type="password" {...field} className="h-10 rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -251,7 +349,7 @@ const Settings = () => {
                         <FormItem>
                           <FormLabel>Nova Senha</FormLabel>
                           <FormControl>
-                            <Input type="password" {...field} />
+                            <Input type="password" {...field} className="h-10 rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -264,134 +362,18 @@ const Settings = () => {
                         <FormItem>
                           <FormLabel>Confirmar Nova Senha</FormLabel>
                           <FormControl>
-                            <Input type="password" {...field} />
+                            <Input type="password" {...field} className="h-10 rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <Button type="submit">Alterar Senha</Button>
+                    <Button type="submit" className="rounded-xl">Alterar Senha</Button>
                   </form>
                 </Form>
               </CardContent>
             </Card>
           </TabsContent>
-          
-          <TabsContent value="appearance">
-            <Card>
-              <CardHeader>
-                <CardTitle>Aparência</CardTitle>
-                <CardDescription>
-                  Personalize a aparência da interface.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Modo Escuro</p>
-                    <p className="text-sm text-muted-foreground">
-                      Ative o modo escuro para reduzir o cansaço visual.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={isDarkMode}
-                    onCheckedChange={handleDarkModeToggle}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/**
-          <TabsContent value="notifications">
-            <Card>
-              <CardHeader>
-                <CardTitle>Notificações</CardTitle>
-                <CardDescription>
-                  Configure como você deseja receber notificações.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Notificações por Email</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receba atualizações e lembretes por email.
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Notificações no Navegador</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receba notificações no navegador enquanto estiver usando o sistema.
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Lembretes de Tarefas</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receba lembretes sobre tarefas próximas do prazo.
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          */}
-          
-          {/**
-          <TabsContent value="system">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sistema</CardTitle>
-                <CardDescription>
-                  Configure opções gerais do sistema.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Idioma</p>
-                    <p className="text-sm text-muted-foreground">
-                      O idioma padrão do sistema é Português do Brasil.
-                    </p>
-                  </div>
-                  <Button variant="outline">Alterar</Button>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Backup de Dados</p>
-                    <p className="text-sm text-muted-foreground">
-                      Faça backup de seus dados e projetos.
-                    </p>
-                  </div>
-                  <Button variant="outline">Exportar</Button>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Limpar Cache</p>
-                    <p className="text-sm text-muted-foreground">
-                      Limpe dados temporários do sistema.
-                    </p>
-                  </div>
-                  <Button variant="outline">Limpar</Button>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="destructive">Redefinir Configurações</Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-          */}
         </Tabs>
       </div>
     </AppLayout>

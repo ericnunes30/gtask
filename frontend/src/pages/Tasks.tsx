@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 // ... outros imports
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ArrowLeft, AlertCircle, Repeat, RefreshCw } from 'lucide-react';
+import { PlusCircle, ArrowLeft, AlertCircle, Repeat } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
 import { KanbanTask } from '@/components/kanban/kanbanTypes';
@@ -16,7 +16,7 @@ import {
   DialogClose,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { TasksList } from '@/components/dashboard/TasksList';
+
 import { TaskForm } from '@/components/forms/TaskForm';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Badge } from "@/components/ui/badge";
@@ -25,14 +25,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Project, Task, TaskStatus, User, TaskPriority, UpdateTaskRequest } from '@/utils/commonTypes';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { toast } from "sonner";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 import { Switch } from "@/components/ui/switch";
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
 import { TaskFormRef } from '@/components/forms/TaskForm';
 import { RecurringTasksList } from '@/components/recurring/RecurringTasksList';
 import { TaskFiltersSidebar, type TaskFiltersState } from '@/components/kanban/TaskFiltersSidebar';
+import { useTaskSocket } from '@/hooks/useTaskSocket';
+import { useRecurringTaskSocket } from '@/hooks/useRecurringTaskSocket';
 
 const Tasks = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -43,7 +43,6 @@ const Tasks = () => {
   const [projectsWithTasks, setProjectsWithTasks] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("kanban");
   const [rawTasks, setRawTasks] = useState<Task[]>([]);
   const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<string | null>(null);
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<number | null>(null);
@@ -58,20 +57,24 @@ const Tasks = () => {
     const savedShowMyReviews = localStorage.getItem('showMyReviewsTasksPage');
     return savedShowMyReviews === 'true';
   });
-  const [refreshing, setRefreshing] = useState(false);
-  const tasksListRef = useRef<{ fetchTasks: () => Promise<void> }>(null);
+  const [showCancelled, setShowCancelled] = useState(() => {
+    const savedShowCancelled = localStorage.getItem('showCancelledTasksPage');
+    return savedShowCancelled === 'true';
+  });
   const taskFormRef = useRef<TaskFormRef>(null);
 
   // Estado consolidado de filtros para a sidebar
   const [sidebarFilters, setSidebarFilters] = useState<TaskFiltersState>(() => {
     const savedShowCompleted = localStorage.getItem('showCompletedTasksPage') === 'true';
     const savedShowMyReviews = localStorage.getItem('showMyReviewsTasksPage') === 'true';
+    const savedShowCancelled = localStorage.getItem('showCancelledTasksPage') === 'true';
     return {
       priorities: [],
       projectId: 'all',
       userId: 'all',
       showCompleted: savedShowCompleted,
       showMyReviews: savedShowMyReviews,
+      showCancelled: savedShowCancelled,
       searchTerm: '',
     };
   });
@@ -100,6 +103,12 @@ const Tasks = () => {
     isError,
     refetch,
   } = tasks.useGetTasks();
+
+  // WebSocket: auto-refresh tasks when other users make changes
+  useTaskSocket(projectId);
+
+  // WebSocket para atualização em tempo real de tarefas recorrentes
+  useRecurringTaskSocket();
 
   useEffect(() => {
     setRawTasks(tasksData);
@@ -205,10 +214,6 @@ const Tasks = () => {
       // Atualizar rawTasks localmente
       setRawTasks(prevRawTasks => [...prevRawTasks, newTask]);
 
-      if (tasksListRef.current && activeTab === 'list') {
-        tasksListRef.current.fetchTasks();
-      }
-
       const newProjectId = typeof taskData.project_id === 'string'
         ? parseInt(taskData.project_id)
         : taskData.project_id;
@@ -231,10 +236,10 @@ const Tasks = () => {
     } catch (error) {
       toast.error('Erro ao criar tarefa. Verifique os dados e tente novamente.');
     }
-  }, [activeTab, projects, projectsWithTasks, setIsDialogOpen, setRawTasks, setProjectsWithTasks, tasksListRef]);
+  }, [projects, projectsWithTasks, setIsDialogOpen, setRawTasks, setProjectsWithTasks]);
 
   const handleTabChange = (value: string) => {
-    setActiveTab(value);
+    setViewMode(value as 'status' | 'date');
   };
 
   const handlePriorityChange = (value: string) => {
@@ -261,10 +266,6 @@ const Tasks = () => {
     }
   };
 
-  const handleViewModeChange = (value: 'status' | 'date') => {
-    setViewMode(value);
-  };
-
   const handleShowCompletedChange = (checked: boolean) => {
     setShowCompleted(checked);
     localStorage.setItem('showCompletedTasksPage', String(checked));
@@ -273,12 +274,6 @@ const Tasks = () => {
   const handleShowMyReviewsChange = (checked: boolean) => {
     setShowMyReviews(checked);
     localStorage.setItem('showMyReviewsTasksPage', String(checked));
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
   };
 
   // Memoized filtered tasks to avoid re-calculating on every render
@@ -320,12 +315,12 @@ const Tasks = () => {
       tasksToFilter = tasksToFilter.filter(task => task.status !== 'concluido');
     }
 
-    // Hide canceled tasks for everyone
+    // Apply show cancelled filter
+    if (!showCancelled) {
+      tasksToFilter = tasksToFilter.filter(task => task.status !== 'cancelado');
+    }
+
     // Hide pending and waiting for client tasks only for non-admins
-    tasksToFilter = tasksToFilter.filter(
-      task => task.status !== 'cancelado'
-    );
-    // Only filter out pending/waiting for non-admins
     if (!permissions.isAdmin) {
       tasksToFilter = tasksToFilter.filter(
         task =>
@@ -356,7 +351,7 @@ const Tasks = () => {
     }
 
     return tasksToFilter;
-  }, [rawTasks, sidebarFilters, selectedProjectFilter, selectedPriorityFilter, selectedUserId, showCompleted, showMyReviews, isUserMember, currentUserIdAuth, permissions.isAdmin]);
+  }, [rawTasks, sidebarFilters, selectedProjectFilter, selectedPriorityFilter, selectedUserId, showCompleted, showCancelled, showMyReviews, isUserMember, currentUserIdAuth, permissions.isAdmin]);
 
   // Sincronizar sidebarFilters -> estados antigos (mantém lógica de filtragem intacta)
   useEffect(() => {
@@ -365,9 +360,11 @@ const Tasks = () => {
     setSelectedUserId(sidebarFilters.userId === 'all' ? null : sidebarFilters.userId);
     setShowCompleted(sidebarFilters.showCompleted);
     setShowMyReviews(sidebarFilters.showMyReviews);
+    setShowCancelled(sidebarFilters.showCancelled);
     // Persistir toggles no localStorage
     localStorage.setItem('showCompletedTasksPage', String(sidebarFilters.showCompleted));
     localStorage.setItem('showMyReviewsTasksPage', String(sidebarFilters.showMyReviews));
+    localStorage.setItem('showCancelledTasksPage', String(sidebarFilters.showCancelled));
   }, [sidebarFilters]);
 
   return (
@@ -488,37 +485,15 @@ const Tasks = () => {
                   </div>
                 ) : null}
               </div>
-              <Tabs defaultValue="kanban" className="w-full flex-1 flex flex-col min-h-0" onValueChange={handleTabChange}>
+              <Tabs defaultValue="status" className="w-full flex-1 flex flex-col min-h-0" onValueChange={handleTabChange}>
                 <div className="px-7 py-3 flex items-center gap-4 flex-shrink-0">
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <TabsList>
-                      <TabsTrigger value="kanban">Kanban</TabsTrigger>
-                      <TabsTrigger value="list">Lista</TabsTrigger>
+                      <TabsTrigger value="status">Status</TabsTrigger>
+                      <TabsTrigger value="date">Data</TabsTrigger>
                     </TabsList>
-                    <Select
-                      value={viewMode}
-                      onValueChange={handleViewModeChange}
-                    >
-                      <SelectTrigger className="h-8 w-[140px] text-[13px] border-border/40 bg-transparent shadow-none">
-                        <SelectValue placeholder="Visualização" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="status">Por Status</SelectItem>
-                        <SelectItem value="date">Por Data</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      title="Atualizar lista"
-                      onClick={handleRefresh}
-                      disabled={refreshing}
-                      className={refreshing ? "animate-spin" : ""}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
                     {permissions.can('task:create') && !permissions.isMember && (
                       <Button variant="outline" size="sm" className="gap-1" disabled={isLoading} onClick={() => setIsRecurringTasksDialogOpen(true)}>
                         <Repeat className="h-4 w-4" />
@@ -537,20 +512,20 @@ const Tasks = () => {
                     )}
                   </div>
                 </div>
-                <TabsContent value="kanban" className="mt-0 pb-0 flex-1 h-full overflow-hidden">
+                <TabsContent value="status" className="mt-0 pb-0 flex-1 h-full overflow-hidden">
                   <div className="h-full overflow-x-auto pb-0 mb-0">
                     <div className="h-full" style={{ minWidth: 'calc(300px * 7 + 0px)', padding:"0px 30px"}}>
                       {isLoading && !filteredTasks.length ? (
                         <Skeleton className="w-full h-[500px]" />
                       ) : (
                         <KanbanBoard
-                          rawTasks={filteredTasks} // Passando as tarefas já filtradas
+                          rawTasks={filteredTasks}
                           boardMode="tasks-view"
-                          viewMode={viewMode}
+                          viewMode="status"
                           filters={{
                             priority: selectedPriorityFilter ? selectedPriorityFilter as TaskPriority : undefined,
                             projectId: selectedProjectFilter || projectId,
-                            userId: selectedUserId, // Usando o estado do filtro de usuário
+                            userId: selectedUserId,
                             showCompleted: showCompleted,
                             showMyReviews: showMyReviews,
                           }}
@@ -562,21 +537,29 @@ const Tasks = () => {
                     </div>
                   </div>
                 </TabsContent>
-                <TabsContent value="list" className="mt-6 h-full overflow-y-auto">
-                  <div className="border rounded-lg p-4">
-                    <TasksList
-                      ref={tasksListRef}
-                      projectId={selectedProjectFilter || projectId} // Passando projectId do filtro ou URL
-                      selectedTeamId={null} // Não há filtro de equipe nesta página
-                      selectedUserId={selectedUserId} // Passando o ID do usuário do filtro
-                      priorityFilter={selectedPriorityFilter ? selectedPriorityFilter as TaskPriority : undefined} // Passando prioridade
-                      viewMode={viewMode}
-                      forceUserFilter={isUserMember} // Mantendo a lógica de forçar filtro de usuário para membros
-                      showCompleted={showCompleted}
-                      showMyReviews={showMyReviews}
-                      showProject={true} // Forçar exibição da coluna de projeto
-                      onTasksUpdated={async () => { await refetch(); }} // Callback para atualizar a lista principal
-                    />
+                <TabsContent value="date" className="mt-0 pb-0 flex-1 h-full overflow-hidden">
+                  <div className="h-full overflow-x-auto pb-0 mb-0">
+                    <div className="h-full" style={{ minWidth: 'calc(300px * 7 + 0px)', padding:"0px 30px"}}>
+                      {isLoading && !filteredTasks.length ? (
+                        <Skeleton className="w-full h-[500px]" />
+                      ) : (
+                        <KanbanBoard
+                          rawTasks={filteredTasks}
+                          boardMode="tasks-view"
+                          viewMode="date"
+                          filters={{
+                            priority: selectedPriorityFilter ? selectedPriorityFilter as TaskPriority : undefined,
+                            projectId: selectedProjectFilter || projectId,
+                            userId: selectedUserId,
+                            showCompleted: showCompleted,
+                            showMyReviews: showMyReviews,
+                          }}
+                          onTaskStatusChange={handleKanbanTaskStatusChange}
+                          onGenericTaskUpdate={handleKanbanGenericTaskUpdate}
+                          onUpdateTaskApi={handleUpdateTaskApi}
+                        />
+                      )}
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>

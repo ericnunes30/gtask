@@ -237,10 +237,12 @@ const TaskCard = ({
 
       {/* Título */}
       <h4 className="text-[13.5px] font-semibold text-foreground leading-snug mb-3">
-        {isTimerRunning && (
-          <Timer className="h-3.5 w-3.5 inline-block mr-1 text-green-500" />
-        )}
-        {task.title}
+        <span className="inline-flex items-center gap-1">
+          {isTimerRunning && (
+            <Timer className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+          )}
+          <span>{task.title}</span>
+        </span>
       </h4>
 
       {/* Footer: avatares, prioridade | comentários, timer */}
@@ -375,7 +377,7 @@ const SortableTaskCard = ({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? transition : 'none',
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 999 : 'auto',
   };
@@ -501,6 +503,8 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     onGenericTaskUpdate
   } = props;
 
+  const [localRawTasks, setLocalRawTasks] = useState<KanbanTask[]>(rawTasks);
+
   const {
     columns: processedColumns,
     tasksMap: processedTasksMap,
@@ -508,12 +512,16 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
     isLoading: processedDataIsLoading,
     error: processedDataError,
   } = useProcessedKanbanData({
-    rawTasks,
+    rawTasks: localRawTasks,
     viewMode,
     boardMode,
     filters,
     projectId: projectId !== undefined ? String(projectId) : undefined,
   });
+
+  useEffect(() => {
+    setLocalRawTasks(rawTasks);
+  }, [rawTasks]);
 
   const { user } = useAuth();
   const permissions = usePermissions();
@@ -744,6 +752,13 @@ export const KanbanBoard = React.forwardRef<unknown, KanbanBoardProps>((props, r
         if (roundedNewOrder !== undefined) {
           updateData.order = roundedNewOrder;
         }
+        
+        // Optimistic update: move task locally immediately so it snaps to the new column
+        setLocalRawTasks(prev => prev.map(t => 
+          String(t.id) === taskToMoveIdStr 
+            ? { ...t, status: finalDestStatus, order: roundedNewOrder ?? t.order } 
+            : t
+        ));
         
         await updateTask({ id: Number(taskToMove.id), data: updateData });
         toast.success(`Tarefa "${taskToMove.title}" movida.`);

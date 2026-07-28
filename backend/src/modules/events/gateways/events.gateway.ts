@@ -14,6 +14,15 @@ import { TimerService } from '../../tasks/services/timer.service';
 import { DebugLoggerService } from '../../notification/services/debug-logger.service';
 import { StartupVerificationService } from '../services/startup-verification/startup-verification.service';
 import { NotificationEventListener } from '../listeners/notification-event.listener';
+import {
+  bridgeTimerEvents,
+  bridgeTaskEvents,
+  bridgeProjectEvents,
+  bridgeUserEvents,
+  bridgeOccupationEvents,
+  bridgeRoleEvents,
+  bridgeRecurringTaskEvents,
+} from './bridges';
 
 @WebSocketGateway({
   cors: {
@@ -40,7 +49,13 @@ export class EventsGateway
     private readonly startupVerification: StartupVerificationService,
     private readonly notificationEventListener: NotificationEventListener,
   ) {
-    this.bridgeTimerEvents();
+    bridgeTimerEvents(this.server, this.eventEmitter, this.logger);
+    bridgeTaskEvents(this.server, this.eventEmitter, this.logger);
+    bridgeProjectEvents(this.server, this.eventEmitter, this.logger);
+    bridgeUserEvents(this.server, this.eventEmitter, this.logger);
+    bridgeOccupationEvents(this.server, this.eventEmitter, this.logger);
+    bridgeRoleEvents(this.server, this.eventEmitter, this.logger);
+    bridgeRecurringTaskEvents(this.server, this.eventEmitter, this.logger);
   }
 
   private isInitialized = false;
@@ -59,28 +74,88 @@ export class EventsGateway
     this.logger.log('✅ EventsGateway initialization completed successfully');
   }
 
-  private bridgeTimerEvents(): void {
-    this.eventEmitter.on(
-      'timer.started',
-      (payload: { taskId: number; userId: number }) => {
-        this.logger.log(`Bridging timer.started for task ${payload.taskId}`);
-        this.server
-          ?.to(`task_${payload.taskId}`)
-          .emit('timer.started', payload);
-      },
-    );
-    this.eventEmitter.on(
-      'timer.paused',
-      (payload: { taskId: number; seconds: number; userId?: number }) => {
-        this.server?.to(`task_${payload.taskId}`).emit('timer.paused', payload);
-      },
-    );
-    this.eventEmitter.on(
-      'timer.tick',
-      (payload: { taskId: number; seconds: number }) => {
-        this.server?.to(`task_${payload.taskId}`).emit('timer.tick', payload);
-      },
-    );
+  @SubscribeMessage('join-users-room')
+  handleJoinUsersRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining users room`);
+    void client.join('users_all');
+  }
+
+  @SubscribeMessage('leave-users-room')
+  handleLeaveUsersRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving users room`);
+    void client.leave('users_all');
+  }
+
+  @SubscribeMessage('join-occupations-room')
+  handleJoinOccupationsRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining occupations room`);
+    void client.join('occupations_all');
+  }
+
+  @SubscribeMessage('leave-occupations-room')
+  handleLeaveOccupationsRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving occupations room`);
+    void client.leave('occupations_all');
+  }
+
+  @SubscribeMessage('join-roles-room')
+  handleJoinRolesRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining roles room`);
+    void client.join('roles_all');
+  }
+
+  @SubscribeMessage('leave-roles-room')
+  handleLeaveRolesRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving roles room`);
+    void client.leave('roles_all');
+  }
+
+  @SubscribeMessage('join-recurring-tasks-room')
+  handleJoinRecurringTasksRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining recurring tasks room`);
+    void client.join('recurring_tasks_all');
+  }
+
+  @SubscribeMessage('leave-recurring-tasks-room')
+  handleLeaveRecurringTasksRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving recurring tasks room`);
+    void client.leave('recurring_tasks_all');
+  }
+
+  @SubscribeMessage('join-projects-room')
+  handleJoinProjectsRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining projects room`);
+    void client.join('projects_all');
+  }
+
+  @SubscribeMessage('leave-projects-room')
+  handleLeaveProjectsRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving projects room`);
+    void client.leave('projects_all');
+  }
+
+  @SubscribeMessage('join-project-room')
+  handleJoinProjectRoom(client: Socket, projectId: string) {
+    this.logger.log(`Client ${client.id} joining project room: ${projectId}`);
+    void client.join(`project_${projectId}`);
+  }
+
+  @SubscribeMessage('leave-project-room')
+  handleLeaveProjectRoom(client: Socket, projectId: string) {
+    this.logger.log(`Client ${client.id} leaving project room: ${projectId}`);
+    void client.leave(`project_${projectId}`);
+  }
+
+  @SubscribeMessage('join-tasks-room')
+  handleJoinTasksRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} joining tasks room`);
+    void client.join('tasks_all');
+  }
+
+  @SubscribeMessage('leave-tasks-room')
+  handleLeaveTasksRoom(client: Socket) {
+    this.logger.log(`Client ${client.id} leaving tasks room`);
+    void client.leave('tasks_all');
   }
 
   handleConnection(client: Socket, ..._args: unknown[]) {

@@ -25,7 +25,7 @@ export class Task {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ nullable: true, type: 'integer' })
+  @Column({ nullable: true, type: 'float' })
   order!: number | null;
 
   @Column({ type: 'varchar', length: 255 })

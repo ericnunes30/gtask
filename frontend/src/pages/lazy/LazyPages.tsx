@@ -4,7 +4,6 @@ import { PageErrorBoundary } from '@/components/error/PageErrorBoundary';
 
 // Importação lazy das páginas com configurações específicas de loading
 const LazyProjects = lazy(() => import('@/pages/Projects'));
-const LazyProjectView = lazy(() => import('@/pages/ProjectView'));
 const LazyTasks = lazy(() => import('@/pages/Tasks'));
 const LazyTeams = lazy(() => import('@/pages/Teams'));
 const LazyTaskDetails = lazy(() => import('@/pages/TaskDetails'));
@@ -17,14 +16,6 @@ export const LazyProjectsPage: React.FC = () => (
   <PageErrorBoundary>
     <Suspense fallback={<PageLoading type="list" />}>
       <LazyProjects />
-    </Suspense>
-  </PageErrorBoundary>
-);
-
-export const LazyProjectViewPage: React.FC = () => (
-  <PageErrorBoundary>
-    <Suspense fallback={<PageLoading type="detail" />}>
-      <LazyProjectView />
     </Suspense>
   </PageErrorBoundary>
 );
@@ -80,7 +71,6 @@ export const LazyComponentsPage: React.FC = () => (
 // Exportação dos componentes lazy individuais para uso avançado
 export {
   LazyProjects,
-  LazyProjectView,
   LazyTasks,
   LazyTeams,
   LazyTaskDetails,

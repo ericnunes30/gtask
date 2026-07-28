@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository, In } from 'typeorm';
 import { ProjectService } from './project.service';
 import { Project } from '../entities/project.entity';
@@ -57,6 +58,7 @@ describe('ProjectService', () => {
           useValue: occupationRepository,
         },
         { provide: getRepositoryToken(Task), useValue: taskRepository },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 

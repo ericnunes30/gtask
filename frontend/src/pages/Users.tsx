@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, MoreHorizontal, Search, Pencil, Trash2, RefreshCw, Phone, CheckCircle, XCircle } from 'lucide-react';
+import { PlusCircle, Filter, MoreHorizontal, Search, Pencil, Trash2, Phone, CheckCircle, XCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,8 @@ import { toast } from "@/components/ui/use-toast";
 import { User, Role, CreateUserRequest, UpdateUserRequest } from "@/common/types";
 import { useBackendServices } from '@/hooks/useBackendServices'
 import { useAssignOccupations } from '@/services/backend/users'
+import { useUserSocket } from '@/hooks/useUserSocket'
+import { useRoleSocket } from '@/hooks/useRoleSocket'
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -126,7 +128,6 @@ const Users = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dataLoading, setDataLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false); // Estado para controlar a atualização
   const [dataError, setDataError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -142,6 +143,12 @@ const Users = () => {
 
   const { mutateAsync: addUserToTeamMutate } = teamsService.useAddUserToTeam();
   const { mutateAsync: removeUserFromTeamMutate } = teamsService.useRemoveUserFromTeam();
+
+  // WebSocket para atualização em tempo real de usuários
+  useUserSocket();
+
+  // WebSocket para atualização em tempo real de cargos/roles
+  useRoleSocket();
 
   const {
     data: rolesQueryData,
@@ -187,13 +194,6 @@ const Users = () => {
     is_active: true,
     whatsapp: '',
   });
-
-  // Função para atualizar manualmente a lista de usuários
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([refetch(), refetchRoles(), refetchOccupations()]);
-    setRefreshing(false);
-  };
 
   // Função para carregar dados (extraída para ser reutilizável)
   const fetchData = async (showLoadingIndicator = true) => {
@@ -644,15 +644,18 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Usuários</h1>
-            <p className="text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
+              <Users className="h-5 w-5 text-primary/60" />
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Gerencie usuários, permissões e equipes.
             </p>
           </div>
           {/* Diálogo para adicionar novo usuário */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-1">
+              <Button className="gap-2 rounded-xl">
                 <PlusCircle className="h-4 w-4" />
                 Novo Usuário
               </Button>
@@ -1080,19 +1083,9 @@ const filteredUsers = Array.isArray(usersQueryData) ? usersQueryData.filter(user
           <Button variant="outline" size="icon" title="Filtrar">
             <Filter className="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            title="Atualizar lista"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className={refreshing ? "animate-spin" : ""}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
         </div>
 
-        <div className="border rounded-lg overflow-hidden">
+        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
                <TableRow>

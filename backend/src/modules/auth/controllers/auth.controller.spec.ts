@@ -87,7 +87,7 @@ describe('AuthController', () => {
 
   describe('POST /auth/login', () => {
     it('should return 200 and tokens on login', async () => {
-      const loginDto = { email: 'test@example.com', password: 'password123' }; // eslint-disable-line sonarjs/no-hardcoded-passwords
+      const loginDto = { email: 'test@example.com', password: 'password123' };
       const response = await supertest(app.getHttpServer())
         .post('/auth/login')
         .send(loginDto)
@@ -138,7 +138,7 @@ describe('AuthController', () => {
       const setupDto = {
         name: 'Admin',
         email: 'admin@example.com',
-        password: 'password123', // eslint-disable-line sonarjs/no-hardcoded-passwords
+        password: 'password123',
       };
       const response = await supertest(app.getHttpServer())
         .post('/auth/setup')
@@ -160,7 +160,7 @@ describe('AuthController', () => {
       const registerDto = {
         name: 'User',
         email: 'user@example.com',
-        password: 'password123', // eslint-disable-line sonarjs/no-hardcoded-passwords
+        password: 'password123',
       };
       const response = await supertest(app.getHttpServer())
         .post('/auth/register')

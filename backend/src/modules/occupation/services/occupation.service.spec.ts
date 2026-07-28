@@ -5,6 +5,7 @@ import { DuplicateOccupationNameException } from '../exceptions/duplicate-occupa
 import { UserNotInOccupationException } from '../exceptions/user-not-in-occupation.exception';
 import { UserNotFoundException } from '../../user/exceptions/user-not-found.exception';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OccupationService } from './occupation.service';
 import { Occupation } from '../entities/occupation.entity';
 import { User } from '../../user/entities/user.entity';
@@ -49,6 +50,7 @@ describe('OccupationService', () => {
           useValue: occupationRepository,
         },
         { provide: getRepositoryToken(User), useValue: userRepository },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 

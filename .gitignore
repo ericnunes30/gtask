@@ -25,6 +25,7 @@ outputsrun-*
 *.md
 !.docs/*.md
 !.github/**/*.md
+!backend/README.md
 
 .mcp.json
 

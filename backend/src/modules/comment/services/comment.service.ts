@@ -123,12 +123,19 @@ export class CommentService {
   ): Promise<Comment> {
     const comment = await this.findOne(id);
     Object.assign(comment, updateCommentDto);
-    return this.commentRepository.save(comment);
+    const savedComment = await this.commentRepository.save(comment);
+
+    this.eventEmitter.emit('comment.updated', { comment: savedComment });
+
+    return savedComment;
   }
 
   async remove(id: number): Promise<void> {
     const comment = await this.findOne(id);
+    const taskId = comment.task?.id;
     await this.commentRepository.remove(comment);
+
+    this.eventEmitter.emit('comment.deleted', { commentId: id, taskId });
   }
 
   async findByTaskId(taskId: number): Promise<Comment[]> {

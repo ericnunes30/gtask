@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, Search, Eye } from 'lucide-react';
+import { CheckCircle2, Search, Eye, XCircle } from 'lucide-react';
 
 type Priority = 'baixa' | 'media' | 'alta' | 'urgente';
 
@@ -24,6 +24,7 @@ export interface TaskFiltersState {
   projectId: number | 'all';
   userId: number | 'all';
   showCompleted: boolean;
+  showCancelled: boolean;
   showMyReviews: boolean;
   searchTerm: string;
 }
@@ -202,6 +203,16 @@ export const TaskFiltersSidebar: React.FC<TaskFiltersSidebarProps> = ({
           <Switch
             checked={filters.showCompleted}
             onCheckedChange={(checked) => onChange({ ...filters, showCompleted: checked })}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] text-foreground/80 flex items-center gap-1.5">
+            <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+            Canceladas
+          </span>
+          <Switch
+            checked={filters.showCancelled}
+            onCheckedChange={(checked) => onChange({ ...filters, showCancelled: checked })}
           />
         </div>
       </section>

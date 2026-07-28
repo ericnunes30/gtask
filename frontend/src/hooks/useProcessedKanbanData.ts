@@ -16,48 +16,28 @@ const useProcessedKanbanData = ({
   filters,
   projectId,
 }: UseProcessedKanbanDataProps): UseProcessedKanbanDataReturn => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Efeito para simular carregamento/erro durante o processamento, se necessário.
-  // Por enquanto, o processamento é síncrono após a filtragem.
-  useEffect(() => {
-    setIsLoading(true);
-    setError(null);
+  const processedData = useMemo(() => {
     try {
-      // A lógica de processamento real está no useMemo abaixo.
-      // Este useEffect é mais para controlar o estado de loading/error em torno do processamento.
-      // Se o processamento se tornar assíncrono, esta lógica seria mais complexa.
-      setIsLoading(false);
+      const filteredTasks = applyTaskFilters(rawTasks, filters, boardMode);
+      const { columns, tasksMap, columnOrder } = generateKanbanColumns(filteredTasks, viewMode);
+      return { columns, tasksMap, columnOrder, error: null };
     } catch (e: any) {
       console.error("Erro ao processar dados do Kanban:", e);
-      setError("Falha ao processar os dados das tarefas.");
-      setIsLoading(false);
+      return {
+        columns: {},
+        tasksMap: {},
+        columnOrder: [],
+        error: "Falha ao processar os dados das tarefas.",
+      };
     }
-  }, [rawTasks, viewMode, boardMode, filters, projectId]);
-
-
-  const processedData = useMemo(() => {
-    // console.log('[useProcessedKanbanData] Recalculando dados. Filters:', filters);
-    // console.log('[useProcessedKanbanData] Raw tasks count:', rawTasks.length);
-
-    const filteredTasks = applyTaskFilters(rawTasks, filters, boardMode);
-    // console.log('[useProcessedKanbanData] Filtered tasks count:', filteredTasks.length);
-
-    const {
-      columns,
-      tasksMap,
-      columnOrder,
-    } = generateKanbanColumns(filteredTasks, viewMode /*, boardMode, projectId */);
-    // console.log('[useProcessedKanbanData] Generated columns:', columns);
-
-    return { columns, tasksMap, columnOrder };
-  }, [rawTasks, viewMode, boardMode, filters /*, projectId */]); // projectId pode não ser necessário como dep se já filtrado
+  }, [rawTasks, viewMode, boardMode, filters]);
 
   return {
-    ...processedData,
-    isLoading,
-    error,
+    columns: processedData.columns,
+    tasksMap: processedData.tasksMap,
+    columnOrder: processedData.columnOrder,
+    isLoading: false,
+    error: processedData.error,
   };
 };
 

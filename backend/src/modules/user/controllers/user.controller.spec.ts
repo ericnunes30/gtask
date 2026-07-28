@@ -122,7 +122,7 @@ describe('UserController', () => {
       const createUserDto = {
         name: 'User Three',
         email: 'three@example.com',
-        password: 'password123', // eslint-disable-line sonarjs/no-hardcoded-passwords
+        password: 'password123',
       };
       const response = await supertest(app.getHttpServer())
         .post('/users')

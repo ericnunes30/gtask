@@ -47,7 +47,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
+    files: ['src/**/*.spec.ts', 'test/**/*.ts'],
     languageOptions: {
       parserOptions: {
         project: './tsconfig.spec.json',
@@ -64,6 +64,9 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-unsafe-argument': 'off',
+      // Dados de teste (factories / senhas hardcoded) e assertions genericas sao aceitaveis em E2E/specs
+      'sonarjs/no-hardcoded-passwords': 'off',
+      'sonarjs/prefer-specific-assertions': 'off',
     },
   },
   // Scripts CLI e migrations: console.log e permitido (saida de terminal / one-off).

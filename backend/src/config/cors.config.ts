@@ -9,8 +9,8 @@ export const corsConfig: CorsOptions = {
       'http://localhost:8081',
       'http://localhost:3000', // React default port
       'http://localhost:5173', // Vite default port
-      'http://127.0.0.1:8080',
-      'http://127.0.0.1:8081',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5173',
       'http://192.168.1.116:8080', // Dev environment
       'http://172.17.176.1:8080',
       /^http:\/\/172\.\d+\.\d+\.\d+:8080/, // Docker internal network

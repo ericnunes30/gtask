@@ -2,7 +2,6 @@ import React, { useCallback } from 'react';
 
 interface PreloadConfig {
   Projects?: () => Promise<any>;
-  ProjectView?: () => Promise<any>;
   Tasks?: () => Promise<any>;
   Teams?: () => Promise<any>;
   TaskDetails?: () => Promise<any>;
@@ -24,12 +23,6 @@ export const useRoutePreload = (config?: PreloadConfig) => {
       '/settings': () => import('@/pages/Settings'),
       '/users': () => import('@/pages/Users'),
     };
-
-    // Para rotas dinâmicas, usar o import padrão
-    const dynamicRouteMatch = path.match(/\/projects\/([^\/]+)/);
-    if (dynamicRouteMatch) {
-      routeMap[path] = () => import('@/pages/ProjectView');
-    }
 
     const taskDetailMatch = path.match(/\/tasks\/([^\/]+)/);
     if (taskDetailMatch) {

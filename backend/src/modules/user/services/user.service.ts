@@ -1,6 +1,7 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, In, DataSource } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcrypt';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -22,6 +23,7 @@ export class UserService {
     @InjectRepository(Occupation)
     private readonly occupationRepository: Repository<Occupation>,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -56,6 +58,8 @@ export class UserService {
       savedUser.occupations = occupations;
       await this.userRepository.save(savedUser);
     }
+
+    this.eventEmitter.emit('user.created', { user: savedUser });
 
     return savedUser;
   }
@@ -177,12 +181,16 @@ export class UserService {
     Object.assign(user, updateUserDto);
     const savedUser = await this.userRepository.save(user);
 
+    this.eventEmitter.emit('user.updated', { user: savedUser });
+
     return savedUser;
   }
 
   async remove(id: number): Promise<void> {
     const user = await this.findOne(id);
     await this.userRepository.remove(user);
+
+    this.eventEmitter.emit('user.deleted', { userId: id });
   }
 
   async assignRoles(userId: number, roleIds: number[]): Promise<User> {

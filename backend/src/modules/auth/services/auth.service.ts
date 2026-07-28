@@ -80,11 +80,17 @@ export class AuthService {
     const accessTokenPayload = this.buildTokenPayload(user);
     const refreshTokenPayload = { sub: user.id };
 
+    const accessExpiresIn =
+      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m';
+    const refreshExpiresIn =
+      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d';
+
     const accessToken = this.jwtService.sign(accessTokenPayload, {
-      expiresIn: '15m',
+      expiresIn: accessExpiresIn,
     });
     const refreshToken = this.jwtService.sign(refreshTokenPayload, {
-      expiresIn: '7d',
+      secret: this.refreshSecret,
+      expiresIn: refreshExpiresIn,
     });
 
     return { accessToken, refreshToken };
@@ -144,13 +150,15 @@ export class AuthService {
         user as UserWithRoles,
       );
       const newAccessToken = this.jwtService.sign(newAccessTokenPayload, {
-        expiresIn: '15m',
+        expiresIn:
+          this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m',
       });
       const newRefreshToken = this.jwtService.sign(
         { sub: user.id },
         {
           secret: this.refreshSecret,
-          expiresIn: '7d',
+          expiresIn:
+            this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
         },
       );
 

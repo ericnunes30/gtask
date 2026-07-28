@@ -152,13 +152,6 @@ export default [
     files: ['src/commands/**', 'src/database/migrations/**'],
     rules: { 'no-console': 'off', 'max-lines': 'off' },
   },
-  // Modulo whatsapp: integracao futura (ver .docs/modules-status.md).
-  // N2.5 (max-lines) e N2.9 (complexity) nao aplicam ate o modulo
-  // ser promovido a feature ativa.
-  {
-    files: ['src/modules/whatsapp/**/*.ts'],
-    rules: { 'max-lines': 'off', 'complexity': 'off' },
-  },
   // Specs de teste: max-lines nao aplica (foco em cobertura, nao tamanho)
   {
     files: ['src/**/*.spec.ts'],
@@ -424,6 +417,31 @@ const nivel2: Criterion[] = [
     },
   },
   {
+    id: '2.11',
+    nivel: 2,
+    nome: 'Testes E2E passam (jest e2e)',
+    run: () => {
+      const outFile = path.join(BACKEND_DIR, '.qg-e2e.json');
+      const r = run('npx jest --config ./test/jest-e2e.json --passWithNoTests --json --outputFile=' + outFile, { timeout: 300_000 });
+      let report: JestJsonReport = null;
+      try {
+        if (existsSync(outFile)) {
+          report = JSON.parse(readFileSync(outFile, 'utf8')) as unknown as JestJsonReport;
+          try { unlinkSync(outFile); } catch { /* noop */ }
+        }
+      } catch {
+        report = null;
+      }
+      const passed = report?.numPassedTests ?? 0;
+      const failed = report?.numFailedTests ?? 0;
+      return {
+        pass: r.exit === 0 && failed === 0,
+        measured: true,
+        detail: r.exit === 0 ? `${passed} teste(s) E2E passando` : `${failed} teste(s) E2E falhando`,
+      };
+    },
+  },
+  {
     id: '2.3',
     nivel: 2,
     nome: 'Cobertura minima de 20%',
@@ -490,9 +508,8 @@ const nivel2: Criterion[] = [
     nome: 'Guards de autenticacao consistentes (JwtAuthGuard)',
     run: () => {
       // Excecoes: auth.controller (rotas publicas: login/register)
-      // e whatsapp (integracao futura - ver .docs/modules-status.md)
       const dirs = ['src/modules'];
-      const excluded = /(^|[\\/])auth[\\/]controllers[\\/]auth\.controller\.ts|(^|[\\/])modules[\\/]whatsapp[\\/]/;
+      const excluded = /(^|[\\/])auth[\\/]controllers[\\/]auth\\.controller\\.ts/;
       let totalGuards = 0;
       let jwtGuards = 0;
       const re = /@UseGuards\(/g;
@@ -513,7 +530,7 @@ const nivel2: Criterion[] = [
       return {
         pass: consistentes,
         measured: true,
-        detail: `${jwtGuards}/${totalGuards} @UseGuards sao JwtAuthGuard (excluindo auth.controller e whatsapp)`,
+        detail: `${jwtGuards}/${totalGuards} @UseGuards sao JwtAuthGuard (excluindo auth.controller)`,
       };
     },
   },

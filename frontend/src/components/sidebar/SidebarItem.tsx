@@ -22,18 +22,15 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   active,
   onClick,
 }) => {
-  const location = useLocation();
   const { preloadRoute } = useRoutePreload();
 
   const handleMouseEnter = () => {
-    // Pré-carrega a rota quando o mouse passa sobre o item
     if (!active) {
       preloadRoute(href);
     }
   };
 
   const handleFocus = () => {
-    // Pré-carrega a rota quando o item recebe foco
     if (!active) {
       preloadRoute(href);
     }
@@ -43,8 +40,9 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
     <Link
       to={href}
       className={cn(
-        "sidebar-item",
-        active && "active"
+        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+        "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
+        active && "bg-primary/10 text-primary hover:bg-primary/15 shadow-sm"
       )}
       onMouseEnter={handleMouseEnter}
       onFocus={handleFocus}
@@ -55,8 +53,13 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
         onClick?.();
       }}
     >
-      <Icon className="h-5 w-5 text-sidebar-foreground" />
-      {!collapsed && <span className="text-sidebar-foreground">{label}</span>}
+      <div className={cn(
+        "flex items-center justify-center w-8 h-8 rounded-lg transition-colors",
+        active ? "bg-primary/15 text-primary" : "text-sidebar-foreground/60"
+      )}>
+        <Icon className="h-[18px] w-[18px]" />
+      </div>
+      {!collapsed && <span className="truncate">{label}</span>}
     </Link>
   );
 };

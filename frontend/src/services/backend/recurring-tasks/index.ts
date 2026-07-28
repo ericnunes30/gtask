@@ -46,6 +46,7 @@ export const useGetRecurringTasks = () =>
     queryKeys.recurringTasks.lists(),
     recurringTaskService.getRecurringTasks,
     {
+      refetchOnMount: true,
       onError: (error) => {
         toast({
           title: 'Erro',

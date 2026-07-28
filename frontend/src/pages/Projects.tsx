@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PlusCircle, MoreHorizontal, Users, Calendar, ArrowRight, ClipboardList, AlertCircle, Edit, Pencil, Trash2, RefreshCw } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Users, Calendar, ArrowRight, ClipboardList, AlertCircle, Edit, Pencil, Trash2, Search, Briefcase } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -23,13 +23,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ProjectForm } from '@/components/forms/ProjectForm';
@@ -42,6 +35,8 @@ import { useBackendServices } from '@/hooks/useBackendServices';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
+import { useProjectModalStore } from '@/stores/projectModalStore';
+import { useProjectSocket } from '@/hooks/useProjectSocket';
 import { Switch } from "@/components/ui/switch"; // Importar o componente Switch
 
 // Estendendo a interface Project para incluir campos adicionais usados na UI
@@ -56,7 +51,6 @@ interface UIProject extends Project {
 
 
 const Projects = () => {
-  const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [teams, setTeams] = useState([]);
@@ -70,11 +64,15 @@ const Projects = () => {
   const [projectTasksData, setProjectTasksData] = useState<Record<number, any[]>>({});
   const { user } = useAuth();
   const permissions = usePermissions();
+  const { openProject } = useProjectModalStore();
   const { projects: projectsService } = useBackendServices();
   const queryClient = useQueryClient();
   const [viewProjectId, setViewProjectId] = useState<number | null>(null);
   const { data: viewProjectData } = projectsService.useGetProject(viewProjectId as number, Boolean(viewProjectId));
   const { mutateAsync: deleteProjectMutation } = projectsService.useDeleteProject();
+
+  // WebSocket para atualização em tempo real de projetos
+  useProjectSocket();
 
   const { data, isLoading, isError } = projectsService.useGetProjects();
   const projects = data ?? [];
@@ -372,12 +370,10 @@ const Projects = () => {
   };
 
   const navigateToProject = (projectId: number) => {
-    // Verificar se o usuário é um membro e se tem permissão para navegar para este projeto
+    // Verificar se o usuário é um membro e se tem permissão para visualizar este projeto
     if (permissions.isMember) {
-      // Tentar obter o ID do usuário do contexto de autenticação primeiro
       let userId = user?.id;
 
-      // Se não tiver o ID do usuário no contexto, tentar obter do localStorage
       if (!userId) {
         const userData = localStorage.getItem('user');
         if (userData) {
@@ -390,7 +386,6 @@ const Projects = () => {
         }
       }
 
-      // Verificar se o usuário está na lista de usuários do projeto
       if (userId) {
         const project = projects.find(p => p.id === projectId);
         if (project) {
@@ -400,7 +395,7 @@ const Projects = () => {
           );
 
           if (!userInProject) {
-            console.error(`Usuário ${userId} não tem permissão para navegar para o projeto ${projectId}`);
+            console.error(`Usuário ${userId} não tem permissão para visualizar o projeto ${projectId}`);
             toast.error('Você não tem permissão para acessar este projeto');
             return;
           }
@@ -408,7 +403,7 @@ const Projects = () => {
       }
     }
 
-    navigate(`/projects/${projectId}`);
+    openProject(projectId);
   };
 
   return (
@@ -416,17 +411,23 @@ const Projects = () => {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Projetos</h1>
-            <p className="text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">Projetos</h1>
+              <Briefcase className="h-5 w-5 text-primary/60" />
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Gerencie seus projetos e acompanhe o progresso.
             </p>
-            <Input
-              type="text"
-              placeholder="Buscar projetos..."
-              className="mt-4 max-w-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <div className="relative mt-3 max-w-sm">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Buscar projetos..."
+                className="pl-9 h-9 rounded-xl bg-muted/60 border-0"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <div className="flex items-center space-x-2">
@@ -440,7 +441,7 @@ const Projects = () => {
             {!permissions.isMember ? (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="gap-1">
+                  <Button className="gap-2 rounded-xl">
                     <PlusCircle className="h-4 w-4" />
                     Novo Projeto
                   </Button>
@@ -526,9 +527,6 @@ const Projects = () => {
               // Obter tarefas do projeto (já retorna uma cópia para evitar compartilhamento de referência)
               const projectTasksList = getProjectTasks(project.id);
 
-              // Calcular progresso usando a função dedicada
-              const progress = calculateProjectProgress(project.id);
-
               // Contagem de tarefas para este projeto específico
               const taskCount = projectTasksList.length;
 
@@ -537,72 +535,43 @@ const Projects = () => {
               return (
                 <Card
                   key={project.id}
-                  className="overflow-hidden hover:shadow-md hover:border-primary/50 transition-all cursor-pointer relative group"
+                  className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer relative group bg-white rounded-2xl"
                   onClick={() => navigateToProject(project.id)}
                 >
                   <CardContent className="p-0">
-                    {/* Indicador visual de que o card é clicável */}
-                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ArrowRight className="h-5 w-5 text-primary" />
-                    </div>
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-medium text-lg">{project.title}</h3>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                      <div className="flex items-center gap-1">
+                        {!permissions.isMember && (
+                          <>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              onClick={(e) => e.stopPropagation()} // Evita que o clique propague para o card
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                editProject(project);
+                              }}
                             >
-                              <MoreHorizontal className="h-4 w-4" />
+                              <Edit className="h-4 w-4 text-muted-foreground hover:text-primary" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation(); // Evita que o clique propague para o card
-                              viewProject(project);
-                            }}>
-                              Ver Detalhes
-                            </DropdownMenuItem>
-                            {!permissions.isMember && (
-                              <>
-                                <DropdownMenuItem onClick={(e) => {
-                                  e.stopPropagation(); // Evita que o clique propague para o card
-                                  editProject(project);
-                                }}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Editar Projeto
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation(); // Evita que o clique propague para o card
-                                    deleteProject(project);
-                                  }}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Remover Projeto
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteProject(project);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </div>
-                      <div className="text-sm text-muted-foreground mb-2 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: project.description || 'Sem descrição.' }} />
-
-                      <div className="mb-4">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-xs text-muted-foreground">Progresso</span>
-                          <span className="text-xs font-medium">{progress}%</span>
-                        </div>
-                        <Progress
-                          value={progress}
-                          className="h-1.5"
-                          key={`progress-${project.id}-${taskCount}-${progress}`}
-                        />
                       </div>
+                      <div className="text-sm text-muted-foreground mb-3 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: project.description || 'Sem descrição.' }} />
 
                       <div className="flex items-center justify-between mb-4">
                         <Badge variant={
@@ -821,7 +790,7 @@ const Projects = () => {
                             variant="ghost"
                             size="sm"
                             className="h-7 text-xs"
-                            onClick={() => navigateToProject(selectedProject.id)}
+                            onClick={() => openProject(selectedProject.id)}
                           >
                             Ver Todos
                           </Button>
@@ -886,7 +855,7 @@ const Projects = () => {
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => navigateToProject(selectedProject.id)}
+                        onClick={() => openProject(selectedProject.id)}
                       >
                         Ver Todas
                       </Button>
@@ -945,7 +914,7 @@ const Projects = () => {
 
                 <Button
                   variant="outline"
-                  onClick={() => navigateToProject(selectedProject.id)}
+                  onClick={() => openProject(selectedProject.id)}
                 >
                   <ArrowRight className="h-4 w-4 mr-2" />
                   Abrir Projeto
