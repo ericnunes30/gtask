@@ -1,6 +1,5 @@
-
 /* Import page transition styles */
-@import '../components/transitions/PageTransition.css';
+@import "../components/transitions/PageTransition.css";
 
 @tailwind base;
 @tailwind components;
@@ -116,7 +115,7 @@
   }
 
   .sidebar-item.active::before {
-    content: '';
+    content: "";
     @apply absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-sidebar-primary;
   }
 
@@ -136,11 +135,13 @@
   }
 
   /* Regras específicas para componentes de UI */
-  [data-state="checked"],
-  [data-state="on"],
-  [data-selected="true"],
-  [data-highlighted="true"],
-  [data-state="open"] {
+  [data-state="checked"]:not([role="dialog"]),
+  [data-state="on"]:not([role="dialog"]),
+  [data-selected="true"]:not([role="dialog"]),
+  [data-highlighted="true"]:not([role="dialog"]),
+  [data-state="open"]:not([role="dialog"]):not(
+      [data-radix-scroll-area-viewport]
+    ) {
     @apply text-accent-foreground;
   }
 
