@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { useSocket } from '@/contexts/adapters/SocketContextAdapter';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from "react";
+import { useSocket } from "@/contexts/adapters/SocketContextAdapter";
+import { useQueryClient } from "@tanstack/react-query";
 
 /**
  * Hook para escutar eventos WebSocket de usuários e
@@ -19,31 +19,31 @@ export function useUserSocket() {
     hasJoined.current = true;
 
     // Entrar na room de usuários
-    socket.emit('join-users-room');
+    socket.emit("join-users-room");
 
     const handleUserCreated = () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
     };
 
     const handleUserUpdated = () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["user"] });
     };
 
     const handleUserDeleted = () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["user"] });
     };
 
-    socket.on('user.created', handleUserCreated);
-    socket.on('user.updated', handleUserUpdated);
-    socket.on('user.deleted', handleUserDeleted);
+    socket.on("user.created", handleUserCreated);
+    socket.on("user.updated", handleUserUpdated);
+    socket.on("user.deleted", handleUserDeleted);
 
     return () => {
-      socket.off('user.created', handleUserCreated);
-      socket.off('user.updated', handleUserUpdated);
-      socket.off('user.deleted', handleUserDeleted);
-      socket.emit('leave-users-room');
+      socket.off("user.created", handleUserCreated);
+      socket.off("user.updated", handleUserUpdated);
+      socket.off("user.deleted", handleUserDeleted);
+      socket.emit("leave-users-room");
       hasJoined.current = false;
     };
   }, [socket, isConnected, queryClient]);
