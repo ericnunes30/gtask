@@ -24,12 +24,6 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Form,
@@ -91,12 +85,14 @@ const Login = () => {
         // Aqui poderia implementar a lógica para lembrar o usuário
         localStorage.setItem("rememberMe", "true");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao fazer login:", error);
-      setError(
-        error.response?.data?.message ||
-          "Erro ao fazer login. Verifique suas credenciais.",
-      );
+      let message = "Erro ao fazer login. Verifique suas credenciais.";
+      if (error && typeof error === "object" && "response" in error) {
+        const err = error as { response?: { data?: { message?: string } } };
+        message = err.response?.data?.message || message;
+      }
+      setError(message);
     }
   };
 
@@ -119,13 +115,13 @@ const Login = () => {
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="w-full max-w-[420px] mx-4">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/10 mb-4">
-            <LayoutDashboard className="h-6 w-6 text-primary" />
+          <div className="inline-flex items-center justify-center gap-3">
+            <LayoutDashboard className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              GTask
+            </h1>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            GTask
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-2">
             Entre com suas credenciais para acessar
           </p>
         </div>
@@ -204,7 +200,7 @@ const Login = () => {
                   )}
                 />
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center">
                   <FormField
                     control={form.control}
                     name="rememberMe"
@@ -222,23 +218,6 @@ const Login = () => {
                       </FormItem>
                     )}
                   />
-
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="link"
-                          className="p-0 h-auto text-sm text-muted-foreground hover:text-primary"
-                          type="button"
-                        >
-                          Esqueceu a senha?
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Entre em contato com o administrador</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
                 </div>
 
                 <Button
