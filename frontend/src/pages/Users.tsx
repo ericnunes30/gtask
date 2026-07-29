@@ -7,7 +7,6 @@ import {
   Search,
   Pencil,
   Trash2,
-  Phone,
   Calendar,
   AlertCircle,
   Filter,
@@ -69,17 +68,6 @@ const getBadgeColorClass = (teamId: number) => {
   );
 };
 
-const formatWhatsApp = (whatsapp: string) => {
-  if (!whatsapp) return null;
-  const numbersOnly = whatsapp.replace(/\D/g, "");
-  if (numbersOnly.length === 11) {
-    return `(${numbersOnly.slice(0, 2)}) ${numbersOnly.slice(2, 7)}-${numbersOnly.slice(7)}`;
-  } else if (numbersOnly.length === 10) {
-    return `(${numbersOnly.slice(0, 2)}) ${numbersOnly.slice(2, 6)}-${numbersOnly.slice(6)}`;
-  }
-  return whatsapp;
-};
-
 const formatUserDate = (dateString: string | undefined): string => {
   if (!dateString) return "Data não definida";
   try {
@@ -101,7 +89,6 @@ const emptyUserForm = {
   occupations: [] as number[],
   roles: [] as number[],
   is_active: true,
-  whatsapp: "",
 };
 
 const UsersPage = () => {
@@ -147,8 +134,7 @@ const UsersPage = () => {
     return usersQueryData.filter(
       (user) =>
         (user.name?.toLowerCase() || "").includes(term) ||
-        (user.email?.toLowerCase() || "").includes(term) ||
-        (user.whatsapp || "").toLowerCase().includes(term.replace(/\D/g, "")),
+        (user.email?.toLowerCase() || "").includes(term),
     );
   }, [usersQueryData, searchTerm]);
 
@@ -189,7 +175,6 @@ const UsersPage = () => {
         email: newUser.email,
         password: newUser.password,
         is_active: newUser.is_active,
-        whatsapp: newUser.whatsapp || undefined,
         occupations: newUser.occupations,
       };
       const createdUser = await createUserMutate(userData);
@@ -261,7 +246,6 @@ const UsersPage = () => {
       occupations: userOccupations,
       roles: userRoles,
       is_active: user.is_active ?? true,
-      whatsapp: user.whatsapp || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -276,7 +260,6 @@ const UsersPage = () => {
         name: newUser.name,
         email: newUser.email,
         is_active: newUser.is_active,
-        whatsapp: newUser.whatsapp || undefined,
       };
       if (newUser.password && newUser.password.trim()) {
         userData.password = newUser.password;
@@ -620,19 +603,6 @@ const UsersPage = () => {
                     </Label>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="whatsapp" className="text-right">
-                    WhatsApp
-                  </Label>
-                  <Input
-                    id="whatsapp"
-                    name="whatsapp"
-                    value={newUser.whatsapp}
-                    onChange={handleFormChange}
-                    className="col-span-3"
-                    placeholder="(00) 00000-0000"
-                  />
-                </div>
               </div>
               <DialogFooter>
                 <Button type="submit" onClick={handleAddUser}>
@@ -826,19 +796,6 @@ const UsersPage = () => {
                       {newUser.is_active ? "Usuário ativo" : "Usuário inativo"}
                     </Label>
                   </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-whatsapp" className="text-right">
-                    WhatsApp
-                  </Label>
-                  <Input
-                    id="edit-whatsapp"
-                    name="whatsapp"
-                    value={newUser.whatsapp}
-                    onChange={handleFormChange}
-                    className="col-span-3"
-                    placeholder="(00) 00000-0000"
-                  />
                 </div>
               </div>
               <DialogFooter>

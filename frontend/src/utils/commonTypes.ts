@@ -49,7 +49,6 @@ export interface User {
   updated_at?: string;
   updatedAt?: string; // Suporte para formato camelCase
   is_active?: boolean;
-  whatsapp?: string;
   roles?: Role[] | number[];
   permissions?: string[]; // Adicionado para permissões granulares
   occupation?: {
@@ -71,7 +70,6 @@ export interface CreateUserRequest {
   roles?: number[];
   occupations?: number[];
   is_active?: boolean;
-  whatsapp?: string;
 }
 
 export interface UpdateUserRequest {
@@ -82,7 +80,6 @@ export interface UpdateUserRequest {
   roles?: number[];
   teams?: number[];
   is_active?: boolean;
-  whatsapp?: string;
 }
 
 // =====================================================

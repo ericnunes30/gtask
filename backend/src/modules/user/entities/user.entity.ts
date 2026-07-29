@@ -38,33 +38,6 @@ export class User {
   @Column({ default: true, type: 'boolean', name: 'is_active' })
   is_active!: boolean;
 
-  @Column({ nullable: true, type: 'varchar' })
-  whatsapp?: string;
-
-  @Column({
-    name: 'whatsapp_notifications_enabled',
-    default: false,
-    type: 'boolean',
-  })
-  whatsappNotificationsEnabled!: boolean;
-
-  @Column({
-    name: 'whatsapp_priority_threshold',
-    default: 'MEDIUM',
-    type: 'varchar',
-  })
-  whatsappPriorityThreshold!: string;
-
-  @Column({
-    name: 'whatsapp_quiet_hours_start',
-    nullable: true,
-    type: 'varchar',
-  })
-  whatsappQuietHoursStart?: string;
-
-  @Column({ name: 'whatsapp_quiet_hours_end', nullable: true, type: 'varchar' })
-  whatsappQuietHoursEnd?: string;
-
   @ManyToMany(() => Occupation, (occupation) => occupation.users)
   occupations!: Occupation[];
 
