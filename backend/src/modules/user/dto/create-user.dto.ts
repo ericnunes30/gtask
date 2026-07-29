@@ -28,10 +28,6 @@ export class CreateUserDto {
   is_active?: boolean;
 
   @IsOptional()
-  @IsString()
-  whatsapp?: string;
-
-  @IsOptional()
   @IsArray({ message: 'Occupation IDs deve ser um array' })
   @IsNumber(
     {},

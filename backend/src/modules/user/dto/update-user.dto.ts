@@ -16,8 +16,4 @@ export class UpdateUserDto {
   @IsOptional()
   @IsBoolean()
   is_active?: boolean;
-
-  @IsOptional()
-  @IsString()
-  whatsapp?: string;
 }
