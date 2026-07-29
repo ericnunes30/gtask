@@ -136,20 +136,25 @@
 
   /* Regras específicas para componentes de UI */
   [data-state="checked"]:not([role="dialog"]),
-  [data-state="on"]:not([role="dialog"]),
+  [data-state="on"]:not([role="dialog"]):not([role="menu"]):not(
+      [role="menuitem"]
+    ):not([role="menuitemcheckbox"]),
   [data-selected="true"]:not([role="dialog"]),
-  [data-highlighted="true"]:not([role="dialog"]),
-  [data-state="open"]:not([role="dialog"]):not(
-      [data-radix-scroll-area-viewport]
-    ) {
+  [data-highlighted="true"]:not([role="dialog"]) {
     @apply text-accent-foreground;
   }
 
   /* Regras para dropdown e select */
   .select-item[data-highlighted="true"],
   .dropdown-item[data-highlighted="true"],
-  .select-item:focus,
-  .dropdown-item:focus {
+  .dropdown-item:focus,
+  .select-item:focus {
     @apply bg-accent text-accent-foreground;
+  }
+
+  /* Garantir cor legível para itens de menu no estado padrão */
+  [role="menuitem"],
+  [role="menuitemcheckbox"] {
+    color: hsl(var(--popover-foreground));
   }
 }

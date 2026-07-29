@@ -1,27 +1,10 @@
-
-import React, { useEffect, useState } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
+import React, { useEffect, useState } from "react";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -32,9 +15,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/components/ui/use-toast";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Palette, Shield } from "lucide-react";
-import { useBackendServices } from '@/hooks/useBackendServices';
-import { useAuth } from '@/contexts/adapters/AuthContextAdapter';
+import { Moon, Sun } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useBackendServices } from "@/hooks/useBackendServices";
+import { useAuth } from "@/contexts/adapters/AuthContextAdapter";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, {
@@ -64,7 +48,7 @@ const passwordFormSchema = z
 
 const Settings = () => {
   const [isDarkMode, setIsDarkMode] = useState(
-    window.localStorage.getItem("theme") === "dark"
+    window.localStorage.getItem("theme") === "dark",
   );
 
   const services = useBackendServices();
@@ -92,13 +76,11 @@ const Settings = () => {
       name: user?.name || "",
       email: user?.email || "",
     });
-  }, [user]);
+  }, [user, profileForm]);
 
   const handleDarkModeToggle = () => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
-    
-    // Atualizar o tema
     if (newMode) {
       document.documentElement.classList.add("dark");
       window.localStorage.setItem("theme", "dark");
@@ -111,11 +93,21 @@ const Settings = () => {
   const updateProfile = services.profile.useUpdateProfile();
   const changePassword = services.profile.useChangePassword();
 
+  const userInitials = user?.name
+    ? user.name
+        .split(" ")
+        .map((part) => part[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase()
+    : "UN";
+
   async function onSubmit(data: z.infer<typeof profileFormSchema>) {
     if (!user?.id) {
       toast({
         title: "Erro",
-        description: "Usuário não autenticado. Não foi possível atualizar o perfil.",
+        description:
+          "Usuário não autenticado. Não foi possível atualizar o perfil.",
         variant: "destructive",
       });
       return;
@@ -126,7 +118,7 @@ const Settings = () => {
         title: "Perfil atualizado",
         description: "As alterações no seu perfil foram salvas com sucesso.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro ao atualizar",
         description: "Não foi possível atualizar o perfil.",
@@ -139,7 +131,8 @@ const Settings = () => {
     if (!user?.id) {
       toast({
         title: "Erro",
-        description: "Usuário não autenticado. Não foi possível alterar a senha.",
+        description:
+          "Usuário não autenticado. Não foi possível alterar a senha.",
         variant: "destructive",
       });
       return;
@@ -154,7 +147,7 @@ const Settings = () => {
         description: "Sua senha foi alterada com sucesso.",
       });
       passwordForm.reset();
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro ao alterar senha",
         description: "Não foi possível alterar sua senha.",
@@ -165,216 +158,185 @@ const Settings = () => {
 
   return (
     <AppLayout>
-      <div className="flex flex-col gap-6 max-w-4xl">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Gerencie suas configurações de conta e preferências.
-          </p>
+      <div className="max-w-2xl mx-auto">
+        {/* Header com Avatar */}
+        <div className="flex items-center gap-4 mb-10">
+          <Avatar className="h-16 w-16">
+            <AvatarFallback className="text-lg font-semibold bg-primary/10 text-primary">
+              {userInitials}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">
+              {user?.name || "Usuário"}
+            </h1>
+            <p className="text-sm text-muted-foreground">{user?.email || ""}</p>
+          </div>
         </div>
-        
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="bg-muted/60 p-1 rounded-xl w-full md:w-auto">
-            <TabsTrigger value="profile" className="rounded-lg gap-2">
-              <User className="h-3.5 w-3.5" />
-              Perfil
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="rounded-lg gap-2">
-              <Bell className="h-3.5 w-3.5" />
-              Notificações
-            </TabsTrigger>
-            <TabsTrigger value="appearance" className="rounded-lg gap-2">
-              <Palette className="h-3.5 w-3.5" />
-              Aparência
-            </TabsTrigger>
-            <TabsTrigger value="security" className="rounded-lg gap-2">
-              <Shield className="h-3.5 w-3.5" />
-              Segurança
-            </TabsTrigger>
-          </TabsList>
 
-          <TabsContent value="profile" className="space-y-4 mt-4">
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Perfil</CardTitle>
-                    <CardDescription>
-                      Atualize seus dados de perfil e informações de conta.
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={profileForm.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome</FormLabel>
-                          <FormControl>
-                            <Input {...field} className="h-10 rounded-xl" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+        <div className="space-y-10">
+          {/* Perfil */}
+          <section>
+            <div className="mb-5">
+              <h2 className="text-base font-medium">Perfil</h2>
+              <p className="text-sm text-muted-foreground">
+                Atualize seus dados de perfil e informações de conta.
+              </p>
+            </div>
+            <Form {...profileForm}>
+              <form
+                onSubmit={profileForm.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
+                <FormField
+                  control={profileForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-normal text-muted-foreground">
+                        Nome
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} className="h-10 rounded-lg" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={profileForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-normal text-muted-foreground">
+                        Email
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} className="h-10 rounded-lg" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" size="sm" className="rounded-lg">
+                  Salvar alterações
+                </Button>
+              </form>
+            </Form>
+          </section>
 
-                    <FormField
-                      control={profileForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input {...field} className="h-10 rounded-xl" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+          <div className="border-t" />
 
-                    <Button type="submit" className="rounded-xl">Salvar alterações</Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="notifications" className="space-y-4 mt-4">
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Bell className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Notificações</CardTitle>
-                    <CardDescription>Configure como você deseja receber notificações.</CardDescription>
-                  </div>
+          {/* Aparência */}
+          <section>
+            <div className="mb-5">
+              <h2 className="text-base font-medium">Aparência</h2>
+              <p className="text-sm text-muted-foreground">
+                Personalize a aparência da interface.
+              </p>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-3">
+                {isDarkMode ? (
+                  <Moon className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Sun className="h-4 w-4 text-muted-foreground" />
+                )}
+                <div>
+                  <p className="text-sm">Modo Escuro</p>
+                  <p className="text-xs text-muted-foreground">
+                    Ative o modo escuro para reduzir o cansaço visual.
+                  </p>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between py-2">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-medium">Notificações por Email</p>
-                    <p className="text-xs text-muted-foreground">Receba atualizações e lembretes por email.</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-medium">Notificações no Navegador</p>
-                    <p className="text-xs text-muted-foreground">Receba notificações enquanto estiver usando o sistema.</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-medium">Lembretes de Tarefas</p>
-                    <p className="text-xs text-muted-foreground">Receba lembretes sobre tarefas próximas do prazo.</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="appearance" className="space-y-4 mt-4">
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Palette className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Aparência</CardTitle>
-                    <CardDescription>Personalize a aparência da interface.</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between py-2">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-medium">Modo Escuro</p>
-                    <p className="text-xs text-muted-foreground">Ative o modo escuro para reduzir o cansaço visual.</p>
-                  </div>
-                  <Switch
-                    checked={isDarkMode}
-                    onCheckedChange={handleDarkModeToggle}
+              </div>
+              <Switch
+                checked={isDarkMode}
+                onCheckedChange={handleDarkModeToggle}
+              />
+            </div>
+          </section>
+
+          <div className="border-t" />
+
+          {/* Segurança */}
+          <section>
+            <div className="mb-5">
+              <h2 className="text-base font-medium">Segurança</h2>
+              <p className="text-sm text-muted-foreground">
+                Atualize sua senha de acesso para manter sua conta protegida.
+              </p>
+            </div>
+            <Form {...passwordForm}>
+              <form
+                onSubmit={passwordForm.handleSubmit(onSubmitPassword)}
+                className="space-y-4"
+              >
+                <FormField
+                  control={passwordForm.control}
+                  name="currentPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-normal text-muted-foreground">
+                        Senha Atual
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          {...field}
+                          className="h-10 rounded-lg"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={passwordForm.control}
+                    name="newPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-normal text-muted-foreground">
+                          Nova Senha
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            {...field}
+                            className="h-10 rounded-lg"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={passwordForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-normal text-muted-foreground">
+                          Confirmar Nova Senha
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            {...field}
+                            className="h-10 rounded-lg"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="security" className="space-y-4 mt-4">
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Shield className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Alterar Senha</CardTitle>
-                    <CardDescription>Atualize sua senha de acesso.</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Form {...passwordForm}>
-                  <form onSubmit={passwordForm.handleSubmit(onSubmitPassword)} className="space-y-4">
-                    <FormField
-                      control={passwordForm.control}
-                      name="currentPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Senha Atual</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} className="h-10 rounded-xl" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={passwordForm.control}
-                      name="newPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nova Senha</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} className="h-10 rounded-xl" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={passwordForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirmar Nova Senha</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} className="h-10 rounded-xl" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="rounded-xl">Alterar Senha</Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                <Button type="submit" size="sm" className="rounded-lg">
+                  Alterar Senha
+                </Button>
+              </form>
+            </Form>
+          </section>
+        </div>
       </div>
     </AppLayout>
   );

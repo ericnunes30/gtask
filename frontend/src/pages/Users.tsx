@@ -921,10 +921,10 @@ const UsersPage = () => {
                 key={user.id}
                 className="overflow-hidden border-0 shadow-sm rounded-2xl bg-white"
               >
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar className="h-10 w-10 shrink-0">
                         <AvatarFallback className="text-sm">
                           {user.name
                             ? user.name
@@ -936,19 +936,20 @@ const UsersPage = () => {
                             : "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <h3 className="font-semibold text-base leading-tight">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-base leading-tight truncate">
                           {user.name || "Nome não definido"}
                         </h3>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground truncate">
                           {user.email || "Email não definido"}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handleEditUserStart(user)}
                         title="Editar usuário"
                       >
@@ -957,46 +958,23 @@ const UsersPage = () => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-100"
                         onClick={() => handleDeleteUser(user)}
                         title="Remover usuário"
-                        className="text-red-500 hover:text-red-700 hover:bg-red-100"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
                       <Switch
                         checked={user.is_active !== false}
                         onCheckedChange={(checked) =>
                           handleUpdateUserStatus(user.id, checked)
                         }
                       />
-                      <span
-                        className={`text-sm font-medium ${user.is_active !== false ? "text-green-600" : "text-gray-500"}`}
-                      >
-                        {user.is_active !== false ? "Ativo" : "Inativo"}
-                      </span>
                     </div>
-                    {user.whatsapp ? (
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Phone className="h-3.5 w-3.5 text-green-600" />
-                        <span className="font-mono">
-                          {formatWhatsApp(user.whatsapp)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
                   </div>
 
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">
-                      Equipes
-                    </div>
-                    <div className="flex flex-wrap gap-1">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex flex-wrap gap-1 min-w-0">
                       {user.occupations && user.occupations.length > 0 ? (
                         user.occupations.map((occ) => {
                           const teamId = typeof occ === "number" ? occ : occ.id;
@@ -1028,18 +1006,12 @@ const UsersPage = () => {
                           {getOccupationName(user)}
                         </Badge>
                       ) : (
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-muted-foreground">
                           Sem equipe
                         </span>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Permissão
-                      </div>
                       {user.roles &&
                       Array.isArray(user.roles) &&
                       user.roles.length > 0 ? (
@@ -1058,7 +1030,7 @@ const UsersPage = () => {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       {formatUserDate(user.created_at || user.createdAt)}
                     </div>

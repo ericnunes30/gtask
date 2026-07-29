@@ -1,4 +1,4 @@
-﻿import React from 'react';
+﻿import React from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, ChevronDown, LogOut, Moon, Bell } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -23,37 +23,39 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [theme, setTheme] = React.useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light';
-    const saved = localStorage.getItem('theme');
-    if (saved === 'dark') return 'dark';
-    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  const [theme, setTheme] = React.useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark") return "dark";
+    return document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light";
   });
 
   const userInitials = user?.name
     ? user.name
-        .split(' ')
+        .split(" ")
         .map((part) => part[0])
-        .join('')
+        .join("")
         .substring(0, 2)
         .toUpperCase()
-    : 'UN';
+    : "UN";
 
-  const userName = user?.name || 'Usuário';
+  const userName = user?.name || "Usuário";
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
-  const applyTheme = (next: 'light' | 'dark') => {
+  const applyTheme = (next: "light" | "dark") => {
     setTheme(next);
-    if (next === 'dark') {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+    if (next === "dark") {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
   };
 
@@ -61,33 +63,51 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
     <header className="h-16 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20">
       <div className="flex items-center justify-between h-full px-4 md:px-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden h-8 w-8 rounded-lg">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="md:hidden h-8 w-8 rounded-lg transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
+          >
             <Menu className="h-5 w-5" />
           </Button>
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg relative">
-            <Bell className="h-[18px] w-[18px] text-muted-foreground" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary"></span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg relative transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground group"
+          >
+            <Bell className="h-[18px] w-[18px] text-muted-foreground group-hover:text-accent-foreground" />
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary group-hover:bg-accent-foreground"></span>
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 h-9 pl-2 pr-3 rounded-xl hover:bg-accent">
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2 h-9 pl-2 pr-3 rounded-xl transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground group"
+              >
                 <Avatar className="h-7 w-7 ring-2 ring-border">
                   <AvatarImage src="" />
-                  <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">{userInitials}</AvatarFallback>
+                  <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary group-hover:text-accent-foreground">
+                    {userInitials}
+                  </AvatarFallback>
                 </Avatar>
-                <span className="font-medium text-sm hidden md:inline-block">{userName}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden md:block" />
+                <span className="font-medium text-sm hidden md:inline-block group-hover:text-accent-foreground">
+                  {userName}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden md:block group-hover:text-accent-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col gap-1">
                   <p className="text-sm font-medium">{userName}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {user?.email || ""}
+                  </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -100,8 +120,10 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
                   <span>Tema escuro</span>
                 </div>
                 <Switch
-                  checked={theme === 'dark'}
-                  onCheckedChange={(checked) => applyTheme(checked ? 'dark' : 'light')}
+                  checked={theme === "dark"}
+                  onCheckedChange={(checked) =>
+                    applyTheme(checked ? "dark" : "light")
+                  }
                 />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
